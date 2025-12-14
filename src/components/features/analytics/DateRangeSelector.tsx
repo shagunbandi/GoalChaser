@@ -8,7 +8,10 @@ interface DateRangeSelectorProps {
   onRangeChange: (range: DateRange) => void
 }
 
-export function DateRangeSelector({ selectedRange, onRangeChange }: DateRangeSelectorProps) {
+export function DateRangeSelector({
+  selectedRange,
+  onRangeChange,
+}: DateRangeSelectorProps) {
   const [showCustom, setShowCustom] = useState(false)
   const [customStart, setCustomStart] = useState(selectedRange.startDate)
   const [customEnd, setCustomEnd] = useState(selectedRange.endDate)
@@ -51,9 +54,10 @@ export function DateRangeSelector({ selectedRange, onRangeChange }: DateRangeSel
             className={`
               px-4 py-2.5 rounded-xl text-sm font-medium 
               transition-all duration-200 backdrop-blur-sm
-              ${activePreset === preset.id
-                ? 'bg-gradient-to-r from-[#007AFF] to-[#AF52DE] text-white shadow-[0_0_25px_rgba(0,122,255,0.3)] border border-white/20'
-                : 'bg-white/[0.03] text-white/60 hover:bg-white/[0.08] hover:text-white/90 border border-white/[0.06] hover:border-white/[0.1]'
+              ${
+                activePreset === preset.id
+                  ? 'bg-gradient-to-r from-[#007AFF] to-[#AF52DE] text-white shadow-[0_0_25px_rgba(0,122,255,0.3)] border border-white/20'
+                  : 'bg-white/[0.03] text-white/60 hover:bg-white/[0.08] hover:text-white/90 border border-white/[0.06] hover:border-white/[0.1]'
               }
             `}
           >
@@ -65,9 +69,10 @@ export function DateRangeSelector({ selectedRange, onRangeChange }: DateRangeSel
           className={`
             px-4 py-2.5 rounded-xl text-sm font-medium 
             transition-all duration-200 backdrop-blur-sm
-            ${activePreset === 'custom'
-              ? 'bg-gradient-to-r from-[#007AFF] to-[#AF52DE] text-white shadow-[0_0_25px_rgba(0,122,255,0.3)] border border-white/20'
-              : 'bg-white/[0.03] text-white/60 hover:bg-white/[0.08] hover:text-white/90 border border-white/[0.06] hover:border-white/[0.1]'
+            ${
+              activePreset === 'custom'
+                ? 'bg-gradient-to-r from-[#007AFF] to-[#AF52DE] text-white shadow-[0_0_25px_rgba(0,122,255,0.3)] border border-white/20'
+                : 'bg-white/[0.03] text-white/60 hover:bg-white/[0.08] hover:text-white/90 border border-white/[0.06] hover:border-white/[0.1]'
             }
           `}
         >
@@ -77,14 +82,18 @@ export function DateRangeSelector({ selectedRange, onRangeChange }: DateRangeSel
 
       {/* Custom Date Picker */}
       {showCustom && (
-        <div className="
+        <div
+          className="
           bg-white/[0.02] backdrop-blur-xl
           rounded-2xl p-5 
           border border-white/[0.06]
-        ">
+        "
+        >
           <div className="flex flex-wrap items-end gap-4">
             <div>
-              <label className="block text-xs text-white/40 mb-2">Start Date</label>
+              <label className="block text-xs text-white/40 mb-2">
+                Start Date
+              </label>
               <input
                 type="date"
                 value={customStart}
@@ -102,7 +111,9 @@ export function DateRangeSelector({ selectedRange, onRangeChange }: DateRangeSel
               />
             </div>
             <div>
-              <label className="block text-xs text-white/40 mb-2">End Date</label>
+              <label className="block text-xs text-white/40 mb-2">
+                End Date
+              </label>
               <input
                 type="date"
                 value={customEnd}
@@ -140,19 +151,25 @@ export function DateRangeSelector({ selectedRange, onRangeChange }: DateRangeSel
       <div className="text-sm text-white/40">
         Showing data from{' '}
         <span className="text-white/80 font-medium">
-          {new Date(selectedRange.startDate + 'T00:00:00').toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}
+          {new Date(selectedRange.startDate + 'T00:00:00').toLocaleDateString(
+            'en-US',
+            {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            },
+          )}
         </span>{' '}
         to{' '}
         <span className="text-white/80 font-medium">
-          {new Date(selectedRange.endDate + 'T00:00:00').toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}
+          {new Date(selectedRange.endDate + 'T00:00:00').toLocaleDateString(
+            'en-US',
+            {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            },
+          )}
         </span>
       </div>
     </div>

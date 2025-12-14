@@ -173,9 +173,9 @@ export function useGoals(): UseGoalsReturn {
         if (user) {
           const loadedGoals = await loadGoalsFromFirebase(user.uid)
 
-          if (loadedGoals !== null) {
-            setIsUsingFirebase(true)
-            setGoals(loadedGoals)
+        if (loadedGoals !== null) {
+          setIsUsingFirebase(true)
+          setGoals(loadedGoals)
             saveToStorage(userStorageKey, loadedGoals)
           } else {
             setIsUsingFirebase(false)
