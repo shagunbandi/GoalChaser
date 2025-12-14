@@ -34,19 +34,19 @@ network-create:
 
 # Build docker image
 docker-build:
-    docker compose build
+    docker-compose build
 
 # Start containers in detached mode
 docker-up:
-    docker compose up -d
+    docker-compose up -d
 
 # Stop containers
 docker-down:
-    docker compose down
+    docker-compose down
 
 # Restart containers
 docker-restart:
-    docker compose restart
+    docker-compose restart
 
 # View logs
 docker-logs:
