@@ -30,49 +30,51 @@ export function Navbar({ goalId, goalName, goalDescription }: NavbarProps) {
               </span>
             </Link>
             <span className="text-white/20 shrink-0">/</span>
-            <div className="min-w-0">
-              <h1 className="text-sm md:text-base font-medium text-white/90 truncate">
+            <Link href={`/goal/${goalId}`} className="min-w-0 group">
+              <h1 className="text-sm md:text-base font-medium text-white/90 truncate group-hover:text-white transition-colors">
                 {goalName}
               </h1>
               {goalDescription && (
-                <p className="text-white/40 text-xs truncate hidden sm:block">
+                <p className="text-white/40 text-xs truncate hidden sm:block group-hover:text-white/50 transition-colors">
                   {goalDescription}
                 </p>
               )}
-            </div>
+            </Link>
           </div>
 
           {/* Right: Navigation + User Avatar */}
           <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <Link
-              href={`/goal/${goalId}`}
-              className={`
+            <div className="flex items-center gap-1.5">
+              <Link
+                href={`/goal/${goalId}`}
+                className={`
                 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium 
                 transition-all duration-200
-                ${!isAnalytics
-                  ? 'bg-white/10 text-white border border-white/10 shadow-[0_0_20px_rgba(0,122,255,0.15)]'
-                  : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                ${
+                  !isAnalytics
+                    ? 'bg-white/10 text-white border border-white/10 shadow-[0_0_20px_rgba(0,122,255,0.15)]'
+                    : 'text-white/50 hover:text-white/80 hover:bg-white/5'
                 }
               `}
-            >
-              <span className="text-base">📅</span>
-              <span className="hidden sm:inline">Calendar</span>
-            </Link>
-            <Link
-              href={`/goal/${goalId}/analytics`}
-              className={`
+              >
+                <span className="text-base">📅</span>
+                <span className="hidden sm:inline">Calendar</span>
+              </Link>
+              <Link
+                href={`/goal/${goalId}/analytics`}
+                className={`
                 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium 
                 transition-all duration-200
-                ${isAnalytics
-                  ? 'bg-white/10 text-white border border-white/10 shadow-[0_0_20px_rgba(175,82,222,0.15)]'
-                  : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                ${
+                  isAnalytics
+                    ? 'bg-white/10 text-white border border-white/10 shadow-[0_0_20px_rgba(175,82,222,0.15)]'
+                    : 'text-white/50 hover:text-white/80 hover:bg-white/5'
                 }
               `}
-            >
-              <span className="text-base">📊</span>
-              <span className="hidden sm:inline">Analytics</span>
-            </Link>
+              >
+                <span className="text-base">📊</span>
+                <span className="hidden sm:inline">Charts</span>
+              </Link>
             </div>
 
             {/* Divider */}
