@@ -23,9 +23,24 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
-// Initialize Firebase (prevent multiple initializations)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
-const db = getFirestore(app)
+// Lazy initialization to avoid build-time errors
+// Firebase is only initialized when actually needed at runtime
+let app: ReturnType<typeof initializeApp> | null = null
+let db: ReturnType<typeof getFirestore> | null = null
+
+function getApp() {
+  if (!app) {
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
+  }
+  return app
+}
+
+function getDb() {
+  if (!db) {
+    db = getFirestore(getApp())
+  }
+  return db
+}
 
 // ============ Types ============
 export type DayStatus = 'RED' | 'YELLOW' | 'GREEN' | null
@@ -55,7 +70,7 @@ export async function saveDayDetails(
   details: DayDetails
 ): Promise<void> {
   try {
-    const docRef = doc(db, 'users', USER_ID, 'days', date)
+    const docRef = doc(getDb(), 'users', USER_ID, 'days', date)
     await setDoc(docRef, {
       ...details,
       updatedAt: new Date().toISOString(),
@@ -71,7 +86,7 @@ export async function saveDayDetails(
  */
 export async function getDayDetails(date: string): Promise<DayDetails | null> {
   try {
-    const docRef = doc(db, 'users', USER_ID, 'days', date)
+    const docRef = doc(getDb(), 'users', USER_ID, 'days', date)
     const docSnap = await getDoc(docRef)
     
     if (docSnap.exists()) {
@@ -94,7 +109,7 @@ export async function getDayDetails(date: string): Promise<DayDetails | null> {
  */
 export async function getAllDayDetails(): Promise<Record<string, DayDetails>> {
   try {
-    const colRef = collection(db, 'users', USER_ID, 'days')
+    const colRef = collection(getDb(), 'users', USER_ID, 'days')
     const querySnapshot = await getDocs(colRef)
     
     const result: Record<string, DayDetails> = {}
@@ -121,10 +136,10 @@ export async function saveBatchDayDetails(
   details: Record<string, DayDetails>
 ): Promise<void> {
   try {
-    const batch = writeBatch(db)
+    const batch = writeBatch(getDb())
     
     Object.entries(details).forEach(([date, dayDetails]) => {
-      const docRef = doc(db, 'users', USER_ID, 'days', date)
+      const docRef = doc(getDb(), 'users', USER_ID, 'days', date)
       batch.set(docRef, {
         ...dayDetails,
         updatedAt: new Date().toISOString(),
@@ -147,7 +162,7 @@ export async function saveSuggestionsToFirestore(
   suggestions: SavedSuggestions
 ): Promise<void> {
   try {
-    const docRef = doc(db, 'users', USER_ID, 'settings', 'suggestions')
+    const docRef = doc(getDb(), 'users', USER_ID, 'settings', 'suggestions')
     await setDoc(docRef, {
       ...suggestions,
       updatedAt: new Date().toISOString(),
@@ -163,7 +178,7 @@ export async function saveSuggestionsToFirestore(
  */
 export async function getSuggestionsFromFirestore(): Promise<SavedSuggestions> {
   try {
-    const docRef = doc(db, 'users', USER_ID, 'settings', 'suggestions')
+    const docRef = doc(getDb(), 'users', USER_ID, 'settings', 'suggestions')
     const docSnap = await getDoc(docRef)
     
     if (docSnap.exists()) {
@@ -211,5 +226,5 @@ export async function migrateFromLocalStorage(): Promise<{
   }
 }
 
-export { db }
+export { getDb, getApp }
 
