@@ -70,10 +70,17 @@ export default function AnalyticsPage() {
   // Loading state
   if (isLoading || goalsLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-cyan-400 border-t-transparent mx-auto mb-4" />
-          <p className="text-slate-400">Loading analytics...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        {/* Glass Background */}
+        <div className="glass-background">
+          <div className="orb-1" />
+          <div className="orb-2" />
+        </div>
+        <div className="noise-overlay" />
+        
+        <div className="relative z-10 text-center">
+          <div className="w-12 h-12 border-2 border-[#AF52DE] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white/50">Loading analytics...</p>
         </div>
       </div>
     )
@@ -82,16 +89,30 @@ export default function AnalyticsPage() {
   // Goal not found
   if (!goal && !goalsLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">🤔</div>
-          <h1 className="text-2xl font-bold text-white mb-4">Goal Not Found</h1>
-          <p className="text-slate-400 mb-6">
+      <div className="min-h-screen flex items-center justify-center">
+        {/* Glass Background */}
+        <div className="glass-background">
+          <div className="orb-1" />
+          <div className="orb-2" />
+        </div>
+        <div className="noise-overlay" />
+        
+        <div className="relative z-10 text-center">
+          <div className="text-6xl mb-4 opacity-80">🤔</div>
+          <h1 className="text-2xl font-semibold text-white/90 mb-4">Goal Not Found</h1>
+          <p className="text-white/50 mb-6">
             This goal doesn&apos;t exist or was deleted.
           </p>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-white font-medium rounded-xl transition-colors"
+            className="
+              inline-flex items-center gap-2 px-6 py-3
+              bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
+              text-white font-medium rounded-2xl
+              shadow-[0_0_30px_rgba(0,122,255,0.3)]
+              hover:shadow-[0_0_40px_rgba(0,122,255,0.4)]
+              transition-all duration-200
+            "
           >
             ← Back to Goals
           </Link>
@@ -101,15 +122,13 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
-      {/* Subtle grid pattern overlay */}
-      <div
-        className="fixed inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-          backgroundSize: '40px 40px',
-        }}
-      />
+    <div className="min-h-screen">
+      {/* Glass Background */}
+      <div className="glass-background">
+        <div className="orb-1" />
+        <div className="orb-2" />
+      </div>
+      <div className="noise-overlay" />
 
       {/* Navbar */}
       <Navbar
@@ -122,8 +141,12 @@ export default function AnalyticsPage() {
         {/* Error Banner */}
         {error && (
           <div className="max-w-7xl mx-auto mb-4">
-            <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 text-center">
-              <p className="text-red-300">{error}</p>
+            <div className="
+              bg-red-500/10 backdrop-blur-xl
+              border border-red-500/30 rounded-2xl 
+              p-4 text-center
+            ">
+              <p className="text-red-400">{error}</p>
             </div>
           </div>
         )}
@@ -131,7 +154,7 @@ export default function AnalyticsPage() {
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Date Range Selector */}
           <Card className="p-6">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-medium text-white/80 mb-4 flex items-center gap-2">
               <span>📅</span> Select Time Period
             </h2>
             <DateRangeSelector
@@ -142,7 +165,7 @@ export default function AnalyticsPage() {
 
           {/* Summary Stats with Circular Distribution */}
           <Card className="p-6">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-medium text-white/80 mb-4 flex items-center gap-2">
               <span>📈</span> Overview
             </h2>
             <ExtendedSummary summary={summary} />
@@ -152,7 +175,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Subject Breakdown */}
             <Card className="p-6">
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <h2 className="text-lg font-medium text-white/80 mb-4 flex items-center gap-2">
                 <span>📚</span> Subject Breakdown
               </h2>
               {subjectStats.length > 0 && (
@@ -165,7 +188,7 @@ export default function AnalyticsPage() {
 
             {/* Topic Breakdown */}
             <Card className="p-6">
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <h2 className="text-lg font-medium text-white/80 mb-4 flex items-center gap-2">
                 <span>🏷️</span> Topic Breakdown
               </h2>
               <TopicBreakdown data={topicStats} />
@@ -174,17 +197,24 @@ export default function AnalyticsPage() {
 
           {/* Empty State */}
           {summary.daysWithData === 0 && (
-            <Card className="p-12 text-center">
-              <div className="text-6xl mb-4">📭</div>
-              <h3 className="text-xl font-semibold text-white mb-2">
+            <Card className="p-14 text-center">
+              <div className="text-6xl mb-4 opacity-80">📭</div>
+              <h3 className="text-xl font-semibold text-white/90 mb-2">
                 No Data Yet
               </h3>
-              <p className="text-slate-400 mb-6">
+              <p className="text-white/50 mb-6">
                 Start tracking your productivity to see analytics here.
               </p>
               <Link
                 href={`/goal/${goalId}`}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-white font-medium rounded-xl transition-all"
+                className="
+                  inline-flex items-center gap-2 px-6 py-3
+                  bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
+                  text-white font-medium rounded-2xl
+                  shadow-[0_0_30px_rgba(0,122,255,0.3)]
+                  hover:shadow-[0_0_40px_rgba(0,122,255,0.4)]
+                  transition-all duration-200
+                "
               >
                 Start Tracking →
               </Link>

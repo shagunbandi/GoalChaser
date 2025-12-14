@@ -14,19 +14,19 @@ export function getScoreCategory(score: DayStatus): ScoreCategory {
 }
 
 /**
- * Get Tailwind color classes based on score
+ * Get Apple-style glass color classes based on score
  */
 export function getScoreColorClass(score: DayStatus): string {
   const category = getScoreCategory(score)
   switch (category) {
     case 'high':
-      return 'bg-green-500 text-white'
+      return 'bg-[#30D158]/80 text-white shadow-[0_0_15px_rgba(48,209,88,0.3)]'
     case 'ok':
-      return 'bg-yellow-400 text-slate-900'
+      return 'bg-[#FF9500]/80 text-white shadow-[0_0_15px_rgba(255,149,0,0.3)]'
     case 'low':
-      return 'bg-red-500 text-white'
+      return 'bg-[#FF453A]/80 text-white shadow-[0_0_15px_rgba(255,69,58,0.3)]'
     default:
-      return 'bg-white/60 text-slate-900 border border-slate-200/50'
+      return 'bg-white/[0.04] text-white/60 border border-white/[0.08]'
   }
 }
 
@@ -55,4 +55,3 @@ export function getScoreEmoji(score: number): string {
       return ''
   }
 }
-

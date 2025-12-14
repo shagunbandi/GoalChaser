@@ -39,35 +39,62 @@ export function Calendar({
     isSelected: boolean
   ): string => {
     const bg = getScoreColorClass(status)
-    const todayRing = isToday ? 'ring-2 ring-cyan-400 ring-offset-1' : ''
+    const todayRing = isToday ? 'ring-2 ring-[#007AFF] ring-offset-1 ring-offset-[#0a0a12]' : ''
     const selectedRing = isSelected
-      ? 'ring-2 ring-violet-400 ring-offset-2 ring-offset-slate-900'
+      ? 'ring-2 ring-[#AF52DE] ring-offset-2 ring-offset-[#0a0a12] shadow-[0_0_20px_rgba(175,82,222,0.3)]'
       : ''
-    return `${bg} ${todayRing} ${selectedRing} aspect-square rounded-lg cursor-pointer hover:shadow-lg hover:scale-[1.03] transition-all duration-150 flex flex-col items-start justify-start p-2`
+    return `
+      ${bg} ${todayRing} ${selectedRing}
+      aspect-square rounded-xl cursor-pointer
+      hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]
+      hover:scale-[1.05]
+      transition-all duration-200
+      flex flex-col items-start justify-start p-2
+      backdrop-blur-sm
+    `
   }
 
   const content = (
     <>
       {/* Month Navigation Header */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 gap-2">
+      <div className="relative flex items-center justify-between pb-5 mb-5 gap-2">
         <button
           onClick={onPrevMonth}
-          className="px-2 sm:px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-200 rounded-lg font-medium text-xs sm:text-sm transition-all duration-200 hover:scale-105 shrink-0"
+          className="
+            px-3 py-2
+            bg-white/[0.05] hover:bg-white/[0.1]
+            border border-white/[0.08] hover:border-white/[0.15]
+            text-white/70 hover:text-white
+            rounded-xl font-medium text-sm
+            transition-all duration-200
+            hover:-translate-x-0.5
+          "
         >
           ←
         </button>
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-lg sm:text-xl">📅</span>
-          <h2 className="text-base sm:text-lg font-bold text-white uppercase tracking-wide truncate">
+          <span className="text-lg sm:text-xl opacity-80">📅</span>
+          <h2 className="text-base sm:text-lg font-semibold text-white/90 tracking-wide truncate">
             {MONTH_NAMES[currentMonth - 1]} {currentYear}
           </h2>
         </div>
         <button
           onClick={onNextMonth}
-          className="px-2 sm:px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-200 rounded-lg font-medium text-xs sm:text-sm transition-all duration-200 hover:scale-105 shrink-0"
+          className="
+            px-3 py-2
+            bg-white/[0.05] hover:bg-white/[0.1]
+            border border-white/[0.08] hover:border-white/[0.15]
+            text-white/70 hover:text-white
+            rounded-xl font-medium text-sm
+            transition-all duration-200
+            hover:translate-x-0.5
+          "
         >
           →
         </button>
+        
+        {/* Glass divider */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
       </div>
 
       {/* Weekday Labels */}
@@ -75,7 +102,7 @@ export function Calendar({
         {WEEKDAY_LABELS.map((label) => (
           <div
             key={label}
-            className="text-center text-xs font-semibold text-slate-400 uppercase tracking-wider py-2"
+            className="text-center text-xs font-medium text-white/40 uppercase tracking-wider py-2"
           >
             {label}
           </div>
@@ -97,7 +124,7 @@ export function Calendar({
               onClick={() => onDayClick(day.iso)}
               className={getDayClasses(status, isToday, isSelected)}
             >
-              <span className="text-sm font-semibold">{day.dayOfMonth}</span>
+              <span className="text-sm font-medium">{day.dayOfMonth}</span>
             </div>
           )
         })}
@@ -106,9 +133,8 @@ export function Calendar({
   )
 
   if (noCard) {
-    return <div className="p-5">{content}</div>
+    return <div className="p-6">{content}</div>
   }
 
-  return <Card className="p-5">{content}</Card>
+  return <Card className="p-6">{content}</Card>
 }
-

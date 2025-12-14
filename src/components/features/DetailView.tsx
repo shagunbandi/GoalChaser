@@ -97,7 +97,7 @@ export function DetailView({
         subtitle={formatDateDisplay(selectedDate)}
       />
 
-      <div className="space-y-5">
+      <div className="space-y-6">
         {/* Status Selector */}
         <StatusSelector
           value={currentStatus}
@@ -113,8 +113,8 @@ export function DetailView({
         />
 
         {/* Subject Selector */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-slate-300">
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-white/60">
             Subject
           </label>
           {availableSubjects.length > 0 && !showAddSubject ? (
@@ -124,18 +124,27 @@ export function DetailView({
                   <button
                     key={subject}
                     onClick={() => handleSubjectSelect(subject)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      currentSubject === subject
-                        ? 'bg-cyan-500 text-white'
-                        : 'bg-white/10 text-slate-300 hover:bg-white/20'
-                    }`}
+                    className={`
+                      px-4 py-2.5 rounded-xl text-sm font-medium 
+                      transition-all duration-200 backdrop-blur-sm
+                      ${currentSubject === subject
+                        ? 'bg-[#007AFF] text-white shadow-[0_0_25px_rgba(0,122,255,0.3)] border border-[#007AFF]/50'
+                        : 'bg-white/[0.03] text-white/70 hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.1]'
+                      }
+                    `}
                   >
                     {subject}
                   </button>
                 ))}
                 <button
                   onClick={() => setShowAddSubject(true)}
-                  className="px-3 py-2 rounded-lg text-sm font-medium bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-dashed border-white/20 transition-all"
+                  className="
+                    px-4 py-2.5 rounded-xl text-sm font-medium
+                    bg-white/[0.02] text-white/40 
+                    hover:bg-white/[0.05] hover:text-white/70
+                    border border-dashed border-white/[0.1] hover:border-white/[0.2]
+                    transition-all duration-200
+                  "
                 >
                   + New
                 </button>
@@ -146,7 +155,7 @@ export function DetailView({
                     onUpdateDetails(selectedDate, { subject: '', topic: '' })
                     showFeedback('Subject cleared')
                   }}
-                  className="text-xs text-slate-500 hover:text-slate-300"
+                  className="text-xs text-white/30 hover:text-white/60 transition-colors"
                 >
                   Clear selection
                 </button>
@@ -161,13 +170,29 @@ export function DetailView({
                   onChange={(e) => setNewSubjectInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddNewSubject()}
                   placeholder="Enter new subject name..."
-                  className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                  className="
+                    flex-1 px-4 py-3
+                    bg-white/[0.03] backdrop-blur-xl
+                    border border-white/[0.08] rounded-xl
+                    text-white placeholder-white/30
+                    focus:outline-none focus:border-[#007AFF]/50
+                    focus:shadow-[0_0_0_3px_rgba(0,122,255,0.1)]
+                    transition-all duration-200
+                  "
                   autoFocus
                 />
                 <button
                   onClick={handleAddNewSubject}
                   disabled={!newSubjectInput.trim()}
-                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-colors"
+                  className="
+                    px-5 py-3
+                    bg-[#007AFF] hover:bg-[#007AFF]/80
+                    disabled:bg-white/[0.05] disabled:text-white/30 disabled:cursor-not-allowed
+                    text-white font-medium rounded-xl
+                    shadow-[0_0_20px_rgba(0,122,255,0.3)]
+                    disabled:shadow-none
+                    transition-all duration-200
+                  "
                 >
                   Add
                 </button>
@@ -177,15 +202,21 @@ export function DetailView({
                       setShowAddSubject(false)
                       setNewSubjectInput('')
                     }}
-                    className="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-300 rounded-xl transition-colors"
+                    className="
+                      px-4 py-3
+                      bg-white/[0.05] hover:bg-white/[0.1]
+                      text-white/60 hover:text-white/80
+                      rounded-xl
+                      transition-all duration-200
+                    "
                   >
                     Cancel
                   </button>
                 )}
               </div>
               {availableSubjects.length === 0 && (
-                <p className="text-xs text-slate-500">
-                  No subjects yet. Add your first subject above or in Settings.
+                <p className="text-xs text-white/30">
+                  No subjects yet. Add your first subject above.
                 </p>
               )}
             </div>
@@ -193,8 +224,8 @@ export function DetailView({
         </div>
 
         {/* Topic Selector */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-slate-300">
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-white/60">
             Topic
           </label>
           {availableTopics.length > 0 && !showAddTopic ? (
@@ -204,11 +235,14 @@ export function DetailView({
                   <button
                     key={topic}
                     onClick={() => handleTopicSelect(topic)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      currentTopic === topic
-                        ? 'bg-violet-500 text-white'
-                        : 'bg-white/10 text-slate-300 hover:bg-white/20'
-                    }`}
+                    className={`
+                      px-4 py-2.5 rounded-xl text-sm font-medium 
+                      transition-all duration-200 backdrop-blur-sm
+                      ${currentTopic === topic
+                        ? 'bg-[#AF52DE] text-white shadow-[0_0_25px_rgba(175,82,222,0.3)] border border-[#AF52DE]/50'
+                        : 'bg-white/[0.03] text-white/70 hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.1]'
+                      }
+                    `}
                   >
                     {topic}
                   </button>
@@ -216,7 +250,13 @@ export function DetailView({
                 {currentSubject && (
                   <button
                     onClick={() => setShowAddTopic(true)}
-                    className="px-3 py-2 rounded-lg text-sm font-medium bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-dashed border-white/20 transition-all"
+                    className="
+                      px-4 py-2.5 rounded-xl text-sm font-medium
+                      bg-white/[0.02] text-white/40 
+                      hover:bg-white/[0.05] hover:text-white/70
+                      border border-dashed border-white/[0.1] hover:border-white/[0.2]
+                      transition-all duration-200
+                    "
                   >
                     + New
                   </button>
@@ -228,7 +268,7 @@ export function DetailView({
                     onUpdateDetails(selectedDate, { topic: '' })
                     showFeedback('Topic cleared')
                   }}
-                  className="text-xs text-slate-500 hover:text-slate-300"
+                  className="text-xs text-white/30 hover:text-white/60 transition-colors"
                 >
                   Clear selection
                 </button>
@@ -243,13 +283,29 @@ export function DetailView({
                   onChange={(e) => setNewTopicInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddNewTopic()}
                   placeholder="Enter new topic name..."
-                  className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-400/50"
+                  className="
+                    flex-1 px-4 py-3
+                    bg-white/[0.03] backdrop-blur-xl
+                    border border-white/[0.08] rounded-xl
+                    text-white placeholder-white/30
+                    focus:outline-none focus:border-[#AF52DE]/50
+                    focus:shadow-[0_0_0_3px_rgba(175,82,222,0.1)]
+                    transition-all duration-200
+                  "
                   autoFocus
                 />
                 <button
                   onClick={handleAddNewTopic}
                   disabled={!newTopicInput.trim()}
-                  className="px-4 py-2 bg-violet-500 hover:bg-violet-400 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-colors"
+                  className="
+                    px-5 py-3
+                    bg-[#AF52DE] hover:bg-[#AF52DE]/80
+                    disabled:bg-white/[0.05] disabled:text-white/30 disabled:cursor-not-allowed
+                    text-white font-medium rounded-xl
+                    shadow-[0_0_20px_rgba(175,82,222,0.3)]
+                    disabled:shadow-none
+                    transition-all duration-200
+                  "
                 >
                   Add
                 </button>
@@ -259,28 +315,34 @@ export function DetailView({
                       setShowAddTopic(false)
                       setNewTopicInput('')
                     }}
-                    className="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-300 rounded-xl transition-colors"
+                    className="
+                      px-4 py-3
+                      bg-white/[0.05] hover:bg-white/[0.1]
+                      text-white/60 hover:text-white/80
+                      rounded-xl
+                      transition-all duration-200
+                    "
                   >
                     Cancel
                   </button>
                 )}
               </div>
               {availableTopics.length === 0 && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-white/30">
                   No topics for this subject yet. Add your first topic above.
                 </p>
               )}
             </div>
           ) : (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-white/30">
               Select a subject first to add topics.
             </p>
           )}
         </div>
 
         {/* Notes Section */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-slate-300">
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-white/60">
             📝 Daily Notes
           </label>
           <textarea
@@ -288,11 +350,19 @@ export function DetailView({
             onChange={(e) => {
               onUpdateDetails(selectedDate, { note: e.target.value })
             }}
-            placeholder="Write something about your day... reflections, accomplishments, thoughts, or anything you want to remember."
+            placeholder="Write something about your day..."
             rows={4}
-            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400/50 transition-all resize-none"
+            className="
+              w-full px-4 py-3.5
+              bg-white/[0.03] backdrop-blur-xl
+              border border-white/[0.08] rounded-2xl
+              text-white placeholder-white/30
+              focus:outline-none focus:border-[#FF9500]/50
+              focus:shadow-[0_0_0_3px_rgba(255,149,0,0.1)]
+              transition-all duration-200 resize-none
+            "
           />
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-white/30">
             {currentNote.length > 0
               ? `${currentNote.length} characters`
               : 'Add notes to remember what you did today'}
@@ -301,23 +371,27 @@ export function DetailView({
 
         {/* Live Feedback */}
         <div
-          className={`bg-white/5 rounded-xl p-4 border border-white/10 transition-all duration-300 ${
-            feedback ? 'opacity-100' : 'opacity-50'
-          }`}
+          className={`
+            bg-white/[0.02] backdrop-blur-xl
+            rounded-2xl p-4 
+            border border-white/[0.06]
+            transition-all duration-300 
+            ${feedback ? 'opacity-100' : 'opacity-50'}
+          `}
         >
           {feedback ? (
-            <p className="text-cyan-400 text-sm font-medium">{feedback}</p>
+            <p className="text-[#32D4DE] text-sm font-medium">{feedback}</p>
           ) : (
-            <p className="text-slate-500 text-xs">
+            <p className="text-white/30 text-xs">
               {currentSubject || currentTopic ? (
                 <>
                   📋 Current:{' '}
                   {currentSubject && (
-                    <span className="text-cyan-400">{currentSubject}</span>
+                    <span className="text-[#007AFF]">{currentSubject}</span>
                   )}
                   {currentSubject && currentTopic && ' → '}
                   {currentTopic && (
-                    <span className="text-violet-400">{currentTopic}</span>
+                    <span className="text-[#AF52DE]">{currentTopic}</span>
                   )}
                 </>
               ) : (
@@ -331,9 +405,8 @@ export function DetailView({
   )
 
   if (noCard) {
-    return <div className="p-5">{content}</div>
+    return <div className="p-6">{content}</div>
   }
 
-  return <Card className="p-5">{content}</Card>
+  return <Card className="p-6">{content}</Card>
 }
-

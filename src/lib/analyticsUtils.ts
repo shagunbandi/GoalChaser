@@ -324,20 +324,20 @@ export function calculateTopicStats(dayData: DayProductivity[]): TopicStats[] {
  * Get score color class based on productivity level
  */
 export function getScoreColor(score: number | null): string {
-  if (score === null || score === 0) return 'bg-slate-700'
-  if (score >= 7) return 'bg-emerald-500'
-  if (score >= 4) return 'bg-amber-500'
-  return 'bg-red-400'
+  if (score === null || score === 0) return 'bg-white/10'
+  if (score >= 7) return 'bg-[#30D158]'
+  if (score >= 4) return 'bg-[#FF9500]'
+  return 'bg-[#FF453A]'
 }
 
 /**
  * Get score text color class based on productivity level
  */
 export function getScoreTextColor(score: number | null): string {
-  if (score === null || score === 0) return 'text-slate-500'
-  if (score >= 7) return 'text-emerald-400'
-  if (score >= 4) return 'text-amber-400'
-  return 'text-red-400'
+  if (score === null || score === 0) return 'text-white/40'
+  if (score >= 7) return 'text-[#30D158]'
+  if (score >= 4) return 'text-[#FF9500]'
+  return 'text-[#FF453A]'
 }
 
 /**

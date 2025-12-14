@@ -2,7 +2,6 @@
 
 import {
   type SubjectStats,
-  getScoreColor,
   getScoreTextColor,
 } from '@/lib/analyticsUtils'
 
@@ -13,7 +12,7 @@ interface SubjectBreakdownProps {
 export function SubjectBreakdown({ data }: SubjectBreakdownProps) {
   if (data.length === 0) {
     return (
-      <div className="text-center py-8 text-slate-400">
+      <div className="text-center py-10 text-white/40">
         No subject data available for this period
       </div>
     )
@@ -24,22 +23,28 @@ export function SubjectBreakdown({ data }: SubjectBreakdownProps) {
       {data.map((subject) => (
         <div
           key={subject.name}
-          className="bg-white/5 rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-colors"
+          className="
+            bg-white/[0.02] backdrop-blur-sm
+            rounded-2xl p-4 
+            border border-white/[0.06]
+            hover:bg-white/[0.04] hover:border-white/[0.1]
+            transition-all duration-200
+          "
         >
           <div className="flex items-center gap-4">
             {/* Subject Name */}
             <div className="flex-1 min-w-0">
-              <h4 className="text-white font-semibold truncate">
+              <h4 className="text-white/90 font-medium truncate">
                 {subject.name}
               </h4>
             </div>
 
             {/* Days */}
             <div className="text-right">
-              <div className="text-lg font-bold text-white">
+              <div className="text-lg font-semibold text-white/80">
                 {subject.totalDays}
               </div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-white/30">
                 day{subject.totalDays !== 1 ? 's' : ''}
               </div>
             </div>
@@ -47,13 +52,11 @@ export function SubjectBreakdown({ data }: SubjectBreakdownProps) {
             {/* Avg Productivity */}
             <div className="text-right">
               <div
-                className={`text-lg font-bold ${getScoreTextColor(
-                  subject.avgScore,
-                )}`}
+                className={`text-lg font-semibold ${getScoreTextColor(subject.avgScore)}`}
               >
                 {subject.avgScore}
               </div>
-              <div className="text-xs text-slate-500">avg</div>
+              <div className="text-xs text-white/30">avg</div>
             </div>
           </div>
         </div>
@@ -68,22 +71,22 @@ export function SubjectSummaryCard({ data }: SubjectBreakdownProps) {
 
   const totalDays = data.reduce((sum, s) => sum + s.totalDays, 0)
 
-  // Color palette for subjects
+  // Apple-inspired color palette with glow
   const colors = [
-    'from-cyan-500 to-cyan-400',
-    'from-violet-500 to-violet-400',
-    'from-fuchsia-500 to-fuchsia-400',
-    'from-rose-500 to-rose-400',
-    'from-amber-500 to-amber-400',
-    'from-emerald-500 to-emerald-400',
-    'from-blue-500 to-blue-400',
-    'from-pink-500 to-pink-400',
+    { bg: 'from-[#007AFF] to-[#007AFF]', glow: 'rgba(0,122,255,0.5)' },
+    { bg: 'from-[#AF52DE] to-[#AF52DE]', glow: 'rgba(175,82,222,0.5)' },
+    { bg: 'from-[#32D4DE] to-[#32D4DE]', glow: 'rgba(50,212,222,0.5)' },
+    { bg: 'from-[#FF2D92] to-[#FF2D92]', glow: 'rgba(255,45,146,0.5)' },
+    { bg: 'from-[#FF9500] to-[#FF9500]', glow: 'rgba(255,149,0,0.5)' },
+    { bg: 'from-[#30D158] to-[#30D158]', glow: 'rgba(48,209,88,0.5)' },
+    { bg: 'from-[#5856D6] to-[#5856D6]', glow: 'rgba(88,86,214,0.5)' },
+    { bg: 'from-[#FF453A] to-[#FF453A]', glow: 'rgba(255,69,58,0.5)' },
   ]
 
   return (
     <div className="space-y-4">
       {/* Horizontal Stacked Bar */}
-      <div className="h-4 bg-white/10 rounded-full overflow-hidden flex">
+      <div className="h-3 bg-white/[0.05] rounded-full overflow-hidden flex">
         {data.map((subject, index) => {
           const width =
             totalDays > 0 ? (subject.totalDays / totalDays) * 100 : 0
@@ -91,10 +94,11 @@ export function SubjectSummaryCard({ data }: SubjectBreakdownProps) {
           return (
             <div
               key={subject.name}
-              className={`h-full bg-gradient-to-r ${
-                colors[index % colors.length]
-              } transition-all duration-500`}
-              style={{ width: `${width}%` }}
+              className={`h-full bg-gradient-to-r ${colors[index % colors.length].bg} transition-all duration-500`}
+              style={{ 
+                width: `${width}%`,
+                boxShadow: `0 0 10px ${colors[index % colors.length].glow}`
+              }}
               title={`${subject.name}: ${subject.totalDays} days`}
             />
           )
@@ -111,11 +115,10 @@ export function SubjectSummaryCard({ data }: SubjectBreakdownProps) {
           return (
             <div key={subject.name} className="flex items-center gap-2">
               <div
-                className={`w-3 h-3 rounded bg-gradient-to-r ${
-                  colors[index % colors.length]
-                }`}
+                className={`w-3 h-3 rounded bg-gradient-to-r ${colors[index % colors.length].bg}`}
+                style={{ boxShadow: `0 0 6px ${colors[index % colors.length].glow}` }}
               />
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-white/50">
                 {subject.name} ({percentage}%)
               </span>
             </div>

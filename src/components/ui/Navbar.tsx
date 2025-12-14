@@ -14,7 +14,7 @@ export function Navbar({ goalId, goalName, goalDescription }: NavbarProps) {
   const isAnalytics = pathname.includes('/analytics')
 
   return (
-    <nav className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-xl border-b border-white/10">
+    <nav className="sticky top-0 z-50 glass-navbar">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Left: App name + Goal name */}
@@ -24,17 +24,17 @@ export function Navbar({ goalId, goalName, goalDescription }: NavbarProps) {
               className="flex items-center gap-2 shrink-0 group"
               title="Back to Goals"
             >
-              <span className="text-lg md:text-xl font-black tracking-tight bg-gradient-to-r from-cyan-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent group-hover:opacity-80 transition-opacity">
+              <span className="text-lg md:text-xl font-bold tracking-tight text-gradient group-hover:opacity-80 transition-opacity">
                 Nitya
               </span>
             </Link>
-            <span className="text-slate-600 shrink-0">/</span>
+            <span className="text-white/20 shrink-0">/</span>
             <div className="min-w-0">
-              <h1 className="text-sm md:text-base font-semibold text-white truncate">
+              <h1 className="text-sm md:text-base font-medium text-white/90 truncate">
                 {goalName}
               </h1>
               {goalDescription && (
-                <p className="text-slate-500 text-xs truncate hidden sm:block">
+                <p className="text-white/40 text-xs truncate hidden sm:block">
                   {goalDescription}
                 </p>
               )}
@@ -42,27 +42,33 @@ export function Navbar({ goalId, goalName, goalDescription }: NavbarProps) {
           </div>
 
           {/* Right: Navigation */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Link
               href={`/goal/${goalId}`}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                !isAnalytics
-                  ? 'bg-white/20 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-white/10'
-              }`}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium 
+                transition-all duration-200
+                ${!isAnalytics
+                  ? 'bg-white/10 text-white border border-white/10 shadow-[0_0_20px_rgba(0,122,255,0.15)]'
+                  : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                }
+              `}
             >
-              <span>📅</span>
+              <span className="text-base">📅</span>
               <span className="hidden sm:inline">Calendar</span>
             </Link>
             <Link
               href={`/goal/${goalId}/analytics`}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                isAnalytics
-                  ? 'bg-white/20 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-white/10'
-              }`}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium 
+                transition-all duration-200
+                ${isAnalytics
+                  ? 'bg-white/10 text-white border border-white/10 shadow-[0_0_20px_rgba(175,82,222,0.15)]'
+                  : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                }
+              `}
             >
-              <span>📊</span>
+              <span className="text-base">📊</span>
               <span className="hidden sm:inline">Analytics</span>
             </Link>
           </div>

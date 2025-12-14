@@ -118,10 +118,17 @@ export default function GoalPage() {
   // Loading state
   if (isLoading || goalsLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-cyan-400 border-t-transparent mx-auto mb-4" />
-          <p className="text-slate-400">Loading your goal...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        {/* Glass Background */}
+        <div className="glass-background">
+          <div className="orb-1" />
+          <div className="orb-2" />
+        </div>
+        <div className="noise-overlay" />
+        
+        <div className="relative z-10 text-center">
+          <div className="w-12 h-12 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white/50">Loading your goal...</p>
         </div>
       </div>
     )
@@ -130,16 +137,30 @@ export default function GoalPage() {
   // Goal not found
   if (!goal && !goalsLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">🤔</div>
-          <h1 className="text-2xl font-bold text-white mb-4">Goal Not Found</h1>
-          <p className="text-slate-400 mb-6">
+      <div className="min-h-screen flex items-center justify-center">
+        {/* Glass Background */}
+        <div className="glass-background">
+          <div className="orb-1" />
+          <div className="orb-2" />
+        </div>
+        <div className="noise-overlay" />
+        
+        <div className="relative z-10 text-center">
+          <div className="text-6xl mb-4 opacity-80">🤔</div>
+          <h1 className="text-2xl font-semibold text-white/90 mb-4">Goal Not Found</h1>
+          <p className="text-white/50 mb-6">
             This goal doesn&apos;t exist or was deleted.
           </p>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-white font-medium rounded-xl transition-colors"
+            className="
+              inline-flex items-center gap-2 px-6 py-3
+              bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
+              text-white font-medium rounded-2xl
+              shadow-[0_0_30px_rgba(0,122,255,0.3)]
+              hover:shadow-[0_0_40px_rgba(0,122,255,0.4)]
+              transition-all duration-200
+            "
           >
             ← Back to Goals
           </Link>
@@ -149,15 +170,13 @@ export default function GoalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
-      {/* Subtle grid pattern overlay */}
-      <div
-        className="fixed inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-          backgroundSize: '40px 40px',
-        }}
-      />
+    <div className="min-h-screen">
+      {/* Glass Background */}
+      <div className="glass-background">
+        <div className="orb-1" />
+        <div className="orb-2" />
+      </div>
+      <div className="noise-overlay" />
 
       {/* Navbar */}
       <Navbar
@@ -170,25 +189,21 @@ export default function GoalPage() {
         {/* Error Banner */}
         {error && (
           <div className="max-w-7xl mx-auto mb-4">
-            <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 text-center">
-              <p className="text-red-300">{error}</p>
+            <div className="
+              bg-red-500/10 backdrop-blur-xl
+              border border-red-500/30 rounded-2xl 
+              p-4 text-center
+            ">
+              <p className="text-red-400">{error}</p>
             </div>
           </div>
         )}
 
         <div className="max-w-7xl mx-auto">
-          {/* 
-            Desktop Layout:
-            - Single card with Calendar + Day Details side by side
-            
-            Mobile Layout:
-            - Calendar on top, Details below with dividing line
-          */}
-
           {/* Mobile View - Stacked layout with divider */}
           <div className="md:hidden">
             <Card className="p-0 overflow-hidden">
-              <div className="divide-y divide-white/10">
+              <div className="divide-y divide-white/[0.06]">
                 {/* Calendar on top */}
                 <Calendar
                   currentYear={currentYear}
@@ -220,7 +235,7 @@ export default function GoalPage() {
           {/* Desktop View - Combined card with side-by-side layout */}
           <div className="hidden md:block">
             <Card className="p-0 overflow-hidden">
-              <div className="grid grid-cols-2 divide-x divide-white/10">
+              <div className="grid grid-cols-2 divide-x divide-white/[0.06]">
                 {/* Left Side - Calendar */}
                 <Calendar
                   currentYear={currentYear}

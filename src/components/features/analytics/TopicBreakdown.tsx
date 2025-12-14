@@ -9,7 +9,7 @@ interface TopicBreakdownProps {
 export function TopicBreakdown({ data }: TopicBreakdownProps) {
   if (data.length === 0) {
     return (
-      <div className="text-center py-8 text-slate-400">
+      <div className="text-center py-10 text-white/40">
         No topic data available for this period
       </div>
     )
@@ -20,16 +20,22 @@ export function TopicBreakdown({ data }: TopicBreakdownProps) {
       {data.map((topic) => (
         <div
           key={`${topic.subject}-${topic.name}`}
-          className="bg-white/5 rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-colors"
+          className="
+            bg-white/[0.02] backdrop-blur-sm
+            rounded-2xl p-4 
+            border border-white/[0.06]
+            hover:bg-white/[0.04] hover:border-white/[0.1]
+            transition-all duration-200
+          "
         >
           <div className="flex items-center gap-4">
             {/* Topic Info */}
             <div className="flex-1 min-w-0">
-              <h4 className="text-white font-semibold truncate">
+              <h4 className="text-white/90 font-medium truncate">
                 {topic.name}
               </h4>
               {topic.subject && (
-                <p className="text-xs text-slate-500 truncate">
+                <p className="text-xs text-white/30 truncate">
                   {topic.subject}
                 </p>
               )}
@@ -37,10 +43,10 @@ export function TopicBreakdown({ data }: TopicBreakdownProps) {
 
             {/* Days */}
             <div className="text-right">
-              <div className="text-lg font-bold text-white">
+              <div className="text-lg font-semibold text-white/80">
                 {topic.totalDays}
               </div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-white/30">
                 day{topic.totalDays !== 1 ? 's' : ''}
               </div>
             </div>
@@ -48,13 +54,11 @@ export function TopicBreakdown({ data }: TopicBreakdownProps) {
             {/* Avg Productivity */}
             <div className="text-right">
               <div
-                className={`text-lg font-bold ${getScoreTextColor(
-                  topic.avgScore,
-                )}`}
+                className={`text-lg font-semibold ${getScoreTextColor(topic.avgScore)}`}
               >
                 {topic.avgScore}
               </div>
-              <div className="text-xs text-slate-500">avg</div>
+              <div className="text-xs text-white/30">avg</div>
             </div>
           </div>
         </div>
@@ -67,7 +71,7 @@ export function TopicBreakdown({ data }: TopicBreakdownProps) {
 export function TopicFlatList({ data }: TopicBreakdownProps) {
   if (data.length === 0) {
     return (
-      <div className="text-center py-8 text-slate-400">
+      <div className="text-center py-10 text-white/40">
         No topic data available
       </div>
     )
@@ -78,34 +82,38 @@ export function TopicFlatList({ data }: TopicBreakdownProps) {
       {data.slice(0, 10).map((topic, index) => (
         <div
           key={`${topic.subject}-${topic.name}`}
-          className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+          className="
+            flex items-center gap-3 p-3.5 
+            rounded-xl 
+            bg-white/[0.02] hover:bg-white/[0.04]
+            border border-white/[0.04] hover:border-white/[0.08]
+            transition-all duration-200
+          "
         >
           {/* Rank */}
-          <span className="text-slate-500 text-sm w-5 shrink-0">
+          <span className="text-white/30 text-sm w-5 shrink-0">
             {index + 1}.
           </span>
 
           {/* Topic Name */}
           <div className="flex-1 min-w-0">
-            <span className="text-white text-sm truncate block">
+            <span className="text-white/80 text-sm truncate block">
               {topic.name}
             </span>
             {topic.subject && (
-              <span className="text-slate-500 text-xs">{topic.subject}</span>
+              <span className="text-white/30 text-xs">{topic.subject}</span>
             )}
           </div>
 
           {/* Days */}
           <div className="text-right shrink-0">
-            <span className="text-white font-medium">{topic.totalDays}</span>
-            <span className="text-slate-500 text-xs ml-1">d</span>
+            <span className="text-white/80 font-medium">{topic.totalDays}</span>
+            <span className="text-white/30 text-xs ml-1">d</span>
           </div>
 
           {/* Avg */}
           <div
-            className={`text-right shrink-0 font-medium ${getScoreTextColor(
-              topic.avgScore,
-            )}`}
+            className={`text-right shrink-0 font-medium ${getScoreTextColor(topic.avgScore)}`}
           >
             {topic.avgScore}
           </div>
@@ -113,7 +121,7 @@ export function TopicFlatList({ data }: TopicBreakdownProps) {
       ))}
 
       {data.length > 10 && (
-        <p className="text-center text-slate-500 text-xs pt-2">
+        <p className="text-center text-white/30 text-xs pt-2">
           +{data.length - 10} more topics
         </p>
       )}

@@ -11,18 +11,22 @@ interface CardHeaderProps {
 
 export function CardHeader({ title, icon, subtitle, children }: CardHeaderProps) {
   return (
-    <div className="border-b border-white/10 pb-4 mb-4">
-      <div className="flex items-center justify-center gap-2">
-        {icon && <span className="text-xl">{icon}</span>}
-        <h2 className="text-lg font-bold text-white tracking-wide uppercase">
+    <div className="relative pb-5 mb-5">
+      <div className="flex items-center justify-center gap-3">
+        {icon && (
+          <span className="text-xl opacity-80">{icon}</span>
+        )}
+        <h2 className="text-lg font-semibold text-white/90 tracking-wide">
           {title}
         </h2>
       </div>
       {subtitle && (
-        <p className="text-center text-slate-400 text-xs mt-1">{subtitle}</p>
+        <p className="text-center text-white/40 text-sm mt-1.5">{subtitle}</p>
       )}
-      {children && <div className="mt-3">{children}</div>}
+      {children && <div className="mt-4">{children}</div>}
+      
+      {/* Glass divider */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
     </div>
   )
 }
-
