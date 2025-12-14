@@ -1854,7 +1854,7 @@ export default function GoalPage() {
             </Link>
             <div className="flex-1">
               <h1 className="text-2xl md:text-3xl font-black tracking-tight bg-gradient-to-r from-cyan-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
-                {goal?.name || 'Goal Chaser'}
+                {goal?.name || 'Nitya'}
           </h1>
               {goal?.description && (
                 <p className="text-slate-400 text-sm mt-1">{goal.description}</p>

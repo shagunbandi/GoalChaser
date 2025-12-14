@@ -12,7 +12,7 @@ export interface Goal {
 }
 
 // ============ LocalStorage Keys ============
-const STORAGE_KEY = 'goalchaser_goals'
+const STORAGE_KEY = 'nitya_goals'
 
 // ============ LocalStorage Helpers ============
 function loadFromStorage<T>(key: string, defaultValue: T): T {

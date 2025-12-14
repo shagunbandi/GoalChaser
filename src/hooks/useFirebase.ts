@@ -26,7 +26,7 @@ interface SubjectConfig {
 
 // ============ LocalStorage Helpers ============
 function getStorageKey(goalId: string, key: string): string {
-  return `goalchaser_${goalId}_${key}`
+  return `nitya_${goalId}_${key}`
 }
 
 function loadFromStorage<T>(key: string, defaultValue: T): T {

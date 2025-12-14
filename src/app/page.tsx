@@ -234,7 +234,7 @@ export default function Home() {
           {/* Header */}
           <div className="text-center mb-12 pt-8">
             <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-cyan-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent mb-4">
-              Goal Chaser
+              Nitya
             </h1>
             <p className="text-slate-400 text-lg">
               Track your progress, achieve your dreams

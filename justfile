@@ -1,4 +1,4 @@
-# Goal Chaser - Habit Tracker
+# Nitya - Habit Tracker
 
 # Default recipe
 default:
@@ -30,7 +30,7 @@ start:
 
 # Create the external network (run once)
 network-create:
-    docker network create goalchaser_network || true
+    docker network create nitya_network || true
 
 # Build docker image
 docker-build:
@@ -50,25 +50,25 @@ docker-restart:
 
 # View logs
 docker-logs:
-    docker compose logs -f
+    docker-compose logs -f
 
 # Build and start containers
 docker-deploy: network-create docker-build docker-up
 
 # Full rebuild (no cache)
 docker-rebuild:
-    docker compose build --no-cache
+    docker-compose build --no-cache
 
 # Full redeploy with rebuild
 docker-redeploy: network-create docker-rebuild docker-up
 
 # Show container status
 docker-status:
-    docker compose ps
+    docker-compose ps
 
 # Shell into the running container
 docker-shell:
-    docker compose exec goal-chaser sh
+    docker-compose exec nitya sh
 
 # Clean up unused docker resources
 docker-prune:
@@ -78,5 +78,5 @@ docker-prune:
 
 # Check if traefik can see this container
 traefik-check:
-    docker network inspect goalchaser_network
+    docker network inspect nitya_network
 

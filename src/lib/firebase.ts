@@ -193,7 +193,7 @@ export async function migrateFromLocalStorage(): Promise<{
 
   try {
     // Get localStorage data (if any)
-    const suggestionsKey = 'goalchaser_suggestions'
+    const suggestionsKey = 'nitya_suggestions'
     const storedSuggestions = localStorage.getItem(suggestionsKey)
     
     const suggestions: SavedSuggestions = storedSuggestions
