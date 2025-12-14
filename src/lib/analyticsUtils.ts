@@ -1,4 +1,4 @@
-import type { DayDetails } from '@/types'
+import type { DayDetails, SubjectEntry } from '@/types'
 import { toISODateString } from './dateUtils'
 
 // ============ Types ============
@@ -14,6 +14,9 @@ export interface DayProductivity {
   score: number | null
   subject: string
   topic: string
+  // New fields for multi-subject support
+  subjects: SubjectEntry[]
+  totalHours: number
 }
 
 export interface SubjectStats {
@@ -21,6 +24,7 @@ export interface SubjectStats {
   totalDays: number
   avgScore: number
   totalScore: number
+  totalHours: number
   topics: TopicStats[]
 }
 
@@ -30,6 +34,7 @@ export interface TopicStats {
   totalDays: number
   avgScore: number
   totalScore: number
+  totalHours: number
 }
 
 export interface AnalyticsSummary {
@@ -37,6 +42,7 @@ export interface AnalyticsSummary {
   daysWithData: number
   avgScore: number
   totalScore: number
+  totalHours: number
   highProductivityDays: number  // score >= 7
   mediumProductivityDays: number // score 4-6
   lowProductivityDays: number // score 1-3
@@ -166,12 +172,17 @@ export function getDayWiseProductivity(
 
   return dates.map((date) => {
     const details = dayDetails[date]
+    const subjects = details?.subjects || []
+    const totalHours = subjects.reduce((sum, s) => sum + (s.hours || 0), 0)
+    
     return {
       date,
       dayName: getDayName(date),
       score: details?.status ?? null,
       subject: details?.subject ?? '',
       topic: details?.topic ?? '',
+      subjects,
+      totalHours,
     }
   })
 }
@@ -181,6 +192,7 @@ export function getDayWiseProductivity(
  */
 export function calculateSummary(dayData: DayProductivity[]): AnalyticsSummary {
   const daysWithScores = dayData.filter((d) => d.score !== null && d.score > 0)
+  const totalHours = dayData.reduce((sum, d) => sum + d.totalHours, 0)
 
   if (daysWithScores.length === 0) {
     return {
@@ -188,6 +200,7 @@ export function calculateSummary(dayData: DayProductivity[]): AnalyticsSummary {
       daysWithData: 0,
       avgScore: 0,
       totalScore: 0,
+      totalHours,
       highProductivityDays: 0,
       mediumProductivityDays: 0,
       lowProductivityDays: 0,
@@ -212,6 +225,7 @@ export function calculateSummary(dayData: DayProductivity[]): AnalyticsSummary {
     daysWithData: daysWithScores.length,
     avgScore: Math.round(avgScore * 10) / 10,
     totalScore,
+    totalHours,
     highProductivityDays: highDays,
     mediumProductivityDays: mediumDays,
     lowProductivityDays: lowDays,
@@ -224,24 +238,73 @@ export function calculateSummary(dayData: DayProductivity[]): AnalyticsSummary {
  * Calculate subject-wise statistics
  */
 export function calculateSubjectStats(dayData: DayProductivity[]): SubjectStats[] {
-  const subjectMap = new Map<string, { days: DayProductivity[]; topics: Map<string, DayProductivity[]> }>()
+  const subjectMap = new Map<string, { 
+    days: Set<string>
+    hours: number
+    scores: number[]
+    topics: Map<string, { days: Set<string>; hours: number; scores: number[] }> 
+  }>()
 
-  // Group by subject and topic
+  // Group by subject and topic using new subjects array
   dayData.forEach((day) => {
-    if (!day.subject || day.score === null || day.score === 0) return
+    // Process multi-subject entries
+    if (day.subjects && day.subjects.length > 0) {
+      day.subjects.forEach((entry) => {
+        if (!entry.subject) return
 
-    if (!subjectMap.has(day.subject)) {
-      subjectMap.set(day.subject, { days: [], topics: new Map() })
+        if (!subjectMap.has(entry.subject)) {
+          subjectMap.set(entry.subject, { 
+            days: new Set(), 
+            hours: 0, 
+            scores: [],
+            topics: new Map() 
+          })
+        }
+
+        const subjectData = subjectMap.get(entry.subject)!
+        subjectData.days.add(day.date)
+        subjectData.hours += entry.hours || 0
+        if (day.score !== null && day.score > 0) {
+          subjectData.scores.push(day.score)
+        }
+
+        // Process topics
+        entry.topics.forEach((topic) => {
+          if (!subjectData.topics.has(topic)) {
+            subjectData.topics.set(topic, { days: new Set(), hours: 0, scores: [] })
+          }
+          const topicData = subjectData.topics.get(topic)!
+          topicData.days.add(day.date)
+          topicData.hours += entry.hours / (entry.topics.length || 1) // Distribute hours across topics
+          if (day.score !== null && day.score > 0) {
+            topicData.scores.push(day.score)
+          }
+        })
+      })
     }
-
-    const subjectData = subjectMap.get(day.subject)!
-    subjectData.days.push(day)
-
-    if (day.topic) {
-      if (!subjectData.topics.has(day.topic)) {
-        subjectData.topics.set(day.topic, [])
+    // Fallback to legacy single subject/topic
+    else if (day.subject && day.score !== null && day.score > 0) {
+      if (!subjectMap.has(day.subject)) {
+        subjectMap.set(day.subject, { 
+          days: new Set(), 
+          hours: 0, 
+          scores: [],
+          topics: new Map() 
+        })
       }
-      subjectData.topics.get(day.topic)!.push(day)
+
+      const subjectData = subjectMap.get(day.subject)!
+      subjectData.days.add(day.date)
+      subjectData.scores.push(day.score)
+
+      if (day.topic) {
+        if (!subjectData.topics.has(day.topic)) {
+          subjectData.topics.set(day.topic, { days: new Set(), hours: 0, scores: [] })
+        }
+        const topicData = subjectData.topics.get(day.topic)!
+        topicData.days.add(day.date)
+        topicData.scores.push(day.score)
+      }
     }
   })
 
@@ -249,36 +312,38 @@ export function calculateSubjectStats(dayData: DayProductivity[]): SubjectStats[
   const stats: SubjectStats[] = []
 
   subjectMap.forEach((data, subjectName) => {
-    const totalScore = data.days.reduce((sum, d) => sum + (d.score || 0), 0)
-    const avgScore = data.days.length > 0 ? totalScore / data.days.length : 0
+    const totalScore = data.scores.reduce((sum, s) => sum + s, 0)
+    const avgScore = data.scores.length > 0 ? totalScore / data.scores.length : 0
 
     const topicStats: TopicStats[] = []
-    data.topics.forEach((topicDays, topicName) => {
-      const topicTotal = topicDays.reduce((sum, d) => sum + (d.score || 0), 0)
-      const topicAvg = topicDays.length > 0 ? topicTotal / topicDays.length : 0
+    data.topics.forEach((topicData, topicName) => {
+      const topicTotal = topicData.scores.reduce((sum, s) => sum + s, 0)
+      const topicAvg = topicData.scores.length > 0 ? topicTotal / topicData.scores.length : 0
       topicStats.push({
         name: topicName,
         subject: subjectName,
-        totalDays: topicDays.length,
+        totalDays: topicData.days.size,
         avgScore: Math.round(topicAvg * 10) / 10,
         totalScore: topicTotal,
+        totalHours: Math.round(topicData.hours * 10) / 10,
       })
     })
 
-    // Sort topics by total days
-    topicStats.sort((a, b) => b.totalDays - a.totalDays)
+    // Sort topics by total hours, then by days
+    topicStats.sort((a, b) => b.totalHours - a.totalHours || b.totalDays - a.totalDays)
 
     stats.push({
       name: subjectName,
-      totalDays: data.days.length,
+      totalDays: data.days.size,
       avgScore: Math.round(avgScore * 10) / 10,
       totalScore,
+      totalHours: Math.round(data.hours * 10) / 10,
       topics: topicStats,
     })
   })
 
-  // Sort by total days
-  stats.sort((a, b) => b.totalDays - a.totalDays)
+  // Sort by total hours, then by days
+  stats.sort((a, b) => b.totalHours - a.totalHours || b.totalDays - a.totalDays)
 
   return stats
 }
@@ -287,35 +352,61 @@ export function calculateSubjectStats(dayData: DayProductivity[]): SubjectStats[
  * Get all unique topics with their stats
  */
 export function calculateTopicStats(dayData: DayProductivity[]): TopicStats[] {
-  const topicMap = new Map<string, { subject: string; days: DayProductivity[] }>()
+  const topicMap = new Map<string, { 
+    subject: string
+    days: Set<string>
+    hours: number
+    scores: number[] 
+  }>()
 
   dayData.forEach((day) => {
-    if (!day.topic || day.score === null || day.score === 0) return
-
-    const key = `${day.subject}||${day.topic}`
-    if (!topicMap.has(key)) {
-      topicMap.set(key, { subject: day.subject, days: [] })
+    // Process multi-subject entries
+    if (day.subjects && day.subjects.length > 0) {
+      day.subjects.forEach((entry) => {
+        entry.topics.forEach((topic) => {
+          const key = `${entry.subject}||${topic}`
+          if (!topicMap.has(key)) {
+            topicMap.set(key, { subject: entry.subject, days: new Set(), hours: 0, scores: [] })
+          }
+          const topicData = topicMap.get(key)!
+          topicData.days.add(day.date)
+          topicData.hours += (entry.hours || 0) / (entry.topics.length || 1)
+          if (day.score !== null && day.score > 0) {
+            topicData.scores.push(day.score)
+          }
+        })
+      })
     }
-    topicMap.get(key)!.days.push(day)
+    // Fallback to legacy
+    else if (day.topic && day.score !== null && day.score > 0) {
+      const key = `${day.subject}||${day.topic}`
+      if (!topicMap.has(key)) {
+        topicMap.set(key, { subject: day.subject, days: new Set(), hours: 0, scores: [] })
+      }
+      const topicData = topicMap.get(key)!
+      topicData.days.add(day.date)
+      topicData.scores.push(day.score)
+    }
   })
 
   const stats: TopicStats[] = []
 
   topicMap.forEach((data, key) => {
     const topicName = key.split('||')[1]
-    const totalScore = data.days.reduce((sum, d) => sum + (d.score || 0), 0)
-    const avgScore = data.days.length > 0 ? totalScore / data.days.length : 0
+    const totalScore = data.scores.reduce((sum, s) => sum + s, 0)
+    const avgScore = data.scores.length > 0 ? totalScore / data.scores.length : 0
 
     stats.push({
       name: topicName,
       subject: data.subject,
-      totalDays: data.days.length,
+      totalDays: data.days.size,
       avgScore: Math.round(avgScore * 10) / 10,
       totalScore,
+      totalHours: Math.round(data.hours * 10) / 10,
     })
   })
 
-  stats.sort((a, b) => b.totalDays - a.totalDays)
+  stats.sort((a, b) => b.totalHours - a.totalHours || b.totalDays - a.totalDays)
 
   return stats
 }

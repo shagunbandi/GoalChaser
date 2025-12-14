@@ -39,6 +39,16 @@ export function SubjectBreakdown({ data }: SubjectBreakdownProps) {
               </h4>
             </div>
 
+            {/* Hours */}
+            {subject.totalHours > 0 && (
+              <div className="text-right">
+                <div className="text-lg font-semibold text-[#FF9500]">
+                  {subject.totalHours}h
+                </div>
+                <div className="text-xs text-white/30">hours</div>
+              </div>
+            )}
+
             {/* Days */}
             <div className="text-right">
               <div className="text-lg font-semibold text-white/80">
@@ -69,7 +79,10 @@ export function SubjectBreakdown({ data }: SubjectBreakdownProps) {
 export function SubjectSummaryCard({ data }: SubjectBreakdownProps) {
   if (data.length === 0) return null
 
+  const totalHours = data.reduce((sum, s) => sum + s.totalHours, 0)
   const totalDays = data.reduce((sum, s) => sum + s.totalDays, 0)
+  // Use hours if available, otherwise fall back to days
+  const useHours = totalHours > 0
 
   // Apple-inspired color palette with glow
   const colors = [
@@ -88,8 +101,9 @@ export function SubjectSummaryCard({ data }: SubjectBreakdownProps) {
       {/* Horizontal Stacked Bar */}
       <div className="h-3 bg-white/[0.05] rounded-full overflow-hidden flex">
         {data.map((subject, index) => {
-          const width =
-            totalDays > 0 ? (subject.totalDays / totalDays) * 100 : 0
+          const value = useHours ? subject.totalHours : subject.totalDays
+          const total = useHours ? totalHours : totalDays
+          const width = total > 0 ? (value / total) * 100 : 0
           if (width < 1) return null
           return (
             <div
@@ -99,7 +113,7 @@ export function SubjectSummaryCard({ data }: SubjectBreakdownProps) {
                 width: `${width}%`,
                 boxShadow: `0 0 10px ${colors[index % colors.length].glow}`
               }}
-              title={`${subject.name}: ${subject.totalDays} days`}
+              title={`${subject.name}: ${useHours ? `${subject.totalHours}h` : `${subject.totalDays} days`}`}
             />
           )
         })}
@@ -108,10 +122,9 @@ export function SubjectSummaryCard({ data }: SubjectBreakdownProps) {
       {/* Legend */}
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {data.map((subject, index) => {
-          const percentage =
-            totalDays > 0
-              ? Math.round((subject.totalDays / totalDays) * 100)
-              : 0
+          const value = useHours ? subject.totalHours : subject.totalDays
+          const total = useHours ? totalHours : totalDays
+          const percentage = total > 0 ? Math.round((value / total) * 100) : 0
           return (
             <div key={subject.name} className="flex items-center gap-2">
               <div
@@ -119,7 +132,7 @@ export function SubjectSummaryCard({ data }: SubjectBreakdownProps) {
                 style={{ boxShadow: `0 0 6px ${colors[index % colors.length].glow}` }}
               />
               <span className="text-xs text-white/50">
-                {subject.name} ({percentage}%)
+                {subject.name} ({percentage}%{useHours ? ` • ${subject.totalHours}h` : ''})
               </span>
             </div>
           )

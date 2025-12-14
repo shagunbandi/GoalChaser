@@ -7,10 +7,17 @@ import { useAuth } from './useAuth'
 // Productivity score: 1-10 scale (1-3: Low, 4-6: OK, 7-10: High)
 type DayStatus = number | null
 
+interface SubjectEntry {
+  subject: string
+  topics: string[]
+  hours: number
+}
+
 interface DayDetails {
   status: DayStatus
   subject: string
   topic: string
+  subjects?: SubjectEntry[]
   note: string
 }
 
@@ -103,6 +110,7 @@ async function loadDayDetailsFromFirebase(
         status: data.status || null,
         subject: data.subject || '',
         topic: data.topic || '',
+        subjects: data.subjects || [],
         note: data.note || '',
       }
     })
@@ -289,6 +297,7 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
         status: null,
         subject: '',
         topic: '',
+        subjects: [],
         note: '',
       }
 

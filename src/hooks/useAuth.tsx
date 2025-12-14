@@ -64,7 +64,11 @@ interface AuthContextType {
   error: string | null
   signInWithGoogle: () => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<void>
-  signUpWithEmail: (email: string, password: string, displayName?: string) => Promise<void>
+  signUpWithEmail: (
+    email: string,
+    password: string,
+    displayName?: string,
+  ) => Promise<void>
   signOut: () => Promise<void>
   clearError: () => void
 }
@@ -95,7 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithPopup(getFirebaseAuth(), getGoogleProvider())
     } catch (err: unknown) {
       console.error('Error signing in with Google:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to sign in with Google'
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to sign in with Google'
       setError(errorMessage)
       throw err
     } finally {
@@ -131,12 +136,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const signUpWithEmail = async (email: string, password: string, displayName?: string) => {
+  const signUpWithEmail = async (
+    email: string,
+    password: string,
+    displayName?: string,
+  ) => {
     try {
       setError(null)
       setIsLoading(true)
-      const userCredential = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password)
-      
+      const userCredential = await createUserWithEmailAndPassword(
+        getFirebaseAuth(),
+        email,
+        password,
+      )
+
       // Update display name if provided
       if (displayName && userCredential.user) {
         await updateProfile(userCredential.user, { displayName })
@@ -263,7 +276,8 @@ export function GoogleSignInButton() {
 
 // ============ Email Auth Form Component ============
 export function EmailAuthForm() {
-  const { signInWithEmail, signUpWithEmail, isLoading, error, clearError } = useAuth()
+  const { signInWithEmail, signUpWithEmail, isLoading, error, clearError } =
+    useAuth()
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -273,7 +287,7 @@ export function EmailAuthForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email.trim() || !password.trim()) return
-    
+
     setIsSubmitting(true)
     try {
       if (mode === 'signin') {
@@ -376,7 +390,9 @@ export function EmailAuthForm() {
       {/* Submit Button */}
       <button
         type="submit"
-        disabled={isLoading || isSubmitting || !email.trim() || !password.trim()}
+        disabled={
+          isLoading || isSubmitting || !email.trim() || !password.trim()
+        }
         className="
           w-full px-6 py-3.5
           bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
@@ -393,7 +409,9 @@ export function EmailAuthForm() {
         {isSubmitting ? (
           <div className="flex items-center justify-center gap-2">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            <span>{mode === 'signin' ? 'Signing in...' : 'Creating account...'}</span>
+            <span>
+              {mode === 'signin' ? 'Signing in...' : 'Creating account...'}
+            </span>
           </div>
         ) : (
           <span>{mode === 'signin' ? 'Sign In' : 'Create Account'}</span>
@@ -408,9 +426,15 @@ export function EmailAuthForm() {
           className="text-sm text-white/50 hover:text-white/80 transition-colors"
         >
           {mode === 'signin' ? (
-            <>Don&apos;t have an account? <span className="text-[#007AFF]">Sign up</span></>
+            <>
+              Don&apos;t have an account?{' '}
+              <span className="text-[#007AFF]">Sign up</span>
+            </>
           ) : (
-            <>Already have an account? <span className="text-[#007AFF]">Sign in</span></>
+            <>
+              Already have an account?{' '}
+              <span className="text-[#007AFF]">Sign in</span>
+            </>
           )}
         </button>
       </div>
@@ -422,8 +446,8 @@ export function EmailAuthForm() {
 export function AuthForm() {
   return (
     <div className="space-y-6">
-      {/* Email/Password Form */}
-      <EmailAuthForm />
+      {/* Google Sign In */}
+      <GoogleSignInButton />
 
       {/* Divider */}
       <div className="relative">
@@ -431,12 +455,14 @@ export function AuthForm() {
           <div className="w-full border-t border-white/10" />
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-[#0a0a12] text-white/40">or continue with</span>
+          <span className="px-4 bg-[#0a0a12] text-white/40">
+            or continue with email
+          </span>
         </div>
       </div>
 
-      {/* Google Sign In */}
-      <GoogleSignInButton />
+      {/* Email/Password Form */}
+      <EmailAuthForm />
     </div>
   )
 }

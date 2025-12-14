@@ -3,10 +3,20 @@
 // Productivity score: 1-10 scale (1-3: Low, 4-6: OK, 7-10: High)
 export type DayStatus = number | null
 
+// Subject entry with multiple topics and hours
+export interface SubjectEntry {
+  subject: string
+  topics: string[]
+  hours: number
+}
+
 export interface DayDetails {
   status: DayStatus
+  // Legacy single subject/topic (for backward compatibility)
   subject: string
   topic: string
+  // New multi-subject support
+  subjects?: SubjectEntry[]
   note: string
 }
 

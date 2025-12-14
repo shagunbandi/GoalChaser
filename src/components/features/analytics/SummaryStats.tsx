@@ -78,7 +78,7 @@ export function SummaryStats({ summary }: SummaryStatsProps) {
       : 0
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
       {/* Average Score */}
       <div
         className="
@@ -124,6 +124,27 @@ export function SummaryStats({ summary }: SummaryStatsProps) {
         </div>
       </div>
 
+      {/* Total Hours */}
+      <div
+        className="
+        bg-white/[0.02] backdrop-blur-sm
+        rounded-2xl p-5
+        border border-white/[0.06]
+        transition-all duration-200
+        hover:bg-white/[0.04]
+      "
+      >
+        <div className="text-white/40 text-xs uppercase tracking-wider mb-2">
+          Total Hours
+        </div>
+        <div className="text-3xl font-bold text-[#FF9500]">
+          {summary.totalHours || 0}
+        </div>
+        <div className="text-white/30 text-xs mt-1">
+          hours tracked
+        </div>
+      </div>
+
       {/* Total Score */}
       <div
         className="
@@ -141,7 +162,7 @@ export function SummaryStats({ summary }: SummaryStatsProps) {
           {summary.totalScore}
         </div>
         <div className="text-white/30 text-xs mt-1">
-          productivity points earned
+          productivity points
         </div>
       </div>
 

@@ -41,6 +41,16 @@ export function TopicBreakdown({ data }: TopicBreakdownProps) {
               )}
             </div>
 
+            {/* Hours */}
+            {topic.totalHours > 0 && (
+              <div className="text-right">
+                <div className="text-lg font-semibold text-[#FF9500]">
+                  {topic.totalHours}h
+                </div>
+                <div className="text-xs text-white/30">hours</div>
+              </div>
+            )}
+
             {/* Days */}
             <div className="text-right">
               <div className="text-lg font-semibold text-white/80">
@@ -104,6 +114,14 @@ export function TopicFlatList({ data }: TopicBreakdownProps) {
               <span className="text-white/30 text-xs">{topic.subject}</span>
             )}
           </div>
+
+          {/* Hours */}
+          {topic.totalHours > 0 && (
+            <div className="text-right shrink-0">
+              <span className="text-[#FF9500] font-medium">{topic.totalHours}</span>
+              <span className="text-white/30 text-xs ml-1">h</span>
+            </div>
+          )}
 
           {/* Days */}
           <div className="text-right shrink-0">
