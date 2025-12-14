@@ -328,3 +328,27 @@ body {
   outline: none;
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
 }
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-fade-in {
+  animation: fade-in-up 0.2s ease-out forwards;
+}

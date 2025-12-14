@@ -14,6 +14,9 @@ import {
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
   User,
 } from 'firebase/auth'
 import { initializeApp, getApps } from 'firebase/app'
@@ -40,7 +43,10 @@ interface AuthContextType {
   isLoading: boolean
   error: string | null
   signInWithGoogle: () => Promise<void>
+  signInWithEmail: (email: string, password: string) => Promise<void>
+  signUpWithEmail: (email: string, password: string, displayName?: string) => Promise<void>
   signOut: () => Promise<void>
+  clearError: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -60,14 +66,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe()
   }, [])
 
+  const clearError = () => setError(null)
+
   const signInWithGoogle = async () => {
     try {
       setError(null)
       setIsLoading(true)
       await signInWithPopup(auth, googleProvider)
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error signing in with Google:', err)
-      setError('Failed to sign in with Google')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to sign in with Google'
+      setError(errorMessage)
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const signInWithEmail = async (email: string, password: string) => {
+    try {
+      setError(null)
+      setIsLoading(true)
+      await signInWithEmailAndPassword(auth, email, password)
+    } catch (err: unknown) {
+      console.error('Error signing in with email:', err)
+      // Parse Firebase error codes for user-friendly messages
+      const firebaseError = err as { code?: string }
+      let errorMessage = 'Failed to sign in'
+      if (firebaseError.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email'
+      } else if (firebaseError.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password'
+      } else if (firebaseError.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address'
+      } else if (firebaseError.code === 'auth/invalid-credential') {
+        errorMessage = 'Invalid email or password'
+      } else if (firebaseError.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many attempts. Please try again later'
+      }
+      setError(errorMessage)
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const signUpWithEmail = async (email: string, password: string, displayName?: string) => {
+    try {
+      setError(null)
+      setIsLoading(true)
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      
+      // Update display name if provided
+      if (displayName && userCredential.user) {
+        await updateProfile(userCredential.user, { displayName })
+      }
+    } catch (err: unknown) {
+      console.error('Error signing up with email:', err)
+      // Parse Firebase error codes for user-friendly messages
+      const firebaseError = err as { code?: string }
+      let errorMessage = 'Failed to create account'
+      if (firebaseError.code === 'auth/email-already-in-use') {
+        errorMessage = 'An account with this email already exists'
+      } else if (firebaseError.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address'
+      } else if (firebaseError.code === 'auth/weak-password') {
+        errorMessage = 'Password should be at least 6 characters'
+      }
+      setError(errorMessage)
       throw err
     } finally {
       setIsLoading(false)
@@ -92,7 +158,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         error,
         signInWithGoogle,
+        signInWithEmail,
+        signUpWithEmail,
         signOut,
+        clearError,
       }}
     >
       {children}
@@ -131,24 +200,22 @@ export function GoogleSignInButton() {
       disabled={isLoading || isSigningIn}
       className="
         flex items-center justify-center gap-3
-        w-full max-w-sm mx-auto
-        px-6 py-4
-        bg-white/[0.05] hover:bg-white/[0.1]
-        border border-white/[0.1] hover:border-white/[0.2]
-        rounded-2xl
+        w-full
+        px-6 py-3.5
+        bg-white/5 hover:bg-white/10
+        border border-white/10 hover:border-white/20
+        rounded-xl
         text-white font-medium
         transition-all duration-300
         disabled:opacity-50 disabled:cursor-not-allowed
         group
-        shadow-[0_4px_24px_-1px_rgba(0,0,0,0.2)]
-        hover:shadow-[0_8px_40px_-1px_rgba(0,0,0,0.3)]
       "
     >
       {isSigningIn ? (
-        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       ) : (
         <svg
-          className="w-6 h-6 group-hover:scale-110 transition-transform duration-200"
+          className="w-5 h-5 group-hover:scale-110 transition-transform duration-200"
           viewBox="0 0 24 24"
         >
           <path
@@ -171,6 +238,186 @@ export function GoogleSignInButton() {
       )}
       <span>{isSigningIn ? 'Signing in...' : 'Continue with Google'}</span>
     </button>
+  )
+}
+
+// ============ Email Auth Form Component ============
+export function EmailAuthForm() {
+  const { signInWithEmail, signUpWithEmail, isLoading, error, clearError } = useAuth()
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim() || !password.trim()) return
+    
+    setIsSubmitting(true)
+    try {
+      if (mode === 'signin') {
+        await signInWithEmail(email, password)
+      } else {
+        await signUpWithEmail(email, password, displayName || undefined)
+      }
+    } catch {
+      // Error is already handled in the hook
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const toggleMode = () => {
+    setMode(mode === 'signin' ? 'signup' : 'signin')
+    clearError()
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Display Name (only for signup) */}
+      {mode === 'signup' && (
+        <div>
+          <label className="block text-sm font-medium text-white/60 mb-1.5">
+            Name
+          </label>
+          <input
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="Your name"
+            className="
+              w-full px-4 py-3
+              bg-white/5
+              border border-white/10 rounded-xl
+              text-white placeholder-white/30
+              focus:outline-none focus:border-[#007AFF]/50
+              focus:ring-2 focus:ring-[#007AFF]/20
+              transition-all duration-200
+            "
+          />
+        </div>
+      )}
+
+      {/* Email */}
+      <div>
+        <label className="block text-sm font-medium text-white/60 mb-1.5">
+          Email
+        </label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          required
+          className="
+            w-full px-4 py-3
+            bg-white/5
+            border border-white/10 rounded-xl
+            text-white placeholder-white/30
+            focus:outline-none focus:border-[#007AFF]/50
+            focus:ring-2 focus:ring-[#007AFF]/20
+            transition-all duration-200
+          "
+        />
+      </div>
+
+      {/* Password */}
+      <div>
+        <label className="block text-sm font-medium text-white/60 mb-1.5">
+          Password
+        </label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
+          required
+          minLength={6}
+          className="
+            w-full px-4 py-3
+            bg-white/5
+            border border-white/10 rounded-xl
+            text-white placeholder-white/30
+            focus:outline-none focus:border-[#007AFF]/50
+            focus:ring-2 focus:ring-[#007AFF]/20
+            transition-all duration-200
+          "
+        />
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      {/* Submit Button */}
+      <button
+        type="submit"
+        disabled={isLoading || isSubmitting || !email.trim() || !password.trim()}
+        className="
+          w-full px-6 py-3.5
+          bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
+          hover:from-[#007AFF]/90 hover:to-[#AF52DE]/90
+          disabled:from-white/10 disabled:to-white/10
+          disabled:text-white/30 disabled:cursor-not-allowed
+          text-white font-semibold rounded-xl
+          shadow-[0_0_20px_rgba(0,122,255,0.3)]
+          hover:shadow-[0_0_30px_rgba(0,122,255,0.4)]
+          disabled:shadow-none
+          transition-all duration-200
+        "
+      >
+        {isSubmitting ? (
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <span>{mode === 'signin' ? 'Signing in...' : 'Creating account...'}</span>
+          </div>
+        ) : (
+          <span>{mode === 'signin' ? 'Sign In' : 'Create Account'}</span>
+        )}
+      </button>
+
+      {/* Toggle Mode */}
+      <div className="text-center pt-2">
+        <button
+          type="button"
+          onClick={toggleMode}
+          className="text-sm text-white/50 hover:text-white/80 transition-colors"
+        >
+          {mode === 'signin' ? (
+            <>Don&apos;t have an account? <span className="text-[#007AFF]">Sign up</span></>
+          ) : (
+            <>Already have an account? <span className="text-[#007AFF]">Sign in</span></>
+          )}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// ============ Auth Form (Combined Google + Email) ============
+export function AuthForm() {
+  return (
+    <div className="space-y-6">
+      {/* Email/Password Form */}
+      <EmailAuthForm />
+
+      {/* Divider */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-white/10" />
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-4 bg-[#0a0a12] text-white/40">or continue with</span>
+        </div>
+      </div>
+
+      {/* Google Sign In */}
+      <GoogleSignInButton />
+    </div>
   )
 }
 

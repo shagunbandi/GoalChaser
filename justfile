@@ -60,7 +60,7 @@ docker-rebuild:
     docker-compose build --no-cache
 
 # Full redeploy with rebuild
-docker-redeploy: network-create docker-rebuild docker-up
+prod-up: network-create docker-rebuild docker-up
 
 # Show container status
 docker-status:
