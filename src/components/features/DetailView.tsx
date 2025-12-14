@@ -5,7 +5,6 @@ import type { DayDetails, SubjectConfig } from '@/types'
 import { Card, CardHeader } from '@/components/ui'
 import { StatusSelector } from './StatusSelector'
 import { formatDateDisplay } from '@/lib/dateUtils'
-import { getScoreCategory, getScoreLabel, getScoreEmoji } from '@/lib/scoreUtils'
 
 interface DetailViewProps {
   selectedDate: string
@@ -26,7 +25,6 @@ export function DetailView({
   onAddTopic,
   noCard = false,
 }: DetailViewProps) {
-  const [feedback, setFeedback] = useState('')
   const [showAddSubject, setShowAddSubject] = useState(false)
   const [showAddTopic, setShowAddTopic] = useState(false)
   const [newSubjectInput, setNewSubjectInput] = useState('')
@@ -41,7 +39,7 @@ export function DetailView({
   // Get available subjects and topics
   const availableSubjects = subjectConfigs.map((s) => s.name)
   const selectedSubjectConfig = subjectConfigs.find(
-    (s) => s.name === currentSubject
+    (s) => s.name === currentSubject,
   )
   const availableTopics = currentSubject
     ? selectedSubjectConfig?.topics || []
@@ -49,20 +47,13 @@ export function DetailView({
         .flatMap((s) => s.topics)
         .filter((v, i, a) => a.indexOf(v) === i)
 
-  const showFeedback = (message: string) => {
-    setFeedback(message)
-    setTimeout(() => setFeedback(''), 2500)
-  }
-
   const handleSubjectSelect = (subject: string) => {
     onUpdateDetails(selectedDate, { subject, topic: '' })
-    showFeedback(`📚 Subject set to: ${subject}`)
     setShowAddSubject(false)
   }
 
   const handleTopicSelect = (topic: string) => {
     onUpdateDetails(selectedDate, { topic })
-    showFeedback(`🏷️ Topic set to: ${topic}`)
     setShowAddTopic(false)
   }
 
@@ -73,7 +64,6 @@ export function DetailView({
         subject: newSubjectInput.trim(),
         topic: '',
       })
-      showFeedback(`✅ Created and selected: ${newSubjectInput.trim()}`)
       setNewSubjectInput('')
       setShowAddSubject(false)
     }
@@ -83,7 +73,6 @@ export function DetailView({
     if (newTopicInput.trim() && selectedSubjectConfig) {
       onAddTopic(selectedSubjectConfig.id, newTopicInput.trim())
       onUpdateDetails(selectedDate, { topic: newTopicInput.trim() })
-      showFeedback(`✅ Created and selected: ${newTopicInput.trim()}`)
       setNewTopicInput('')
       setShowAddTopic(false)
     }
@@ -103,12 +92,6 @@ export function DetailView({
           value={currentStatus}
           onChange={(status) => {
             onUpdateDetails(selectedDate, { status })
-            if (status) {
-              const category = getScoreCategory(status)
-              const emoji = getScoreEmoji(status)
-              const label = getScoreLabel(status)
-              showFeedback(`Score set to ${status}/10 (${label}) ${emoji}`)
-            }
           }}
         />
 
@@ -127,9 +110,10 @@ export function DetailView({
                     className={`
                       px-4 py-2.5 rounded-xl text-sm font-medium 
                       transition-all duration-200 backdrop-blur-sm
-                      ${currentSubject === subject
-                        ? 'bg-[#007AFF] text-white shadow-[0_0_25px_rgba(0,122,255,0.3)] border border-[#007AFF]/50'
-                        : 'bg-white/[0.03] text-white/70 hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.1]'
+                      ${
+                        currentSubject === subject
+                          ? 'bg-[#007AFF] text-white shadow-[0_0_25px_rgba(0,122,255,0.3)] border border-[#007AFF]/50'
+                          : 'bg-white/[0.03] text-white/70 hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.1]'
                       }
                     `}
                   >
@@ -153,7 +137,6 @@ export function DetailView({
                 <button
                   onClick={() => {
                     onUpdateDetails(selectedDate, { subject: '', topic: '' })
-                    showFeedback('Subject cleared')
                   }}
                   className="text-xs text-white/30 hover:text-white/60 transition-colors"
                 >
@@ -238,9 +221,10 @@ export function DetailView({
                     className={`
                       px-4 py-2.5 rounded-xl text-sm font-medium 
                       transition-all duration-200 backdrop-blur-sm
-                      ${currentTopic === topic
-                        ? 'bg-[#AF52DE] text-white shadow-[0_0_25px_rgba(175,82,222,0.3)] border border-[#AF52DE]/50'
-                        : 'bg-white/[0.03] text-white/70 hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.1]'
+                      ${
+                        currentTopic === topic
+                          ? 'bg-[#AF52DE] text-white shadow-[0_0_25px_rgba(175,82,222,0.3)] border border-[#AF52DE]/50'
+                          : 'bg-white/[0.03] text-white/70 hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.1]'
                       }
                     `}
                   >
@@ -266,7 +250,6 @@ export function DetailView({
                 <button
                   onClick={() => {
                     onUpdateDetails(selectedDate, { topic: '' })
-                    showFeedback('Topic cleared')
                   }}
                   className="text-xs text-white/30 hover:text-white/60 transition-colors"
                 >
@@ -367,38 +350,6 @@ export function DetailView({
               ? `${currentNote.length} characters`
               : 'Add notes to remember what you did today'}
           </p>
-        </div>
-
-        {/* Live Feedback */}
-        <div
-          className={`
-            bg-white/[0.02] backdrop-blur-xl
-            rounded-2xl p-4 
-            border border-white/[0.06]
-            transition-all duration-300 
-            ${feedback ? 'opacity-100' : 'opacity-50'}
-          `}
-        >
-          {feedback ? (
-            <p className="text-[#32D4DE] text-sm font-medium">{feedback}</p>
-          ) : (
-            <p className="text-white/30 text-xs">
-              {currentSubject || currentTopic ? (
-                <>
-                  📋 Current:{' '}
-                  {currentSubject && (
-                    <span className="text-[#007AFF]">{currentSubject}</span>
-                  )}
-                  {currentSubject && currentTopic && ' → '}
-                  {currentTopic && (
-                    <span className="text-[#AF52DE]">{currentTopic}</span>
-                  )}
-                </>
-              ) : (
-                '💡 Select a subject to get started'
-              )}
-            </p>
-          )}
         </div>
       </div>
     </>
