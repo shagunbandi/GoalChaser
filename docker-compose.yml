@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  goal-chaser:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: goal-chaser
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - goalchaser_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.goalchaser.entrypoints=websecure"
+      - "traefik.http.routers.goalchaser.rule=Host(`goalchaser.geekynavigator.com`)"
+      - "traefik.http.routers.goalchaser.tls=true"
+      - "traefik.http.routers.goalchaser.tls.certresolver=cloudflare"
+      - "traefik.http.services.goalchaser.loadbalancer.server.port=3000"
+      - "traefik.docker.network=goalchaser_network"
+
+networks:
+  goalchaser_network:
+    external: true
+

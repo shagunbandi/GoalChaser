@@ -16,13 +16,19 @@ interface SavedSuggestions {
   topics: string[]
 }
 
-// ============ LocalStorage Keys ============
-const STORAGE_KEYS = {
-  dayDetails: 'goalchaser_dayDetails',
-  suggestions: 'goalchaser_suggestions',
+// Subject configuration with topics
+interface SubjectConfig {
+  id: string
+  name: string
+  topics: string[]
+  color?: string
 }
 
 // ============ LocalStorage Helpers ============
+function getStorageKey(goalId: string, key: string): string {
+  return `goalchaser_${goalId}_${key}`
+}
+
 function loadFromStorage<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue
   try {
@@ -44,15 +50,16 @@ function saveToStorage<T>(key: string, value: T): void {
 
 // ============ Firebase Helpers (with fallback) ============
 let firebaseAvailable = true
-let db: ReturnType<typeof import('firebase/firestore').getFirestore> | null = null
+let db: ReturnType<typeof import('firebase/firestore').getFirestore> | null =
+  null
 
 async function initFirebase() {
   if (!firebaseAvailable) return null
-  
+
   try {
     const { initializeApp, getApps } = await import('firebase/app')
     const { getFirestore } = await import('firebase/firestore')
-    
+
     const firebaseConfig = {
       apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
       authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -61,15 +68,15 @@ async function initFirebase() {
       messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
       appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     }
-    
-    // Check if config is valid
+
     if (!firebaseConfig.projectId) {
       console.warn('Firebase config missing, using localStorage only')
       firebaseAvailable = false
       return null
     }
-    
-    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
+
+    const app =
+      getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
     db = getFirestore(app)
     return db
   } catch (error) {
@@ -81,14 +88,17 @@ async function initFirebase() {
 
 const USER_ID = 'default_user'
 
-async function loadDayDetailsFromFirebase(): Promise<Record<string, DayDetails> | null> {
+// Goal-scoped Firebase helpers
+async function loadDayDetailsFromFirebase(
+  goalId: string,
+): Promise<Record<string, DayDetails> | null> {
   if (!firebaseAvailable || !db) return null
-  
+
   try {
     const { collection, getDocs } = await import('firebase/firestore')
-    const colRef = collection(db, 'users', USER_ID, 'days')
+    const colRef = collection(db, 'users', USER_ID, 'goals', goalId, 'days')
     const querySnapshot = await getDocs(colRef)
-    
+
     const result: Record<string, DayDetails> = {}
     querySnapshot.forEach((doc) => {
       const data = doc.data()
@@ -98,21 +108,24 @@ async function loadDayDetailsFromFirebase(): Promise<Record<string, DayDetails> 
         topic: data.topic || '',
       }
     })
-    
+
     return result
   } catch (error) {
     console.warn('Firebase read failed, using localStorage:', error)
-    firebaseAvailable = false
     return null
   }
 }
 
-async function saveDayDetailsToFirebase(date: string, details: DayDetails): Promise<boolean> {
+async function saveDayDetailsToFirebase(
+  goalId: string,
+  date: string,
+  details: DayDetails,
+): Promise<boolean> {
   if (!firebaseAvailable || !db) return false
-  
+
   try {
     const { doc, setDoc } = await import('firebase/firestore')
-    const docRef = doc(db, 'users', USER_ID, 'days', date)
+    const docRef = doc(db, 'users', USER_ID, 'goals', goalId, 'days', date)
     await setDoc(docRef, {
       ...details,
       updatedAt: new Date().toISOString(),
@@ -124,41 +137,59 @@ async function saveDayDetailsToFirebase(date: string, details: DayDetails): Prom
   }
 }
 
-async function loadSuggestionsFromFirebase(): Promise<SavedSuggestions | null> {
+async function loadSubjectConfigsFromFirebase(
+  goalId: string,
+): Promise<SubjectConfig[] | null> {
   if (!firebaseAvailable || !db) return null
-  
+
   try {
     const { doc, getDoc } = await import('firebase/firestore')
-    const docRef = doc(db, 'users', USER_ID, 'settings', 'suggestions')
+    const docRef = doc(
+      db,
+      'users',
+      USER_ID,
+      'goals',
+      goalId,
+      'settings',
+      'subjectConfigs',
+    )
     const docSnap = await getDoc(docRef)
-    
+
     if (docSnap.exists()) {
       const data = docSnap.data()
-      return {
-        subjects: data.subjects || [],
-        topics: data.topics || [],
-      }
+      return data.configs || []
     }
-    return { subjects: [], topics: [] }
+    return []
   } catch (error) {
-    console.warn('Firebase suggestions read failed:', error)
+    console.warn('Firebase subject configs read failed:', error)
     return null
   }
 }
 
-async function saveSuggestionsToFirebase(suggestions: SavedSuggestions): Promise<boolean> {
+async function saveSubjectConfigsToFirebase(
+  goalId: string,
+  configs: SubjectConfig[],
+): Promise<boolean> {
   if (!firebaseAvailable || !db) return false
-  
+
   try {
     const { doc, setDoc } = await import('firebase/firestore')
-    const docRef = doc(db, 'users', USER_ID, 'settings', 'suggestions')
+    const docRef = doc(
+      db,
+      'users',
+      USER_ID,
+      'goals',
+      goalId,
+      'settings',
+      'subjectConfigs',
+    )
     await setDoc(docRef, {
-      ...suggestions,
+      configs,
       updatedAt: new Date().toISOString(),
     })
     return true
   } catch (error) {
-    console.warn('Firebase suggestions write failed:', error)
+    console.warn('Firebase subject configs write failed:', error)
     return false
   }
 }
@@ -166,135 +197,216 @@ async function saveSuggestionsToFirebase(suggestions: SavedSuggestions): Promise
 // ============ Main Hook ============
 interface UseFirebaseReturn {
   dayDetails: Record<string, DayDetails>
-  suggestions: SavedSuggestions
+  subjectConfigs: SubjectConfig[]
   isLoading: boolean
   error: string | null
   isUsingFirebase: boolean
-  updateDayDetails: (date: string, details: Partial<DayDetails>) => Promise<void>
-  addSuggestion: (type: 'subjects' | 'topics', value: string) => Promise<void>
+  updateDayDetails: (
+    date: string,
+    details: Partial<DayDetails>,
+  ) => Promise<void>
+  addSubjectConfig: (name: string) => Promise<void>
+  removeSubjectConfig: (id: string) => Promise<void>
+  updateSubjectConfig: (id: string, name: string) => Promise<void>
+  addTopicToSubject: (subjectId: string, topic: string) => Promise<void>
+  removeTopicFromSubject: (subjectId: string, topic: string) => Promise<void>
 }
 
-export function useFirebase(): UseFirebaseReturn {
+export function useFirebase(goalId: string): UseFirebaseReturn {
   const [dayDetails, setDayDetails] = useState<Record<string, DayDetails>>({})
-  const [suggestions, setSuggestions] = useState<SavedSuggestions>({
-    subjects: [],
-    topics: [],
-  })
+  const [subjectConfigs, setSubjectConfigs] = useState<SubjectConfig[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isUsingFirebase, setIsUsingFirebase] = useState(false)
 
+  // Storage keys scoped to goal
+  const dayDetailsKey = getStorageKey(goalId, 'dayDetails')
+  const subjectConfigsKey = getStorageKey(goalId, 'subjectConfigs')
+
   // Load initial data
   useEffect(() => {
     async function loadData() {
+      if (!goalId) {
+        setIsLoading(false)
+        return
+      }
+
       try {
         setIsLoading(true)
         setError(null)
 
-        // Try to initialize Firebase
         await initFirebase()
 
-        // Try loading from Firebase first
-        let loadedDayDetails = await loadDayDetailsFromFirebase()
-        let loadedSuggestions = await loadSuggestionsFromFirebase()
+        const loadedDayDetails = await loadDayDetailsFromFirebase(goalId)
+        const loadedSubjectConfigs = await loadSubjectConfigsFromFirebase(goalId)
 
-        if (loadedDayDetails !== null && loadedSuggestions !== null) {
-          // Firebase worked!
+        if (loadedDayDetails !== null && loadedSubjectConfigs !== null) {
           setIsUsingFirebase(true)
           setDayDetails(loadedDayDetails)
-          setSuggestions(loadedSuggestions)
-          
-          // Also save to localStorage as backup
-          saveToStorage(STORAGE_KEYS.dayDetails, loadedDayDetails)
-          saveToStorage(STORAGE_KEYS.suggestions, loadedSuggestions)
+          setSubjectConfigs(loadedSubjectConfigs)
+
+          saveToStorage(dayDetailsKey, loadedDayDetails)
+          saveToStorage(subjectConfigsKey, loadedSubjectConfigs)
         } else {
-          // Firebase failed, use localStorage
           setIsUsingFirebase(false)
-          setDayDetails(loadFromStorage(STORAGE_KEYS.dayDetails, {}))
-          setSuggestions(loadFromStorage(STORAGE_KEYS.suggestions, { subjects: [], topics: [] }))
+          setDayDetails(loadFromStorage(dayDetailsKey, {}))
+          setSubjectConfigs(loadFromStorage(subjectConfigsKey, []))
         }
       } catch (err) {
         console.error('Error loading data:', err)
         setError('Using offline mode')
         setIsUsingFirebase(false)
-        
-        // Fall back to localStorage
-        setDayDetails(loadFromStorage(STORAGE_KEYS.dayDetails, {}))
-        setSuggestions(loadFromStorage(STORAGE_KEYS.suggestions, { subjects: [], topics: [] }))
+
+        setDayDetails(loadFromStorage(dayDetailsKey, {}))
+        setSubjectConfigs(loadFromStorage(subjectConfigsKey, []))
       } finally {
         setIsLoading(false)
       }
     }
 
     loadData()
-  }, [])
+  }, [goalId, dayDetailsKey, subjectConfigsKey])
 
   // Update day details
   const updateDayDetails = useCallback(
     async (date: string, updates: Partial<DayDetails>) => {
-      // Get current details for this date
       const currentDetails = dayDetails[date] || {
         status: null,
         subject: '',
         topic: '',
       }
 
-      // Merge with updates
       const newDetails: DayDetails = {
         ...currentDetails,
         ...updates,
       }
 
-      // Optimistic update
       const newDayDetails = {
         ...dayDetails,
         [date]: newDetails,
       }
       setDayDetails(newDayDetails)
 
-      // Always save to localStorage (backup)
-      saveToStorage(STORAGE_KEYS.dayDetails, newDayDetails)
+      saveToStorage(dayDetailsKey, newDayDetails)
 
-      // Try to save to Firebase
       if (isUsingFirebase) {
-        await saveDayDetailsToFirebase(date, newDetails)
+        await saveDayDetailsToFirebase(goalId, date, newDetails)
       }
     },
-    [dayDetails, isUsingFirebase]
+    [dayDetails, isUsingFirebase, goalId, dayDetailsKey],
   )
 
-  // Add suggestion
-  const addSuggestion = useCallback(
-    async (type: 'subjects' | 'topics', value: string) => {
-      if (!value.trim()) return
-      if (suggestions[type].includes(value.trim())) return
+  // Add subject config
+  const addSubjectConfig = useCallback(
+    async (name: string) => {
+      if (!name.trim()) return
+      if (
+        subjectConfigs.some(
+          (s) => s.name.toLowerCase() === name.trim().toLowerCase(),
+        )
+      )
+        return
 
-      const newSuggestions: SavedSuggestions = {
-        ...suggestions,
-        [type]: [...suggestions[type], value.trim()],
+      const newConfig: SubjectConfig = {
+        id: `subject_${Date.now()}`,
+        name: name.trim(),
+        topics: [],
       }
 
-      // Optimistic update
-      setSuggestions(newSuggestions)
+      const newConfigs = [...subjectConfigs, newConfig]
+      setSubjectConfigs(newConfigs)
+      saveToStorage(subjectConfigsKey, newConfigs)
 
-      // Always save to localStorage (backup)
-      saveToStorage(STORAGE_KEYS.suggestions, newSuggestions)
-
-      // Try to save to Firebase
       if (isUsingFirebase) {
-        await saveSuggestionsToFirebase(newSuggestions)
+        await saveSubjectConfigsToFirebase(goalId, newConfigs)
       }
     },
-    [suggestions, isUsingFirebase]
+    [subjectConfigs, isUsingFirebase, goalId, subjectConfigsKey],
+  )
+
+  // Remove subject config
+  const removeSubjectConfig = useCallback(
+    async (id: string) => {
+      const newConfigs = subjectConfigs.filter((s) => s.id !== id)
+      setSubjectConfigs(newConfigs)
+      saveToStorage(subjectConfigsKey, newConfigs)
+
+      if (isUsingFirebase) {
+        await saveSubjectConfigsToFirebase(goalId, newConfigs)
+      }
+    },
+    [subjectConfigs, isUsingFirebase, goalId, subjectConfigsKey],
+  )
+
+  // Update subject config name
+  const updateSubjectConfig = useCallback(
+    async (id: string, name: string) => {
+      if (!name.trim()) return
+
+      const newConfigs = subjectConfigs.map((s) =>
+        s.id === id ? { ...s, name: name.trim() } : s,
+      )
+      setSubjectConfigs(newConfigs)
+      saveToStorage(subjectConfigsKey, newConfigs)
+
+      if (isUsingFirebase) {
+        await saveSubjectConfigsToFirebase(goalId, newConfigs)
+      }
+    },
+    [subjectConfigs, isUsingFirebase, goalId, subjectConfigsKey],
+  )
+
+  // Add topic to subject
+  const addTopicToSubject = useCallback(
+    async (subjectId: string, topic: string) => {
+      if (!topic.trim()) return
+
+      const subject = subjectConfigs.find((s) => s.id === subjectId)
+      if (!subject) return
+      if (subject.topics.includes(topic.trim())) return
+
+      const newConfigs = subjectConfigs.map((s) =>
+        s.id === subjectId ? { ...s, topics: [...s.topics, topic.trim()] } : s,
+      )
+      setSubjectConfigs(newConfigs)
+      saveToStorage(subjectConfigsKey, newConfigs)
+
+      if (isUsingFirebase) {
+        await saveSubjectConfigsToFirebase(goalId, newConfigs)
+      }
+    },
+    [subjectConfigs, isUsingFirebase, goalId, subjectConfigsKey],
+  )
+
+  // Remove topic from subject
+  const removeTopicFromSubject = useCallback(
+    async (subjectId: string, topic: string) => {
+      const newConfigs = subjectConfigs.map((s) =>
+        s.id === subjectId
+          ? { ...s, topics: s.topics.filter((t) => t !== topic) }
+          : s,
+      )
+      setSubjectConfigs(newConfigs)
+      saveToStorage(subjectConfigsKey, newConfigs)
+
+      if (isUsingFirebase) {
+        await saveSubjectConfigsToFirebase(goalId, newConfigs)
+      }
+    },
+    [subjectConfigs, isUsingFirebase, goalId, subjectConfigsKey],
   )
 
   return {
     dayDetails,
-    suggestions,
+    subjectConfigs,
     isLoading,
     error,
     isUsingFirebase,
     updateDayDetails,
-    addSuggestion,
+    addSubjectConfig,
+    removeSubjectConfig,
+    updateSubjectConfig,
+    addTopicToSubject,
+    removeTopicFromSubject,
   }
 }
