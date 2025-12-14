@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Goal Chaser",
-  description: "Track and achieve your goals with habit tracking",
+  title: "Nitya",
+  description: "Track and achieve your goals with daily habit tracking",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Goal Chaser",
+    title: "Nitya",
   },
   formatDetection: {
     telephone: false,

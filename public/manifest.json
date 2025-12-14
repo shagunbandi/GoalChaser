@@ -1,7 +1,7 @@
 {
-  "name": "Goal Chaser",
-  "short_name": "Goal Chaser",
-  "description": "Track and achieve your goals with habit tracking",
+  "name": "Nitya",
+  "short_name": "Nitya",
+  "description": "Track and achieve your goals with daily habit tracking",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
