@@ -265,11 +265,35 @@ function TimeRangeSelector({
 }: TimeRangeSelectorProps) {
   const isCustom = selectedRange.type === 'custom'
 
+  // Use selectedRange dates when in custom mode, otherwise use the custom state
+  const displayStartDate = isCustom ? selectedRange.startDate : customStartDate
+  const displayEndDate = isCustom ? selectedRange.endDate : customEndDate
+
   const handleCustomSelect = () => {
     onRangeChange({
       type: 'custom',
       startDate: customStartDate,
       endDate: customEndDate,
+      label: 'Custom Range',
+    })
+  }
+
+  const handleStartDateChange = (newStartDate: string) => {
+    onCustomStartChange(newStartDate)
+    onRangeChange({
+      type: 'custom',
+      startDate: newStartDate,
+      endDate: displayEndDate,
+      label: 'Custom Range',
+    })
+  }
+
+  const handleEndDateChange = (newEndDate: string) => {
+    onCustomEndChange(newEndDate)
+    onRangeChange({
+      type: 'custom',
+      startDate: displayStartDate,
+      endDate: newEndDate,
       label: 'Custom Range',
     })
   }
@@ -310,16 +334,8 @@ function TimeRangeSelector({
             <label className="block text-xs text-slate-400 mb-1">From</label>
             <input
               type="date"
-              value={customStartDate}
-              onChange={(e) => {
-                onCustomStartChange(e.target.value)
-                onRangeChange({
-                  type: 'custom',
-                  startDate: e.target.value,
-                  endDate: customEndDate,
-                  label: 'Custom Range',
-                })
-              }}
+              value={displayStartDate}
+              onChange={(e) => handleStartDateChange(e.target.value)}
               className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
             />
           </div>
@@ -327,16 +343,8 @@ function TimeRangeSelector({
             <label className="block text-xs text-slate-400 mb-1">To</label>
             <input
               type="date"
-              value={customEndDate}
-              onChange={(e) => {
-                onCustomEndChange(e.target.value)
-                onRangeChange({
-                  type: 'custom',
-                  startDate: customStartDate,
-                  endDate: e.target.value,
-                  label: 'Custom Range',
-                })
-              }}
+              value={displayEndDate}
+              onChange={(e) => handleEndDateChange(e.target.value)}
               className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
             />
           </div>
@@ -357,6 +365,7 @@ interface AutocompleteInputProps {
   label: string
   value: string
   onChange: (value: string) => void
+  onBlur?: () => void
   suggestions: string[]
   placeholder?: string
 }
@@ -364,6 +373,7 @@ interface AutocompleteInputProps {
 function AutocompleteInput({
   label,
   value,
+  onBlur,
   onChange,
   suggestions,
   placeholder = '',
@@ -408,6 +418,12 @@ function AutocompleteInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setIsOpen(true)}
+        onBlur={() => {
+          // Delay to allow click on suggestion
+          setTimeout(() => {
+            onBlur?.()
+          }, 200)
+        }}
         placeholder={placeholder}
         className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 transition-all"
       />
@@ -514,14 +530,17 @@ function DetailView({
   const currentTopic = details?.topic || ''
   const currentStatus = details?.status || null
 
-  const handleSave = () => {
-    // Save new subject/topic to suggestions if they're new
+  // Auto-save new suggestions when input loses focus
+  const handleSubjectBlur = () => {
     if (
       currentSubject.trim() &&
       !suggestions.subjects.includes(currentSubject.trim())
     ) {
       onSaveSuggestion('subjects', currentSubject.trim())
     }
+  }
+
+  const handleTopicBlur = () => {
     if (
       currentTopic.trim() &&
       !suggestions.topics.includes(currentTopic.trim())
@@ -550,6 +569,7 @@ function DetailView({
           label="Subject"
           value={currentSubject}
           onChange={(subject) => onUpdateDetails(selectedDate, { subject })}
+          onBlur={handleSubjectBlur}
           suggestions={suggestions.subjects}
           placeholder="e.g., Work, Study, Exercise..."
         />
@@ -559,17 +579,10 @@ function DetailView({
           label="Topic"
           value={currentTopic}
           onChange={(topic) => onUpdateDetails(selectedDate, { topic })}
+          onBlur={handleTopicBlur}
           suggestions={suggestions.topics}
           placeholder="e.g., Project X, Chapter 5, Cardio..."
         />
-
-        {/* Save Button */}
-        <button
-          onClick={handleSave}
-          className="w-full py-3 bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-white font-semibold rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/25"
-        >
-          Save
-        </button>
 
         {/* Quick Tips */}
         <div className="bg-white/5 rounded-xl p-4">
@@ -639,24 +652,24 @@ function Calendar({
   return (
     <Card className="p-5">
       {/* Month Navigation Header */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+      <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 gap-2">
         <button
           onClick={onPrevMonth}
-          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-200 rounded-lg font-medium text-sm transition-all duration-200 hover:scale-105"
+          className="px-2 sm:px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-200 rounded-lg font-medium text-xs sm:text-sm transition-all duration-200 hover:scale-105 shrink-0"
         >
-          ← Prev
+          ←
         </button>
-        <div className="flex items-center gap-2">
-          <span className="text-xl">📅</span>
-          <h2 className="text-lg font-bold text-white uppercase tracking-wide">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-lg sm:text-xl">📅</span>
+          <h2 className="text-base sm:text-lg font-bold text-white uppercase tracking-wide truncate">
             {MONTH_NAMES[currentMonth - 1]} {currentYear}
           </h2>
         </div>
         <button
           onClick={onNextMonth}
-          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-200 rounded-lg font-medium text-sm transition-all duration-200 hover:scale-105"
+          className="px-2 sm:px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-200 rounded-lg font-medium text-xs sm:text-sm transition-all duration-200 hover:scale-105 shrink-0"
         >
-          Next →
+          →
         </button>
       </div>
 
@@ -720,6 +733,9 @@ interface AnalyticsData {
   totalActiveDays: number
   totalSubjects: number
   totalTopics: number
+  totalGreenDays: number
+  totalYellowDays: number
+  totalRedDays: number
   averageProductivity: number // percentage of green days
 }
 
@@ -1043,16 +1059,10 @@ function ActivityAnalytics({
   )
   const maxTopicCount = Math.max(...data.topics.map((t) => t.count), 1)
 
-  // Calculate overall productivity
-  const totalGreen = data.subjectAnalytics.reduce(
-    (sum, s) => sum + s.greenDays,
-    0,
-  )
-  const totalYellow = data.subjectAnalytics.reduce(
-    (sum, s) => sum + s.yellowDays,
-    0,
-  )
-  const totalRed = data.subjectAnalytics.reduce((sum, s) => sum + s.redDays, 0)
+  // Use overall productivity counts (from all marked days, not just those with subjects)
+  const totalGreen = data.totalGreenDays
+  const totalYellow = data.totalYellowDays
+  const totalRed = data.totalRedDays
 
   return (
     <Card className="p-5">
@@ -1397,8 +1407,17 @@ export default function Home() {
   // Generate list of dates in the selected time range
   const datesInRange = useMemo(() => {
     const dates: string[] = []
-    const start = new Date(selectedTimeRange.startDate + 'T00:00:00')
-    const end = new Date(selectedTimeRange.endDate + 'T00:00:00')
+    const startDateStr = selectedTimeRange.startDate
+    const endDateStr = selectedTimeRange.endDate
+
+    if (!startDateStr || !endDateStr) return dates
+
+    const start = new Date(startDateStr + 'T00:00:00')
+    const end = new Date(endDateStr + 'T00:00:00')
+
+    // Validate dates
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return dates
+    if (start > end) return dates
 
     const current = new Date(start)
     while (current <= end) {
@@ -1406,7 +1425,7 @@ export default function Home() {
       current.setDate(current.getDate() + 1)
     }
     return dates
-  }, [selectedTimeRange])
+  }, [selectedTimeRange.startDate, selectedTimeRange.endDate])
 
   // Compute comprehensive analytics for selected time range
   const analyticsData = useMemo((): AnalyticsData => {
@@ -1423,6 +1442,10 @@ export default function Home() {
     > = {}
     const topicsBySubject: Record<string, Set<string>> = {}
 
+    // Overall productivity counts (regardless of subject/topic)
+    let totalGreenDays = 0
+    let totalYellowDays = 0
+    let totalRedDays = 0
     let activeDays = 0
 
     datesInRange.forEach((iso) => {
@@ -1431,8 +1454,15 @@ export default function Home() {
       const topic = details?.topic?.trim() || ''
       const status = details?.status
 
-      // Count days with any activity (subject or topic filled)
-      if (subject || topic) {
+      // Count days with any productivity status (green/yellow/red)
+      if (status === 'GREEN') {
+        totalGreenDays++
+        activeDays++
+      } else if (status === 'YELLOW') {
+        totalYellowDays++
+        activeDays++
+      } else if (status === 'RED') {
+        totalRedDays++
         activeDays++
       }
 
@@ -1495,15 +1525,8 @@ export default function Home() {
       topicsBySubjectObj[subject] = Array.from(topicsSet)
     })
 
-    // Calculate average productivity
-    const totalMarkedDays = subjectAnalytics.reduce(
-      (sum, s) => sum + s.greenDays + s.yellowDays + s.redDays,
-      0,
-    )
-    const totalGreenDays = subjectAnalytics.reduce(
-      (sum, s) => sum + s.greenDays,
-      0,
-    )
+    // Calculate average productivity from ALL marked days (not just those with subjects)
+    const totalMarkedDays = totalGreenDays + totalYellowDays + totalRedDays
     const averageProductivity =
       totalMarkedDays > 0
         ? Math.round((totalGreenDays / totalMarkedDays) * 100)
@@ -1517,6 +1540,9 @@ export default function Home() {
       totalActiveDays: activeDays,
       totalSubjects: subjects.length,
       totalTopics: topics.length,
+      totalGreenDays,
+      totalYellowDays,
+      totalRedDays,
       averageProductivity,
     }
   }, [datesInRange, dayDetails])
@@ -1599,7 +1625,7 @@ export default function Home() {
         </div>
 
         {/* Mobile Tabs - visible on small screens */}
-        <div className="md:hidden mb-6">
+        <div className="md:hidden mb-4">
           <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
 
@@ -1615,7 +1641,7 @@ export default function Home() {
             - Tab 3: Monthly Stats
           */}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 md:gap-6">
             {/* Left Column - Calendar */}
             <div className="space-y-4">
               {/* Calendar Panel - shows on calendar tab (mobile) or always (desktop) */}
