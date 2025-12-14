@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 // Hooks
 import { useFirebase } from '@/hooks/useFirebase'
 import { useGoals } from '@/hooks/useGoals'
+import { useAuth } from '@/hooks/useAuth'
 
 // Components
 import { Card, Navbar } from '@/components/ui'
@@ -26,7 +27,11 @@ import type { DayStatus, DayDetails } from '@/types'
 
 export default function GoalPage() {
   const params = useParams()
+  const router = useRouter()
   const goalId = params.id as string
+
+  // Auth hook
+  const { user, isLoading: authLoading } = useAuth()
 
   // Get goal info
   const { getGoal, isLoading: goalsLoading } = useGoals()
@@ -61,6 +66,13 @@ export default function GoalPage() {
     const timeoutId = scheduleUpdate()
     return () => clearTimeout(timeoutId)
   }, [])
+
+  // Redirect to home if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/')
+    }
+  }, [authLoading, user, router])
 
   // Calendar month state
   const initialDate = useMemo(() => new Date(), [])
@@ -115,8 +127,8 @@ export default function GoalPage() {
     addTopicToSubject(subjectId, topic)
   }
 
-  // Loading state
-  if (isLoading || goalsLoading) {
+  // Loading state (including auth check)
+  if (isLoading || goalsLoading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         {/* Glass Background */}
@@ -132,6 +144,11 @@ export default function GoalPage() {
         </div>
       </div>
     )
+  }
+
+  // Not authenticated - will redirect
+  if (!user) {
+    return null
   }
 
   // Goal not found

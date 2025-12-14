@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from './useAuth'
 
 // ============ Types ============
 export interface Goal {
@@ -71,16 +72,14 @@ async function initFirebase() {
   }
 }
 
-const USER_ID = 'default_user'
-
-async function loadGoalsFromFirebase(): Promise<Goal[] | null> {
+async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
   if (!firebaseAvailable || !db) return null
 
   try {
     const { collection, getDocs, query, orderBy } = await import(
       'firebase/firestore'
     )
-    const goalsRef = collection(db, 'users', USER_ID, 'goals')
+    const goalsRef = collection(db, 'users', userId, 'goals')
     const q = query(goalsRef, orderBy('createdAt', 'desc'))
     const querySnapshot = await getDocs(q)
 
@@ -103,12 +102,12 @@ async function loadGoalsFromFirebase(): Promise<Goal[] | null> {
   }
 }
 
-async function saveGoalToFirebase(goal: Goal): Promise<boolean> {
+async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> {
   if (!firebaseAvailable || !db) return false
 
   try {
     const { doc, setDoc } = await import('firebase/firestore')
-    const goalRef = doc(db, 'users', USER_ID, 'goals', goal.id)
+    const goalRef = doc(db, 'users', userId, 'goals', goal.id)
     await setDoc(goalRef, {
       name: goal.name,
       description: goal.description || '',
@@ -123,12 +122,12 @@ async function saveGoalToFirebase(goal: Goal): Promise<boolean> {
   }
 }
 
-async function deleteGoalFromFirebase(goalId: string): Promise<boolean> {
+async function deleteGoalFromFirebase(userId: string, goalId: string): Promise<boolean> {
   if (!firebaseAvailable || !db) return false
 
   try {
     const { doc, deleteDoc } = await import('firebase/firestore')
-    const goalRef = doc(db, 'users', USER_ID, 'goals', goalId)
+    const goalRef = doc(db, 'users', userId, 'goals', goalId)
     await deleteDoc(goalRef)
     return true
   } catch (error) {
@@ -148,42 +147,57 @@ interface UseGoalsReturn {
 }
 
 export function useGoals(): UseGoalsReturn {
+  const { user, isLoading: authLoading } = useAuth()
   const [goals, setGoals] = useState<Goal[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isUsingFirebase, setIsUsingFirebase] = useState(false)
 
+  // Get user ID for storage
+  const userId = user?.uid || 'default_user'
+  const userStorageKey = `${STORAGE_KEY}_${userId}`
+
   // Load initial data
   useEffect(() => {
     async function loadData() {
+      // Wait for auth to finish loading
+      if (authLoading) return
+
       try {
         setIsLoading(true)
         setError(null)
 
         await initFirebase()
 
-        const loadedGoals = await loadGoalsFromFirebase()
+        // If user is logged in, load from Firebase with their user ID
+        if (user) {
+          const loadedGoals = await loadGoalsFromFirebase(user.uid)
 
-        if (loadedGoals !== null) {
-          setIsUsingFirebase(true)
-          setGoals(loadedGoals)
-          saveToStorage(STORAGE_KEY, loadedGoals)
+          if (loadedGoals !== null) {
+            setIsUsingFirebase(true)
+            setGoals(loadedGoals)
+            saveToStorage(userStorageKey, loadedGoals)
+          } else {
+            setIsUsingFirebase(false)
+            setGoals(loadFromStorage(userStorageKey, []))
+          }
         } else {
+          // Not logged in, use localStorage with default key
           setIsUsingFirebase(false)
-          setGoals(loadFromStorage(STORAGE_KEY, []))
+          setGoals([])
         }
       } catch (err) {
         console.error('Error loading goals:', err)
         setError('Failed to load goals')
         setIsUsingFirebase(false)
-        setGoals(loadFromStorage(STORAGE_KEY, []))
+        setGoals(loadFromStorage(userStorageKey, []))
       } finally {
         setIsLoading(false)
       }
     }
 
     loadData()
-  }, [])
+  }, [user, authLoading, userStorageKey])
 
   const createGoal = useCallback(
     async (name: string, description?: string, color?: string): Promise<Goal> => {
@@ -197,28 +211,28 @@ export function useGoals(): UseGoalsReturn {
 
       const newGoals = [newGoal, ...goals]
       setGoals(newGoals)
-      saveToStorage(STORAGE_KEY, newGoals)
+      saveToStorage(userStorageKey, newGoals)
 
-      if (isUsingFirebase) {
-        await saveGoalToFirebase(newGoal)
+      if (isUsingFirebase && user) {
+        await saveGoalToFirebase(user.uid, newGoal)
       }
 
       return newGoal
     },
-    [goals, isUsingFirebase],
+    [goals, isUsingFirebase, user, userStorageKey],
   )
 
   const deleteGoal = useCallback(
     async (id: string) => {
       const newGoals = goals.filter((g) => g.id !== id)
       setGoals(newGoals)
-      saveToStorage(STORAGE_KEY, newGoals)
+      saveToStorage(userStorageKey, newGoals)
 
-      if (isUsingFirebase) {
-        await deleteGoalFromFirebase(id)
+      if (isUsingFirebase && user) {
+        await deleteGoalFromFirebase(user.uid, id)
       }
     },
-    [goals, isUsingFirebase],
+    [goals, isUsingFirebase, user, userStorageKey],
   )
 
   const getGoal = useCallback(
@@ -230,11 +244,10 @@ export function useGoals(): UseGoalsReturn {
 
   return {
     goals,
-    isLoading,
+    isLoading: isLoading || authLoading,
     error,
     createGoal,
     deleteGoal,
     getGoal,
   }
 }
-

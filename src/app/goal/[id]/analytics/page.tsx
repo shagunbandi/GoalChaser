@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useParams } from 'next/navigation'
+import { useState, useMemo, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 // Hooks
 import { useFirebase } from '@/hooks/useFirebase'
 import { useGoals } from '@/hooks/useGoals'
+import { useAuth } from '@/hooks/useAuth'
 
 // Components
 import { Card, Navbar } from '@/components/ui'
@@ -31,7 +32,11 @@ import { toISODateString } from '@/lib/dateUtils'
 
 export default function AnalyticsPage() {
   const params = useParams()
+  const router = useRouter()
   const goalId = params.id as string
+
+  // Auth hook
+  const { user, isLoading: authLoading } = useAuth()
 
   // Get goal info
   const { getGoal, isLoading: goalsLoading } = useGoals()
@@ -52,6 +57,13 @@ export default function AnalyticsPage() {
         }
   })
 
+  // Redirect to home if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/')
+    }
+  }, [authLoading, user, router])
+
   // Calculate analytics data
   const dayData = useMemo(
     () =>
@@ -68,7 +80,7 @@ export default function AnalyticsPage() {
   const topicStats = useMemo(() => calculateTopicStats(dayData), [dayData])
 
   // Loading state
-  if (isLoading || goalsLoading) {
+  if (isLoading || goalsLoading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         {/* Glass Background */}
@@ -84,6 +96,11 @@ export default function AnalyticsPage() {
         </div>
       </div>
     )
+  }
+
+  // Not authenticated - will redirect
+  if (!user) {
+    return null
   }
 
   // Goal not found

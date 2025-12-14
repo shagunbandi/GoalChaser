@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useGoals, Goal } from '@/hooks/useGoals'
+import { useAuth, GoogleSignInButton, UserAvatar } from '@/hooks/useAuth'
 
 // ============ Color Options ============
 const GOAL_COLORS = [
@@ -233,9 +234,80 @@ function CreateGoalForm({ onSubmit, onCancel }: CreateGoalFormProps) {
   )
 }
 
+// ============ Sign In View ============
+function SignInView() {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6">
+      {/* Glass Background */}
+      <div className="glass-background">
+        <div className="orb-1" />
+        <div className="orb-2" />
+      </div>
+      <div className="noise-overlay" />
+
+      <div className="relative z-10 w-full max-w-md">
+        {/* Logo & Title */}
+        <div className="text-center mb-12">
+          <h1 className="text-6xl font-bold tracking-tight text-gradient mb-4">
+            Nitya
+          </h1>
+          <p className="text-white/50 text-lg">
+            Track your progress, achieve your dreams
+          </p>
+        </div>
+
+        {/* Sign In Card */}
+        <div className="
+          bg-white/[0.02] backdrop-blur-[40px]
+          rounded-3xl border border-white/[0.06]
+          p-8
+          shadow-[0_4px_24px_-1px_rgba(0,0,0,0.2),inset_0_0_1px_rgba(255,255,255,0.1)]
+        ">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-t-3xl" />
+          
+          <div className="text-center mb-8">
+            <div className="text-5xl mb-4">🎯</div>
+            <h2 className="text-xl font-semibold text-white/90 mb-2">
+              Welcome to Nitya
+            </h2>
+            <p className="text-white/50 text-sm">
+              Sign in to sync your goals across devices
+            </p>
+          </div>
+
+          <GoogleSignInButton />
+
+          <div className="mt-8 pt-6 border-t border-white/[0.06]">
+            <p className="text-white/40 text-xs text-center">
+              By signing in, you agree to our Terms of Service and Privacy Policy
+            </p>
+          </div>
+        </div>
+
+        {/* Features Preview */}
+        <div className="mt-10 grid grid-cols-3 gap-4">
+          <div className="text-center">
+            <div className="text-2xl mb-2">📊</div>
+            <p className="text-white/50 text-xs">Analytics</p>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl mb-2">📅</div>
+            <p className="text-white/50 text-xs">Calendar</p>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl mb-2">☁️</div>
+            <p className="text-white/50 text-xs">Cloud Sync</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ============ Main Home Component ============
 export default function Home() {
   const router = useRouter()
+  const { user, isLoading: authLoading } = useAuth()
   const { goals, isLoading, createGoal, deleteGoal } = useGoals()
   const [showCreateForm, setShowCreateForm] = useState(false)
 
@@ -252,7 +324,8 @@ export default function Home() {
     router.push(`/goal/${goalId}`)
   }
 
-  if (isLoading) {
+  // Show loading while checking auth
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         {/* Glass Background */}
@@ -264,10 +337,15 @@ export default function Home() {
         
         <div className="relative z-10 text-center">
           <div className="w-12 h-12 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white/50">Loading your goals...</p>
+          <p className="text-white/50">Loading...</p>
         </div>
       </div>
     )
+  }
+
+  // Show sign-in if not authenticated
+  if (!user) {
+    return <SignInView />
   }
 
   return (
@@ -281,8 +359,14 @@ export default function Home() {
 
       <div className="relative z-10 min-h-screen p-6">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-14 pt-10">
+          {/* Header with User Avatar */}
+          <div className="flex justify-between items-start mb-10 pt-6">
+            <div />
+            <UserAvatar size="md" />
+          </div>
+
+          {/* Title */}
+          <div className="text-center mb-14">
             <h1 className="text-6xl font-bold tracking-tight text-gradient mb-4">
               Nitya
             </h1>

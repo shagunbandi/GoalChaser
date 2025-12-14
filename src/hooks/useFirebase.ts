@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from './useAuth'
 
 // ============ Types ============
 // Productivity score: 1-10 scale (1-3: Low, 4-6: OK, 7-10: High)
@@ -13,11 +14,6 @@ interface DayDetails {
   note: string
 }
 
-interface SavedSuggestions {
-  subjects: string[]
-  topics: string[]
-}
-
 // Subject configuration with topics
 interface SubjectConfig {
   id: string
@@ -27,8 +23,8 @@ interface SubjectConfig {
 }
 
 // ============ LocalStorage Helpers ============
-function getStorageKey(goalId: string, key: string): string {
-  return `nitya_${goalId}_${key}`
+function getStorageKey(userId: string, goalId: string, key: string): string {
+  return `nitya_${userId}_${goalId}_${key}`
 }
 
 function loadFromStorage<T>(key: string, defaultValue: T): T {
@@ -88,17 +84,16 @@ async function initFirebase() {
   }
 }
 
-const USER_ID = 'default_user'
-
 // Goal-scoped Firebase helpers
 async function loadDayDetailsFromFirebase(
+  userId: string,
   goalId: string,
 ): Promise<Record<string, DayDetails> | null> {
   if (!firebaseAvailable || !db) return null
 
   try {
     const { collection, getDocs } = await import('firebase/firestore')
-    const colRef = collection(db, 'users', USER_ID, 'goals', goalId, 'days')
+    const colRef = collection(db, 'users', userId, 'goals', goalId, 'days')
     const querySnapshot = await getDocs(colRef)
 
     const result: Record<string, DayDetails> = {}
@@ -120,6 +115,7 @@ async function loadDayDetailsFromFirebase(
 }
 
 async function saveDayDetailsToFirebase(
+  userId: string,
   goalId: string,
   date: string,
   details: DayDetails,
@@ -128,7 +124,7 @@ async function saveDayDetailsToFirebase(
 
   try {
     const { doc, setDoc } = await import('firebase/firestore')
-    const docRef = doc(db, 'users', USER_ID, 'goals', goalId, 'days', date)
+    const docRef = doc(db, 'users', userId, 'goals', goalId, 'days', date)
     await setDoc(docRef, {
       ...details,
       updatedAt: new Date().toISOString(),
@@ -141,6 +137,7 @@ async function saveDayDetailsToFirebase(
 }
 
 async function loadSubjectConfigsFromFirebase(
+  userId: string,
   goalId: string,
 ): Promise<SubjectConfig[] | null> {
   if (!firebaseAvailable || !db) return null
@@ -150,7 +147,7 @@ async function loadSubjectConfigsFromFirebase(
     const docRef = doc(
       db,
       'users',
-      USER_ID,
+      userId,
       'goals',
       goalId,
       'settings',
@@ -170,6 +167,7 @@ async function loadSubjectConfigsFromFirebase(
 }
 
 async function saveSubjectConfigsToFirebase(
+  userId: string,
   goalId: string,
   configs: SubjectConfig[],
 ): Promise<boolean> {
@@ -180,7 +178,7 @@ async function saveSubjectConfigsToFirebase(
     const docRef = doc(
       db,
       'users',
-      USER_ID,
+      userId,
       'goals',
       goalId,
       'settings',
@@ -216,21 +214,35 @@ interface UseFirebaseReturn {
 }
 
 export function useFirebase(goalId: string): UseFirebaseReturn {
+  const { user, isLoading: authLoading } = useAuth()
   const [dayDetails, setDayDetails] = useState<Record<string, DayDetails>>({})
   const [subjectConfigs, setSubjectConfigs] = useState<SubjectConfig[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isUsingFirebase, setIsUsingFirebase] = useState(false)
 
-  // Storage keys scoped to goal
-  const dayDetailsKey = getStorageKey(goalId, 'dayDetails')
-  const subjectConfigsKey = getStorageKey(goalId, 'subjectConfigs')
+  // Get user ID for storage
+  const userId = user?.uid || 'default_user'
+
+  // Storage keys scoped to user and goal
+  const dayDetailsKey = getStorageKey(userId, goalId, 'dayDetails')
+  const subjectConfigsKey = getStorageKey(userId, goalId, 'subjectConfigs')
 
   // Load initial data
   useEffect(() => {
     async function loadData() {
-      if (!goalId) {
+      if (!goalId || authLoading) {
+        if (!authLoading && !goalId) {
+          setIsLoading(false)
+        }
+        return
+      }
+
+      // If not logged in, don't load any data
+      if (!user) {
         setIsLoading(false)
+        setDayDetails({})
+        setSubjectConfigs([])
         return
       }
 
@@ -240,8 +252,8 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
 
         await initFirebase()
 
-        const loadedDayDetails = await loadDayDetailsFromFirebase(goalId)
-        const loadedSubjectConfigs = await loadSubjectConfigsFromFirebase(goalId)
+        const loadedDayDetails = await loadDayDetailsFromFirebase(userId, goalId)
+        const loadedSubjectConfigs = await loadSubjectConfigsFromFirebase(userId, goalId)
 
         if (loadedDayDetails !== null && loadedSubjectConfigs !== null) {
           setIsUsingFirebase(true)
@@ -268,7 +280,7 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
     }
 
     loadData()
-  }, [goalId, dayDetailsKey, subjectConfigsKey])
+  }, [goalId, userId, authLoading, user, dayDetailsKey, subjectConfigsKey])
 
   // Update day details
   const updateDayDetails = useCallback(
@@ -293,11 +305,11 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
 
       saveToStorage(dayDetailsKey, newDayDetails)
 
-      if (isUsingFirebase) {
-        await saveDayDetailsToFirebase(goalId, date, newDetails)
+      if (isUsingFirebase && user) {
+        await saveDayDetailsToFirebase(user.uid, goalId, date, newDetails)
       }
     },
-    [dayDetails, isUsingFirebase, goalId, dayDetailsKey],
+    [dayDetails, isUsingFirebase, user, goalId, dayDetailsKey],
   )
 
   // Add subject config
@@ -321,11 +333,11 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
       setSubjectConfigs(newConfigs)
       saveToStorage(subjectConfigsKey, newConfigs)
 
-      if (isUsingFirebase) {
-        await saveSubjectConfigsToFirebase(goalId, newConfigs)
+      if (isUsingFirebase && user) {
+        await saveSubjectConfigsToFirebase(user.uid, goalId, newConfigs)
       }
     },
-    [subjectConfigs, isUsingFirebase, goalId, subjectConfigsKey],
+    [subjectConfigs, isUsingFirebase, user, goalId, subjectConfigsKey],
   )
 
   // Remove subject config
@@ -335,11 +347,11 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
       setSubjectConfigs(newConfigs)
       saveToStorage(subjectConfigsKey, newConfigs)
 
-      if (isUsingFirebase) {
-        await saveSubjectConfigsToFirebase(goalId, newConfigs)
+      if (isUsingFirebase && user) {
+        await saveSubjectConfigsToFirebase(user.uid, goalId, newConfigs)
       }
     },
-    [subjectConfigs, isUsingFirebase, goalId, subjectConfigsKey],
+    [subjectConfigs, isUsingFirebase, user, goalId, subjectConfigsKey],
   )
 
   // Update subject config name
@@ -353,11 +365,11 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
       setSubjectConfigs(newConfigs)
       saveToStorage(subjectConfigsKey, newConfigs)
 
-      if (isUsingFirebase) {
-        await saveSubjectConfigsToFirebase(goalId, newConfigs)
+      if (isUsingFirebase && user) {
+        await saveSubjectConfigsToFirebase(user.uid, goalId, newConfigs)
       }
     },
-    [subjectConfigs, isUsingFirebase, goalId, subjectConfigsKey],
+    [subjectConfigs, isUsingFirebase, user, goalId, subjectConfigsKey],
   )
 
   // Add topic to subject
@@ -375,11 +387,11 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
       setSubjectConfigs(newConfigs)
       saveToStorage(subjectConfigsKey, newConfigs)
 
-      if (isUsingFirebase) {
-        await saveSubjectConfigsToFirebase(goalId, newConfigs)
+      if (isUsingFirebase && user) {
+        await saveSubjectConfigsToFirebase(user.uid, goalId, newConfigs)
       }
     },
-    [subjectConfigs, isUsingFirebase, goalId, subjectConfigsKey],
+    [subjectConfigs, isUsingFirebase, user, goalId, subjectConfigsKey],
   )
 
   // Remove topic from subject
@@ -393,17 +405,17 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
       setSubjectConfigs(newConfigs)
       saveToStorage(subjectConfigsKey, newConfigs)
 
-      if (isUsingFirebase) {
-        await saveSubjectConfigsToFirebase(goalId, newConfigs)
+      if (isUsingFirebase && user) {
+        await saveSubjectConfigsToFirebase(user.uid, goalId, newConfigs)
       }
     },
-    [subjectConfigs, isUsingFirebase, goalId, subjectConfigsKey],
+    [subjectConfigs, isUsingFirebase, user, goalId, subjectConfigsKey],
   )
 
   return {
     dayDetails,
     subjectConfigs,
-    isLoading,
+    isLoading: isLoading || authLoading,
     error,
     isUsingFirebase,
     updateDayDetails,
