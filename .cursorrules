@@ -1,0 +1,73 @@
+# Cursor Rules for Goal Chaser
+
+## Code Organization Principles
+
+### 1. Single Responsibility - One File, One Purpose
+- **Components**: Each React component should have its own dedicated file
+- **Types/Interfaces**: Keep in dedicated `types/` or `types.ts` files
+- **Constants**: Store in dedicated `constants/` or `constants.ts` files
+- **Utilities**: Helper functions go in `utils/` or `lib/` directory
+- **API calls**: All API/Firebase calls should be in dedicated files under `lib/` or `api/`
+- **Hooks**: Custom hooks should each have their own file in `hooks/`
+
+### 2. File Structure Convention
+```
+src/
+├── app/                    # Next.js app router pages
+│   └── [route]/
+│       └── page.tsx        # Page component (minimal, imports from components)
+├── components/
+│   ├── ui/                 # Reusable UI primitives (Card, Button, Tabs, etc.)
+│   └── features/           # Feature-specific components (Calendar, DetailView, etc.)
+├── hooks/                  # Custom React hooks
+├── lib/                    # Utilities, API clients, Firebase helpers
+├── types/                  # TypeScript type definitions
+└── constants/              # App-wide constants
+```
+
+### 3. Component Guidelines
+- Keep components under 150 lines when possible
+- If a component exceeds 200 lines, consider splitting it
+- Extract repeated JSX patterns into reusable components
+- Use composition over large monolithic components
+
+### 4. Naming Conventions
+- **Components**: PascalCase (`Calendar.tsx`, `DetailView.tsx`)
+- **Hooks**: camelCase with `use` prefix (`useFirebase.ts`, `useGoals.ts`)
+- **Utils**: camelCase (`dateUtils.ts`, `formatters.ts`)
+- **Types**: PascalCase for types, interfaces (`DayDetails`, `GoalProps`)
+- **Constants**: SCREAMING_SNAKE_CASE for values (`WEEKDAY_LABELS`, `MONTH_NAMES`)
+
+### 5. Import Organization
+```typescript
+// 1. React/Next imports
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+// 2. Third-party libraries
+import { motion } from 'framer-motion'
+
+// 3. Internal absolute imports (components, hooks, utils)
+import { Card } from '@/components/ui/Card'
+import { useGoals } from '@/hooks/useGoals'
+import { formatDate } from '@/lib/dateUtils'
+
+// 4. Types
+import type { DayDetails, GoalProps } from '@/types'
+
+// 5. Relative imports (if any)
+import { LocalComponent } from './LocalComponent'
+```
+
+### 6. Export Guidelines
+- Use named exports for components (easier to refactor)
+- Default exports only for page components (Next.js requirement)
+- Re-export from index files for cleaner imports
+
+### 7. Don'ts
+- ❌ Don't put multiple components in one file (unless tightly coupled and small)
+- ❌ Don't mix API logic with component logic
+- ❌ Don't inline large constant arrays in components
+- ❌ Don't duplicate types across files
+- ❌ Don't write helper functions inside components if they can be pure utilities
+

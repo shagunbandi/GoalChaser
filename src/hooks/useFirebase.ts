@@ -3,12 +3,14 @@
 import { useState, useEffect, useCallback } from 'react'
 
 // ============ Types ============
-type DayStatus = 'RED' | 'YELLOW' | 'GREEN' | null
+// Productivity score: 1-10 scale (1-3: Low, 4-6: OK, 7-10: High)
+type DayStatus = number | null
 
 interface DayDetails {
   status: DayStatus
   subject: string
   topic: string
+  note: string
 }
 
 interface SavedSuggestions {
@@ -106,6 +108,7 @@ async function loadDayDetailsFromFirebase(
         status: data.status || null,
         subject: data.subject || '',
         topic: data.topic || '',
+        note: data.note || '',
       }
     })
 
@@ -274,6 +277,7 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
         status: null,
         subject: '',
         topic: '',
+        note: '',
       }
 
       const newDetails: DayDetails = {
