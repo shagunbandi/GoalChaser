@@ -9,7 +9,7 @@ import { useFirebase } from '@/hooks/useFirebase'
 import { useGoals } from '@/hooks/useGoals'
 
 // Components
-import { Card, Tabs } from '@/components/ui'
+import { Card, Navbar } from '@/components/ui'
 import { Calendar, DetailView } from '@/components/features'
 
 // Utils
@@ -45,7 +45,6 @@ export default function GoalPage() {
 
   // Initialize todayISO and selectedDate together so selectedDate defaults to today
   const [todayISO, setTodayISO] = useState(() => toISODateString(new Date()))
-  const [activeTab, setActiveTab] = useState('calendar')
   const [selectedDate, setSelectedDate] = useState(() =>
     toISODateString(new Date()),
   )
@@ -102,7 +101,6 @@ export default function GoalPage() {
 
   const handleDayClick = (iso: string) => {
     setSelectedDate(iso)
-    setActiveTab('details')
   }
 
   const handleUpdateDetails = (iso: string, updates: Partial<DayDetails>) => {
@@ -116,12 +114,6 @@ export default function GoalPage() {
   const handleAddTopic = (subjectId: string, topic: string) => {
     addTopicToSubject(subjectId, topic)
   }
-
-  // Mobile tabs
-  const tabs = [
-    { id: 'calendar', label: 'Calendar' },
-    { id: 'details', label: 'Details' },
-  ]
 
   // Loading state
   if (isLoading || goalsLoading) {
@@ -167,7 +159,14 @@ export default function GoalPage() {
         }}
       />
 
-      <div className="relative z-10 min-h-screen p-6">
+      {/* Navbar */}
+      <Navbar
+        goalId={goalId}
+        goalName={goal?.name || 'Nitya'}
+        goalDescription={goal?.description}
+      />
+
+      <div className="relative z-10 p-4 md:p-6">
         {/* Error Banner */}
         {error && (
           <div className="max-w-7xl mx-auto mb-4">
@@ -177,72 +176,45 @@ export default function GoalPage() {
           </div>
         )}
 
-        {/* Header with Goal Name */}
-        <div className="max-w-7xl mx-auto mb-6">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-slate-300 hover:text-white transition-all"
-              title="Back to Goals"
-            >
-              ←
-            </Link>
-            <div className="flex-1">
-              <h1 className="text-2xl md:text-3xl font-black tracking-tight bg-gradient-to-r from-cyan-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
-                {goal?.name || 'Nitya'}
-              </h1>
-              {goal?.description && (
-                <p className="text-slate-400 text-sm mt-1">
-                  {goal.description}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Tabs - visible on small screens */}
-        <div className="md:hidden mb-4">
-          <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
-        </div>
-
         <div className="max-w-7xl mx-auto">
           {/* 
             Desktop Layout:
             - Single card with Calendar + Day Details side by side
             
             Mobile Layout:
-            - Tab 1: Calendar only (clicking a day goes to Details tab)
-            - Tab 2: Day Details
+            - Calendar on top, Details below with dividing line
           */}
 
-          {/* Mobile View - Separate cards with tabs */}
+          {/* Mobile View - Stacked layout with divider */}
           <div className="md:hidden">
-            {/* Calendar Panel - shows on calendar tab */}
-            <div className={activeTab === 'calendar' ? 'block' : 'hidden'}>
-              <Calendar
-                currentYear={currentYear}
-                currentMonth={currentMonth}
-                monthInfo={currentMonthInfo}
-                dayStatuses={dayStatuses}
-                selectedDate={selectedDate}
-                todayISO={todayISO}
-                onPrevMonth={goToPreviousMonth}
-                onNextMonth={goToNextMonth}
-                onDayClick={handleDayClick}
-              />
-            </div>
+            <Card className="p-0 overflow-hidden">
+              <div className="divide-y divide-white/10">
+                {/* Calendar on top */}
+                <Calendar
+                  currentYear={currentYear}
+                  currentMonth={currentMonth}
+                  monthInfo={currentMonthInfo}
+                  dayStatuses={dayStatuses}
+                  selectedDate={selectedDate}
+                  todayISO={todayISO}
+                  onPrevMonth={goToPreviousMonth}
+                  onNextMonth={goToNextMonth}
+                  onDayClick={handleDayClick}
+                  noCard
+                />
 
-            {/* Day Details - shows on details tab */}
-            <div className={activeTab === 'details' ? 'block' : 'hidden'}>
-              <DetailView
-                selectedDate={selectedDate}
-                dayDetails={dayDetails}
-                subjectConfigs={subjectConfigs}
-                onUpdateDetails={handleUpdateDetails}
-                onAddSubject={handleAddSubject}
-                onAddTopic={handleAddTopic}
-              />
-            </div>
+                {/* Day Details below */}
+                <DetailView
+                  selectedDate={selectedDate}
+                  dayDetails={dayDetails}
+                  subjectConfigs={subjectConfigs}
+                  onUpdateDetails={handleUpdateDetails}
+                  onAddSubject={handleAddSubject}
+                  onAddTopic={handleAddTopic}
+                  noCard
+                />
+              </div>
+            </Card>
           </div>
 
           {/* Desktop View - Combined card with side-by-side layout */}
