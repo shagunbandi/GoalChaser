@@ -50,6 +50,7 @@ export interface SubjectConfig {
   id: string
   name: string
   topics: string[]
+  hasTopics?: boolean // If false, subject doesn't need topics (default: true)
   color?: string
 }
 

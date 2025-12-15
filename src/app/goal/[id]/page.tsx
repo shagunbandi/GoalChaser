@@ -45,7 +45,11 @@ export default function GoalPage() {
     error,
     updateDayDetails,
     addSubjectConfig,
+    removeSubjectConfig,
+    updateSubjectConfig,
+    toggleSubjectHasTopics,
     addTopicToSubject,
+    removeTopicFromSubject,
   } = useFirebase(goalId)
 
   // Initialize todayISO and selectedDate together so selectedDate defaults to today
@@ -125,6 +129,22 @@ export default function GoalPage() {
 
   const handleAddTopic = (subjectId: string, topic: string) => {
     addTopicToSubject(subjectId, topic)
+  }
+
+  const handleRemoveSubject = (id: string) => {
+    removeSubjectConfig(id)
+  }
+
+  const handleUpdateSubject = (id: string, name: string) => {
+    updateSubjectConfig(id, name)
+  }
+
+  const handleToggleHasTopics = (id: string) => {
+    toggleSubjectHasTopics(id)
+  }
+
+  const handleRemoveTopic = (subjectId: string, topic: string) => {
+    removeTopicFromSubject(subjectId, topic)
   }
 
   // Loading state (including auth check)
@@ -242,7 +262,11 @@ export default function GoalPage() {
                   subjectConfigs={subjectConfigs}
                   onUpdateDetails={handleUpdateDetails}
                   onAddSubject={handleAddSubject}
+                  onRemoveSubject={handleRemoveSubject}
+                  onUpdateSubject={handleUpdateSubject}
+                  onToggleHasTopics={handleToggleHasTopics}
                   onAddTopic={handleAddTopic}
+                  onRemoveTopic={handleRemoveTopic}
                   noCard
                 />
               </div>
@@ -274,7 +298,11 @@ export default function GoalPage() {
                   subjectConfigs={subjectConfigs}
                   onUpdateDetails={handleUpdateDetails}
                   onAddSubject={handleAddSubject}
+                  onRemoveSubject={handleRemoveSubject}
+                  onUpdateSubject={handleUpdateSubject}
+                  onToggleHasTopics={handleToggleHasTopics}
                   onAddTopic={handleAddTopic}
+                  onRemoveTopic={handleRemoveTopic}
                   noCard
                 />
               </div>

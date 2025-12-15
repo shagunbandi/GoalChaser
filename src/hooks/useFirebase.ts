@@ -26,6 +26,7 @@ interface SubjectConfig {
   id: string
   name: string
   topics: string[]
+  hasTopics?: boolean // If false, subject doesn't need topics (default: true)
   color?: string
 }
 
@@ -217,6 +218,7 @@ interface UseFirebaseReturn {
   addSubjectConfig: (name: string) => Promise<void>
   removeSubjectConfig: (id: string) => Promise<void>
   updateSubjectConfig: (id: string, name: string) => Promise<void>
+  toggleSubjectHasTopics: (id: string) => Promise<void>
   addTopicToSubject: (subjectId: string, topic: string) => Promise<void>
   removeTopicFromSubject: (subjectId: string, topic: string) => Promise<void>
 }
@@ -381,6 +383,22 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
     [subjectConfigs, isUsingFirebase, user, goalId, subjectConfigsKey],
   )
 
+  // Toggle subject hasTopics setting
+  const toggleSubjectHasTopics = useCallback(
+    async (id: string) => {
+      const newConfigs = subjectConfigs.map((s) =>
+        s.id === id ? { ...s, hasTopics: !(s.hasTopics ?? true) } : s,
+      )
+      setSubjectConfigs(newConfigs)
+      saveToStorage(subjectConfigsKey, newConfigs)
+
+      if (isUsingFirebase && user) {
+        await saveSubjectConfigsToFirebase(user.uid, goalId, newConfigs)
+      }
+    },
+    [subjectConfigs, isUsingFirebase, user, goalId, subjectConfigsKey],
+  )
+
   // Add topic to subject
   const addTopicToSubject = useCallback(
     async (subjectId: string, topic: string) => {
@@ -431,6 +449,7 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
     addSubjectConfig,
     removeSubjectConfig,
     updateSubjectConfig,
+    toggleSubjectHasTopics,
     addTopicToSubject,
     removeTopicFromSubject,
   }

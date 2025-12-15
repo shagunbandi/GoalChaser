@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { DayDetails, SubjectConfig, SubjectEntry } from '@/types'
 import { Card, CardHeader } from '@/components/ui'
 import { StatusSelector } from './StatusSelector'
+import { SubjectManager } from './SubjectManager'
 import { formatDateDisplay } from '@/lib/dateUtils'
 
 interface DetailViewProps {
@@ -12,7 +13,11 @@ interface DetailViewProps {
   subjectConfigs: SubjectConfig[]
   onUpdateDetails: (iso: string, details: Partial<DayDetails>) => void
   onAddSubject: (name: string) => void
+  onRemoveSubject: (id: string) => void
+  onUpdateSubject: (id: string, name: string) => void
+  onToggleHasTopics: (id: string) => void
   onAddTopic: (subjectId: string, topic: string) => void
+  onRemoveTopic: (subjectId: string, topic: string) => void
   noCard?: boolean
 }
 
@@ -22,7 +27,11 @@ export function DetailView({
   subjectConfigs,
   onUpdateDetails,
   onAddSubject,
+  onRemoveSubject,
+  onUpdateSubject,
+  onToggleHasTopics,
   onAddTopic,
+  onRemoveTopic,
   noCard = false,
 }: DetailViewProps) {
   const [showAddSubject, setShowAddSubject] = useState(false)
@@ -34,6 +43,7 @@ export function DetailView({
     string | null
   >(null)
   const [newTopicInput, setNewTopicInput] = useState('')
+  const [showSubjectManager, setShowSubjectManager] = useState(false)
 
   const details = dayDetails[selectedDate]
   const currentStatus = details?.status || null
@@ -52,6 +62,12 @@ export function DetailView({
   // Get subject config by name
   const getSubjectConfig = (subjectName: string) => {
     return subjectConfigs.find((s) => s.name === subjectName)
+  }
+
+  // Check if subject has topics enabled
+  const subjectHasTopics = (subjectName: string) => {
+    const config = getSubjectConfig(subjectName)
+    return config?.hasTopics ?? true
   }
 
   // Update subjects array
@@ -157,9 +173,23 @@ export function DetailView({
         {/* Subjects Section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-medium text-white/60">
-              Subjects
-            </label>
+            <div className="flex items-center gap-3">
+              <label className="block text-sm font-medium text-white/60">
+                Subjects
+              </label>
+              <button
+                onClick={() => setShowSubjectManager(true)}
+                className="
+                  p-1.5 rounded-lg text-sm
+                  text-white/40 hover:text-white/70
+                  hover:bg-white/[0.08]
+                  transition-all duration-200
+                "
+                title="Manage subjects and topics"
+              >
+                ⚙️
+              </button>
+            </div>
             {totalHours > 0 && (
               <span className="text-xs text-[#32D4DE]">
                 Total: {totalHours}h
@@ -170,29 +200,41 @@ export function DetailView({
           {/* Added Subjects */}
           {currentSubjects.length > 0 && (
             <div className="space-y-2">
-              {currentSubjects.map((entry, index) => (
+              {currentSubjects.map((entry, index) => {
+                const hasTopics = subjectHasTopics(entry.subject)
+                const isExpanded = expandedSubjectIndex === index
+                
+                return (
                 <div
                   key={entry.subject}
-                  className="
-                    bg-white/[0.03] backdrop-blur-sm
-                    border border-white/[0.08] rounded-xl
-                    overflow-hidden
-                  "
+                  className={`
+                    backdrop-blur-sm rounded-xl overflow-hidden
+                    ${hasTopics 
+                      ? 'bg-white/[0.03] border border-white/[0.08]' 
+                      : 'bg-[#30D158]/20 border border-[#30D158]/30'
+                    }
+                  `}
                 >
                   {/* Subject Header */}
                   <div
-                    className="flex items-center justify-between p-3 cursor-pointer hover:bg-white/[0.02]"
-                    onClick={() =>
-                      setExpandedSubjectIndex(
-                        expandedSubjectIndex === index ? null : index,
-                      )
-                    }
+                    className={`
+                      flex items-center justify-between p-3
+                      ${hasTopics ? 'cursor-pointer hover:bg-white/[0.02]' : ''}
+                    `}
+                    onClick={() => {
+                      if (hasTopics) {
+                        setExpandedSubjectIndex(isExpanded ? null : index)
+                      }
+                    }}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-[#007AFF] font-medium">
+                      <span className={`font-medium ${hasTopics ? 'text-[#007AFF]' : 'text-[#30D158]'}`}>
                         {entry.subject}
                       </span>
-                      {entry.topics.length > 0 && (
+                      {!hasTopics && (
+                        <span className="text-xs text-[#30D158]/70">✓ Done</span>
+                      )}
+                      {hasTopics && entry.topics.length > 0 && (
                         <span className="text-xs text-white/40">
                           {entry.topics.length} topic
                           {entry.topics.length !== 1 ? 's' : ''}
@@ -214,14 +256,16 @@ export function DetailView({
                       >
                         ✕
                       </button>
-                      <span className="text-white/30 text-xs">
-                        {expandedSubjectIndex === index ? '▲' : '▼'}
-                      </span>
+                      {hasTopics && (
+                        <span className="text-white/30 text-xs">
+                          {isExpanded ? '▲' : '▼'}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Expanded Content */}
-                  {expandedSubjectIndex === index && (
+                  {/* Expanded Content - only for subjects with topics */}
+                  {hasTopics && isExpanded && (
                     <div className="border-t border-white/[0.06] p-3 space-y-4">
                       {/* Topics */}
                       <div className="space-y-2">
@@ -357,7 +401,7 @@ export function DetailView({
                     </div>
                   )}
                 </div>
-              ))}
+              )})}
             </div>
           )}
 
@@ -479,6 +523,20 @@ export function DetailView({
           />
         </div>
       </div>
+
+      {/* Subject Manager Modal */}
+      {showSubjectManager && (
+        <SubjectManager
+          subjectConfigs={subjectConfigs}
+          onAddSubject={onAddSubject}
+          onRemoveSubject={onRemoveSubject}
+          onUpdateSubject={onUpdateSubject}
+          onToggleHasTopics={onToggleHasTopics}
+          onAddTopic={onAddTopic}
+          onRemoveTopic={onRemoveTopic}
+          onClose={() => setShowSubjectManager(false)}
+        />
+      )}
     </>
   )
 
