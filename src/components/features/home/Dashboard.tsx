@@ -6,16 +6,12 @@ import { User } from 'firebase/auth'
 import { Goal } from '@/hooks/useGoals'
 import { UserAvatar } from '@/hooks/useAuth'
 import { GoalCard } from './GoalCard'
-import { CreateGoalForm } from './CreateGoalForm'
+import { CreateGoalForm, CreateGoalFormData } from './CreateGoalForm'
 
 interface DashboardProps {
   user: User
   goals: Goal[]
-  createGoal: (
-    name: string,
-    description?: string,
-    color?: string,
-  ) => Promise<Goal>
+  createGoal: (options: CreateGoalFormData) => Promise<Goal>
   deleteGoal: (id: string) => Promise<void>
 }
 
@@ -35,12 +31,8 @@ export function Dashboard({
   const router = useRouter()
   const [showCreateForm, setShowCreateForm] = useState(false)
 
-  const handleCreateGoal = async (
-    name: string,
-    description: string,
-    color: string,
-  ) => {
-    const newGoal = await createGoal(name, description, color)
+  const handleCreateGoal = async (data: CreateGoalFormData) => {
+    const newGoal = await createGoal(data)
     router.push(`/goal/${newGoal.id}`)
   }
 

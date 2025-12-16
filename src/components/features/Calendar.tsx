@@ -1,8 +1,8 @@
 'use client'
 
-import type { DayStatus, MonthInfo } from '@/types'
+import type { DayStatus, MonthInfo, SuccessCriterion, DayDetails } from '@/types'
 import { Card } from '@/components/ui/Card'
-import { getScoreColorClass } from '@/lib/scoreUtils'
+import { getScoreColorClass, getStatusColorStyle } from '@/lib/scoreUtils'
 import { WEEKDAY_LABELS, MONTH_NAMES } from '@/constants'
 
 interface CalendarProps {
@@ -10,12 +10,18 @@ interface CalendarProps {
   currentMonth: number
   monthInfo: MonthInfo
   dayStatuses: Record<string, DayStatus>
+  dayDetails?: Record<string, DayDetails>
   selectedDate: string
   todayISO: string
   onPrevMonth: () => void
   onNextMonth: () => void
   onDayClick: (iso: string) => void
   noCard?: boolean
+  // Goal date range (optional)
+  goalStartDate?: string
+  goalEndDate?: string
+  // Success criterion for coloring
+  successCriterion?: SuccessCriterion
 }
 
 export function Calendar({
@@ -23,35 +29,68 @@ export function Calendar({
   currentMonth,
   monthInfo,
   dayStatuses,
+  dayDetails = {},
   selectedDate,
   todayISO,
   onPrevMonth,
   onNextMonth,
   onDayClick,
   noCard = false,
+  goalStartDate,
+  goalEndDate,
+  successCriterion,
 }: CalendarProps) {
   const firstDayWeekdayIndex = monthInfo.days[0]?.weekdayIndex || 0
   const emptyCells = Array(firstDayWeekdayIndex).fill(null)
 
+  // Check if a date is within the goal's date range
+  const isDateInRange = (iso: string): boolean => {
+    if (!goalStartDate && !goalEndDate) return true
+    if (goalStartDate && iso < goalStartDate) return false
+    if (goalEndDate && iso > goalEndDate) return false
+    return true
+  }
+
+  // Calculate total hours for a day (subjects OR direct, not both)
+  const getTotalHours = (iso: string): number => {
+    const details = dayDetails[iso]
+    if (!details) return 0
+    const subjectHours = details.subjects?.reduce((sum, entry) => sum + (entry.hours || 0), 0) || 0
+    const directHours = details.directHours || 0
+    // Subject hours take priority over direct hours
+    return subjectHours > 0 ? subjectHours : directHours
+  }
+
   const getDayClasses = (
     status: DayStatus,
     isToday: boolean,
-    isSelected: boolean
+    isSelected: boolean,
+    isInRange: boolean
   ): string => {
-    const bg = getScoreColorClass(status)
+    // For productivity criterion or default, use the existing color class
+    const useProductivityColors = !successCriterion || successCriterion.type === 'productivity'
+    const bg = useProductivityColors ? getScoreColorClass(status) : ''
+    
     const todayRing = isToday ? 'ring-2 ring-[#007AFF] ring-offset-1 ring-offset-[#0a0a12]' : ''
     const selectedRing = isSelected
       ? 'ring-2 ring-[#AF52DE] ring-offset-2 ring-offset-[#0a0a12] shadow-[0_0_20px_rgba(175,82,222,0.3)]'
       : ''
+    const outOfRange = !isInRange ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:scale-[1.05]'
+    
     return `
-      ${bg} ${todayRing} ${selectedRing}
-      aspect-square rounded-xl cursor-pointer
-      hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]
-      hover:scale-[1.05]
+      ${bg} ${todayRing} ${selectedRing} ${outOfRange}
+      aspect-square rounded-xl
       transition-all duration-200
       flex flex-col items-start justify-start p-2
       backdrop-blur-sm
     `
+  }
+
+  // Get inline style for hours-based coloring
+  const getDayStyle = (iso: string): React.CSSProperties => {
+    if (!successCriterion || successCriterion.type !== 'hours') return {}
+    const totalHours = getTotalHours(iso)
+    return getStatusColorStyle(successCriterion, null, totalHours)
   }
 
   const content = (
@@ -118,11 +157,13 @@ export function Calendar({
           const status = dayStatuses[day.iso] || null
           const isToday = day.iso === todayISO
           const isSelected = day.iso === selectedDate
+          const isInRange = isDateInRange(day.iso)
           return (
             <div
               key={day.iso}
-              onClick={() => onDayClick(day.iso)}
-              className={getDayClasses(status, isToday, isSelected)}
+              onClick={() => isInRange && onDayClick(day.iso)}
+              className={getDayClasses(status, isToday, isSelected, isInRange)}
+              style={isInRange ? getDayStyle(day.iso) : undefined}
             >
               <span className="text-sm font-medium">{day.dayOfMonth}</span>
             </div>

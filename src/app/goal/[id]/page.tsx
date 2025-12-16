@@ -50,6 +50,8 @@ export default function GoalPage() {
     toggleSubjectHasTopics,
     addTopicToSubject,
     removeTopicFromSubject,
+    updateTopicInSubject,
+    isTopicInUse,
   } = useFirebase(goalId)
 
   // Initialize todayISO and selectedDate together so selectedDate defaults to today
@@ -145,6 +147,10 @@ export default function GoalPage() {
 
   const handleRemoveTopic = (subjectId: string, topic: string) => {
     removeTopicFromSubject(subjectId, topic)
+  }
+
+  const handleUpdateTopic = (subjectId: string, oldTopic: string, newTopic: string) => {
+    updateTopicInSubject(subjectId, oldTopic, newTopic)
   }
 
   // Loading state (including auth check)
@@ -247,11 +253,15 @@ export default function GoalPage() {
                   currentMonth={currentMonth}
                   monthInfo={currentMonthInfo}
                   dayStatuses={dayStatuses}
+                  dayDetails={dayDetails}
                   selectedDate={selectedDate}
                   todayISO={todayISO}
                   onPrevMonth={goToPreviousMonth}
                   onNextMonth={goToNextMonth}
                   onDayClick={handleDayClick}
+                  goalStartDate={goal?.startDate}
+                  goalEndDate={goal?.endDate}
+                  successCriterion={goal?.successCriterion}
                   noCard
                 />
 
@@ -267,6 +277,9 @@ export default function GoalPage() {
                   onToggleHasTopics={handleToggleHasTopics}
                   onAddTopic={handleAddTopic}
                   onRemoveTopic={handleRemoveTopic}
+                  onUpdateTopic={handleUpdateTopic}
+                  isTopicInUse={isTopicInUse}
+                  successCriterion={goal?.successCriterion}
                   noCard
                 />
               </div>
@@ -283,11 +296,15 @@ export default function GoalPage() {
                   currentMonth={currentMonth}
                   monthInfo={currentMonthInfo}
                   dayStatuses={dayStatuses}
+                  dayDetails={dayDetails}
                   selectedDate={selectedDate}
                   todayISO={todayISO}
                   onPrevMonth={goToPreviousMonth}
                   onNextMonth={goToNextMonth}
                   onDayClick={(iso) => setSelectedDate(iso)}
+                  goalStartDate={goal?.startDate}
+                  goalEndDate={goal?.endDate}
+                  successCriterion={goal?.successCriterion}
                   noCard
                 />
 
@@ -303,6 +320,9 @@ export default function GoalPage() {
                   onToggleHasTopics={handleToggleHasTopics}
                   onAddTopic={handleAddTopic}
                   onRemoveTopic={handleRemoveTopic}
+                  onUpdateTopic={handleUpdateTopic}
+                  isTopicInUse={isTopicInUse}
+                  successCriterion={goal?.successCriterion}
                   noCard
                 />
               </div>

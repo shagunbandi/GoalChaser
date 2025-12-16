@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './useAuth'
+import type { SuccessCriterion } from '@/types'
 
 // ============ Types ============
 export interface Goal {
@@ -10,6 +11,9 @@ export interface Goal {
   description?: string
   createdAt: string
   color?: string
+  startDate?: string
+  endDate?: string
+  successCriterion?: SuccessCriterion
 }
 
 // ============ LocalStorage Keys ============
@@ -92,6 +96,9 @@ async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
         description: data.description,
         createdAt: data.createdAt,
         color: data.color,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        successCriterion: data.successCriterion,
       })
     })
 
@@ -113,6 +120,9 @@ async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> 
       description: goal.description || '',
       createdAt: goal.createdAt,
       color: goal.color || '',
+      startDate: goal.startDate || null,
+      endDate: goal.endDate || null,
+      successCriterion: goal.successCriterion || null,
       updatedAt: new Date().toISOString(),
     })
     return true
@@ -137,11 +147,20 @@ async function deleteGoalFromFirebase(userId: string, goalId: string): Promise<b
 }
 
 // ============ Main Hook ============
+interface CreateGoalOptions {
+  name: string
+  description?: string
+  color?: string
+  startDate?: string
+  endDate?: string
+  successCriterion?: SuccessCriterion
+}
+
 interface UseGoalsReturn {
   goals: Goal[]
   isLoading: boolean
   error: string | null
-  createGoal: (name: string, description?: string, color?: string) => Promise<Goal>
+  createGoal: (options: CreateGoalOptions) => Promise<Goal>
   deleteGoal: (id: string) => Promise<void>
   getGoal: (id: string) => Goal | undefined
 }
@@ -200,13 +219,16 @@ export function useGoals(): UseGoalsReturn {
   }, [user, authLoading, userStorageKey])
 
   const createGoal = useCallback(
-    async (name: string, description?: string, color?: string): Promise<Goal> => {
+    async (options: CreateGoalOptions): Promise<Goal> => {
       const newGoal: Goal = {
         id: `goal_${Date.now()}`,
-        name: name.trim(),
-        description: description?.trim(),
+        name: options.name.trim(),
+        description: options.description?.trim(),
         createdAt: new Date().toISOString(),
-        color,
+        color: options.color,
+        startDate: options.startDate,
+        endDate: options.endDate,
+        successCriterion: options.successCriterion,
       }
 
       const newGoals = [newGoal, ...goals]

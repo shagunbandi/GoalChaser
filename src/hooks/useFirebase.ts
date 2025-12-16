@@ -221,6 +221,8 @@ interface UseFirebaseReturn {
   toggleSubjectHasTopics: (id: string) => Promise<void>
   addTopicToSubject: (subjectId: string, topic: string) => Promise<void>
   removeTopicFromSubject: (subjectId: string, topic: string) => Promise<void>
+  updateTopicInSubject: (subjectId: string, oldTopic: string, newTopic: string) => Promise<void>
+  isTopicInUse: (subjectId: string, topic: string) => boolean
 }
 
 export function useFirebase(goalId: string): UseFirebaseReturn {
@@ -439,6 +441,87 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
     [subjectConfigs, isUsingFirebase, user, goalId, subjectConfigsKey],
   )
 
+  // Update topic name in subject (also updates all day entries that reference it)
+  const updateTopicInSubject = useCallback(
+    async (subjectId: string, oldTopic: string, newTopic: string) => {
+      if (!newTopic.trim() || oldTopic === newTopic.trim()) return
+
+      const trimmedNewTopic = newTopic.trim()
+
+      // Get subject name for updating day entries
+      const subject = subjectConfigs.find((s) => s.id === subjectId)
+      if (!subject) return
+
+      // Check if new topic name already exists in this subject
+      if (subject.topics.includes(trimmedNewTopic)) return
+
+      // Update topic in subject config
+      const newConfigs = subjectConfigs.map((s) =>
+        s.id === subjectId
+          ? { ...s, topics: s.topics.map((t) => (t === oldTopic ? trimmedNewTopic : t)) }
+          : s,
+      )
+      setSubjectConfigs(newConfigs)
+      saveToStorage(subjectConfigsKey, newConfigs)
+
+      // Update all day entries that reference this topic for this subject
+      const updatedDayDetails = { ...dayDetails }
+      let hasChanges = false
+
+      Object.entries(updatedDayDetails).forEach(([date, details]) => {
+        if (details.subjects) {
+          const updatedSubjects = details.subjects.map((entry) => {
+            if (entry.subject === subject.name && entry.topics.includes(oldTopic)) {
+              hasChanges = true
+              return {
+                ...entry,
+                topics: entry.topics.map((t) => (t === oldTopic ? trimmedNewTopic : t)),
+              }
+            }
+            return entry
+          })
+          if (hasChanges) {
+            updatedDayDetails[date] = { ...details, subjects: updatedSubjects }
+          }
+        }
+      })
+
+      if (hasChanges) {
+        setDayDetails(updatedDayDetails)
+        saveToStorage(dayDetailsKey, updatedDayDetails)
+
+        // Save updated day entries to Firebase
+        if (isUsingFirebase && user) {
+          Object.entries(updatedDayDetails).forEach(async ([date, details]) => {
+            await saveDayDetailsToFirebase(user.uid, goalId, date, details)
+          })
+        }
+      }
+
+      if (isUsingFirebase && user) {
+        await saveSubjectConfigsToFirebase(user.uid, goalId, newConfigs)
+      }
+    },
+    [subjectConfigs, dayDetails, isUsingFirebase, user, goalId, subjectConfigsKey, dayDetailsKey],
+  )
+
+  // Check if a topic is in use in any day entry
+  const isTopicInUse = useCallback(
+    (subjectId: string, topic: string): boolean => {
+      const subject = subjectConfigs.find((s) => s.id === subjectId)
+      if (!subject) return false
+
+      // Check all day entries for this topic
+      return Object.values(dayDetails).some((details) => {
+        if (!details.subjects) return false
+        return details.subjects.some(
+          (entry) => entry.subject === subject.name && entry.topics.includes(topic),
+        )
+      })
+    },
+    [subjectConfigs, dayDetails],
+  )
+
   return {
     dayDetails,
     subjectConfigs,
@@ -452,5 +535,7 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
     toggleSubjectHasTopics,
     addTopicToSubject,
     removeTopicFromSubject,
+    updateTopicInSubject,
+    isTopicInUse,
   }
 }

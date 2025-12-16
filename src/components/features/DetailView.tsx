@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import type { DayDetails, SubjectConfig, SubjectEntry } from '@/types'
+import type { DayDetails, SubjectConfig, SubjectEntry, SuccessCriterion } from '@/types'
 import { Card, CardHeader } from '@/components/ui'
 import { StatusSelector } from './StatusSelector'
+import { HoursSummary } from './HoursSummary'
 import { SubjectManager } from './SubjectManager'
 import { formatDateDisplay } from '@/lib/dateUtils'
 
@@ -18,7 +19,10 @@ interface DetailViewProps {
   onToggleHasTopics: (id: string) => void
   onAddTopic: (subjectId: string, topic: string) => void
   onRemoveTopic: (subjectId: string, topic: string) => void
+  onUpdateTopic: (subjectId: string, oldTopic: string, newTopic: string) => void
+  isTopicInUse: (subjectId: string, topic: string) => boolean
   noCard?: boolean
+  successCriterion?: SuccessCriterion
 }
 
 export function DetailView({
@@ -32,8 +36,12 @@ export function DetailView({
   onToggleHasTopics,
   onAddTopic,
   onRemoveTopic,
+  onUpdateTopic,
+  isTopicInUse,
   noCard = false,
+  successCriterion,
 }: DetailViewProps) {
+  const isHoursBasedGoal = successCriterion?.type === 'hours'
   const [showAddSubject, setShowAddSubject] = useState(false)
   const [newSubjectInput, setNewSubjectInput] = useState('')
   const [expandedSubjectIndex, setExpandedSubjectIndex] = useState<
@@ -145,8 +153,20 @@ export function DetailView({
     }
   }
 
-  // Calculate total hours
-  const totalHours = currentSubjects.reduce((sum, s) => sum + s.hours, 0)
+  // Calculate hours from subjects
+  const subjectHours = currentSubjects.reduce((sum, s) => sum + s.hours, 0)
+  
+  // Get direct hours (for hours-based goals when not using subjects)
+  const directHours = details?.directHours || 0
+  
+  // Total hours: use subject hours if any, otherwise use direct hours
+  // Only one source is used at a time (subjects take priority)
+  const totalHours = subjectHours > 0 ? subjectHours : directHours
+
+  // Handle direct hours change
+  const handleDirectHoursChange = (hours: number) => {
+    onUpdateDetails(selectedDate, { directHours: hours })
+  }
 
   // Get subjects not yet added
   const availableToAdd = availableSubjects.filter(
@@ -162,13 +182,23 @@ export function DetailView({
       />
 
       <div className="space-y-6">
-        {/* Status Selector */}
-        <StatusSelector
-          value={currentStatus}
-          onChange={(status) => {
-            onUpdateDetails(selectedDate, { status })
-          }}
-        />
+        {/* Status Selector or Hours Summary based on goal type */}
+        {isHoursBasedGoal ? (
+          <HoursSummary
+            totalHours={totalHours}
+            subjectHours={subjectHours}
+            directHours={directHours}
+            maxHours={successCriterion.maxHours}
+            onDirectHoursChange={handleDirectHoursChange}
+          />
+        ) : (
+          <StatusSelector
+            value={currentStatus}
+            onChange={(status) => {
+              onUpdateDetails(selectedDate, { status })
+            }}
+          />
+        )}
 
         {/* Subjects Section */}
         <div className="space-y-3">
@@ -534,6 +564,8 @@ export function DetailView({
           onToggleHasTopics={onToggleHasTopics}
           onAddTopic={onAddTopic}
           onRemoveTopic={onRemoveTopic}
+          onUpdateTopic={onUpdateTopic}
+          isTopicInUse={isTopicInUse}
           onClose={() => setShowSubjectManager(false)}
         />
       )}

@@ -18,6 +18,8 @@ export interface DayDetails {
   // New multi-subject support
   subjects?: SubjectEntry[]
   note: string
+  // Direct hours input (used when not tracking via subjects)
+  directHours?: number
 }
 
 export interface DayInfo {
@@ -54,6 +56,30 @@ export interface SubjectConfig {
   color?: string
 }
 
+// ============ Success Criterion Types ============
+
+// Extensible success criterion type - add new types here as needed
+export type SuccessCriterionType = 'productivity' | 'hours'
+
+// Base interface for all success criteria
+export interface BaseSuccessCriterion {
+  type: SuccessCriterionType
+}
+
+// Productivity-based criterion (1-10 scale)
+export interface ProductivityCriterion extends BaseSuccessCriterion {
+  type: 'productivity'
+}
+
+// Hours-based criterion (track hours spent per day)
+export interface HoursCriterion extends BaseSuccessCriterion {
+  type: 'hours'
+  maxHours: 8 | 14 | 18 // Maximum hours per day
+}
+
+// Union type for all success criteria
+export type SuccessCriterion = ProductivityCriterion | HoursCriterion
+
 // ============ Goal Types ============
 
 export interface Goal {
@@ -62,5 +88,10 @@ export interface Goal {
   description?: string
   createdAt: string
   color?: string
+  // Optional date range for the goal
+  startDate?: string // ISO date string
+  endDate?: string // ISO date string
+  // Success criterion - defaults to productivity if not set
+  successCriterion?: SuccessCriterion
 }
 

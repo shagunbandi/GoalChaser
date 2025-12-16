@@ -12,6 +12,8 @@ interface SubjectManagerProps {
   onToggleHasTopics: (id: string) => void
   onAddTopic: (subjectId: string, topic: string) => void
   onRemoveTopic: (subjectId: string, topic: string) => void
+  onUpdateTopic: (subjectId: string, oldTopic: string, newTopic: string) => void
+  isTopicInUse: (subjectId: string, topic: string) => boolean
   onClose: () => void
 }
 
@@ -23,6 +25,8 @@ export function SubjectManager({
   onToggleHasTopics,
   onAddTopic,
   onRemoveTopic,
+  onUpdateTopic,
+  isTopicInUse,
   onClose,
 }: SubjectManagerProps) {
   const [newSubjectInput, setNewSubjectInput] = useState('')
@@ -34,6 +38,10 @@ export function SubjectManager({
   const [newTopicInput, setNewTopicInput] = useState('')
   const [showAddTopic, setShowAddTopic] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  // Topic editing state
+  const [editingTopic, setEditingTopic] = useState<{ subjectId: string; topic: string } | null>(null)
+  const [editingTopicName, setEditingTopicName] = useState('')
+  const [deleteTopicConfirm, setDeleteTopicConfirm] = useState<{ subjectId: string; topic: string } | null>(null)
 
   // Add new subject
   const handleAddSubject = () => {
@@ -85,6 +93,28 @@ export function SubjectManager({
   // Remove topic from subject
   const handleRemoveTopic = (subjectId: string, topic: string) => {
     onRemoveTopic(subjectId, topic)
+    setDeleteTopicConfirm(null)
+  }
+
+  // Start editing topic
+  const startEditingTopic = (subjectId: string, topic: string) => {
+    setEditingTopic({ subjectId, topic })
+    setEditingTopicName(topic)
+  }
+
+  // Save topic edit
+  const saveTopicEdit = () => {
+    if (editingTopic && editingTopicName.trim()) {
+      onUpdateTopic(editingTopic.subjectId, editingTopic.topic, editingTopicName.trim())
+    }
+    setEditingTopic(null)
+    setEditingTopicName('')
+  }
+
+  // Cancel topic edit
+  const cancelTopicEdit = () => {
+    setEditingTopic(null)
+    setEditingTopicName('')
   }
 
   // Portal mounting
@@ -355,35 +385,121 @@ export function SubjectManager({
                           {/* Topic List */}
                           {subject.topics.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
-                              {subject.topics.map((topic) => (
-                                <div
-                                  key={topic}
-                                  className="
-                                group flex items-center gap-2
-                                px-3 py-1.5 rounded-lg
-                                bg-[#AF52DE]/20 text-[#AF52DE]
-                                border border-[#AF52DE]/30
-                              "
-                                >
-                                  <span className="text-sm">{topic}</span>
-                                  <button
-                                    onClick={() =>
-                                      handleRemoveTopic(subject.id, topic)
-                                    }
+                              {subject.topics.map((topic) => {
+                                const topicInUse = isTopicInUse(subject.id, topic)
+                                const isEditing = editingTopic?.subjectId === subject.id && editingTopic?.topic === topic
+                                const isConfirmingDelete = deleteTopicConfirm?.subjectId === subject.id && deleteTopicConfirm?.topic === topic
+
+                                if (isEditing) {
+                                  return (
+                                    <div key={topic} className="flex items-center gap-1">
+                                      <input
+                                        type="text"
+                                        value={editingTopicName}
+                                        onChange={(e) => setEditingTopicName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') saveTopicEdit()
+                                          if (e.key === 'Escape') cancelTopicEdit()
+                                        }}
+                                        className="
+                                          px-2 py-1 w-28
+                                          bg-white/[0.05] border border-[#AF52DE]/50 rounded-lg
+                                          text-white text-sm
+                                          focus:outline-none
+                                        "
+                                        autoFocus
+                                      />
+                                      <button
+                                        onClick={saveTopicEdit}
+                                        className="px-2 py-1 bg-[#30D158] text-white text-xs rounded-lg"
+                                      >
+                                        ✓
+                                      </button>
+                                      <button
+                                        onClick={cancelTopicEdit}
+                                        className="px-2 py-1 bg-white/[0.1] text-white/60 text-xs rounded-lg"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  )
+                                }
+
+                                return (
+                                  <div
+                                    key={topic}
                                     className="
-                                  w-4 h-4 rounded-full
-                                  bg-white/0 hover:bg-[#FF3B30]/20
-                                  text-white/40 hover:text-[#FF3B30]
-                                  flex items-center justify-center
-                                  text-xs font-bold
-                                  transition-all duration-200
-                                  opacity-0 group-hover:opacity-100
-                                "
+                                      group flex items-center gap-2
+                                      px-3 py-1.5 rounded-lg
+                                      bg-[#AF52DE]/20 text-[#AF52DE]
+                                      border border-[#AF52DE]/30
+                                    "
                                   >
-                                    ✕
-                                  </button>
-                                </div>
-                              ))}
+                                    <span className="text-sm">{topic}</span>
+                                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      {/* Edit button */}
+                                      <button
+                                        onClick={() => startEditingTopic(subject.id, topic)}
+                                        className="
+                                          w-5 h-5 rounded-full
+                                          hover:bg-[#FF9500]/20
+                                          text-white/40 hover:text-[#FF9500]
+                                          flex items-center justify-center
+                                          text-xs
+                                          transition-all duration-200
+                                        "
+                                        title="Edit topic"
+                                      >
+                                        ✏️
+                                      </button>
+                                      {/* Delete button - only show if not in use */}
+                                      {isConfirmingDelete ? (
+                                        <div className="flex items-center gap-0.5 ml-1">
+                                          <button
+                                            onClick={() => handleRemoveTopic(subject.id, topic)}
+                                            className="px-1.5 py-0.5 bg-[#FF3B30] text-white text-xs rounded"
+                                          >
+                                            Delete
+                                          </button>
+                                          <button
+                                            onClick={() => setDeleteTopicConfirm(null)}
+                                            className="px-1.5 py-0.5 bg-white/[0.1] text-white/60 text-xs rounded"
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      ) : topicInUse ? (
+                                        <span
+                                          className="
+                                            w-5 h-5 rounded-full
+                                            text-white/20
+                                            flex items-center justify-center
+                                            text-xs cursor-not-allowed
+                                          "
+                                          title="Cannot delete: topic is in use"
+                                        >
+                                          🔒
+                                        </span>
+                                      ) : (
+                                        <button
+                                          onClick={() => setDeleteTopicConfirm({ subjectId: subject.id, topic })}
+                                          className="
+                                            w-5 h-5 rounded-full
+                                            hover:bg-[#FF3B30]/20
+                                            text-white/40 hover:text-[#FF3B30]
+                                            flex items-center justify-center
+                                            text-xs
+                                            transition-all duration-200
+                                          "
+                                          title="Delete topic"
+                                        >
+                                          🗑️
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
                             </div>
                           ) : (
                             <p className="text-xs text-white/30">
