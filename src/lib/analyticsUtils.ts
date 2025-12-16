@@ -1,4 +1,4 @@
-import type { DayDetails, SubjectEntry } from '@/types'
+import type { DayDetails, SubjectEntry, SuccessCriterion } from '@/types'
 import { toISODateString } from './dateUtils'
 
 // ============ Types ============
@@ -16,7 +16,9 @@ export interface DayProductivity {
   topic: string
   // New fields for multi-subject support
   subjects: SubjectEntry[]
-  totalHours: number
+  totalHours: number // Combined subject + direct hours
+  subjectHours: number
+  directHours: number
 }
 
 export interface SubjectStats {
@@ -37,17 +39,32 @@ export interface TopicStats {
   totalHours: number
 }
 
+export interface Streak {
+  length: number
+  startDate: string
+  endDate: string
+}
+
 export interface AnalyticsSummary {
   totalDays: number
   daysWithData: number
   avgScore: number
   totalScore: number
   totalHours: number
+  avgHoursPerDay: number
   highProductivityDays: number  // score >= 7
   mediumProductivityDays: number // score 4-6
   lowProductivityDays: number // score 1-3
+  // Hours-based distribution (for hours tracking mode)
+  highHoursDays: number  // >= 80% of max
+  mediumHoursDays: number // 40-80% of max
+  lowHoursDays: number // < 40% of max
   bestDay: DayProductivity | null
   worstDay: DayProductivity | null
+  // Streaks
+  longestStreak: Streak | null
+  secondLongestStreak: Streak | null
+  currentStreak: number
 }
 
 // ============ Date Range Presets ============
@@ -173,7 +190,10 @@ export function getDayWiseProductivity(
   return dates.map((date) => {
     const details = dayDetails[date]
     const subjects = details?.subjects || []
-    const totalHours = subjects.reduce((sum, s) => sum + (s.hours || 0), 0)
+    const subjectHours = subjects.reduce((sum, s) => sum + (s.hours || 0), 0)
+    const directHours = details?.directHours || 0
+    // Use subject hours if any, otherwise direct hours
+    const totalHours = subjectHours > 0 ? subjectHours : directHours
     
     return {
       date,
@@ -183,54 +203,174 @@ export function getDayWiseProductivity(
       topic: details?.topic ?? '',
       subjects,
       totalHours,
+      subjectHours,
+      directHours,
     }
   })
 }
 
 /**
- * Calculate overall analytics summary
+ * Calculate streaks from day data
+ * Returns all streaks sorted by length (longest first)
  */
-export function calculateSummary(dayData: DayProductivity[]): AnalyticsSummary {
-  const daysWithScores = dayData.filter((d) => d.score !== null && d.score > 0)
-  const totalHours = dayData.reduce((sum, d) => sum + d.totalHours, 0)
+function calculateStreaks(
+  dayData: DayProductivity[],
+  isHoursBased: boolean
+): Streak[] {
+  const streaks: Streak[] = []
+  let currentStreak: { start: string; end: string; length: number } | null = null
 
-  if (daysWithScores.length === 0) {
-    return {
-      totalDays: dayData.length,
-      daysWithData: 0,
-      avgScore: 0,
-      totalScore: 0,
-      totalHours,
-      highProductivityDays: 0,
-      mediumProductivityDays: 0,
-      lowProductivityDays: 0,
-      bestDay: null,
-      worstDay: null,
+  // Data should already be sorted by date
+  for (const day of dayData) {
+    const hasData = isHoursBased ? day.totalHours > 0 : (day.score !== null && day.score > 0)
+
+    if (hasData) {
+      if (currentStreak) {
+        // Check if this is consecutive (next day)
+        const prevDate = new Date(currentStreak.end + 'T00:00:00')
+        const currDate = new Date(day.date + 'T00:00:00')
+        const diffDays = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
+
+        if (diffDays === 1) {
+          // Consecutive - extend streak
+          currentStreak.end = day.date
+          currentStreak.length++
+        } else {
+          // Not consecutive - save current streak and start new one
+          streaks.push({
+            length: currentStreak.length,
+            startDate: currentStreak.start,
+            endDate: currentStreak.end,
+          })
+          currentStreak = { start: day.date, end: day.date, length: 1 }
+        }
+      } else {
+        // Start new streak
+        currentStreak = { start: day.date, end: day.date, length: 1 }
+      }
+    } else {
+      // No data - end current streak if exists
+      if (currentStreak) {
+        streaks.push({
+          length: currentStreak.length,
+          startDate: currentStreak.start,
+          endDate: currentStreak.end,
+        })
+        currentStreak = null
+      }
     }
   }
 
+  // Don't forget the last streak if data ends on a tracked day
+  if (currentStreak) {
+    streaks.push({
+      length: currentStreak.length,
+      startDate: currentStreak.start,
+      endDate: currentStreak.end,
+    })
+  }
+
+  // Sort by length (longest first)
+  streaks.sort((a, b) => b.length - a.length)
+
+  return streaks
+}
+
+/**
+ * Calculate current streak (streak that includes today or the most recent day)
+ */
+function getCurrentStreak(
+  dayData: DayProductivity[],
+  isHoursBased: boolean
+): number {
+  // Work backwards from the end
+  let streak = 0
+  for (let i = dayData.length - 1; i >= 0; i--) {
+    const day = dayData[i]
+    const hasData = isHoursBased ? day.totalHours > 0 : (day.score !== null && day.score > 0)
+    
+    if (hasData) {
+      streak++
+    } else {
+      // If we haven't started counting yet, skip empty days at the end
+      if (streak === 0) continue
+      // Once we've started counting, break on first empty day
+      break
+    }
+  }
+  return streak
+}
+
+/**
+ * Calculate overall analytics summary
+ */
+export function calculateSummary(
+  dayData: DayProductivity[], 
+  successCriterion?: SuccessCriterion
+): AnalyticsSummary {
+  const isHoursBased = successCriterion?.type === 'hours'
+  const maxHours = isHoursBased ? successCriterion.maxHours : 8
+  
+  const daysWithScores = dayData.filter((d) => d.score !== null && d.score > 0)
+  const daysWithHours = dayData.filter((d) => d.totalHours > 0)
+  const totalHours = dayData.reduce((sum, d) => sum + d.totalHours, 0)
+
+  // For hours-based goals, count days with hours as "tracked"
+  const trackedDays = isHoursBased ? daysWithHours : daysWithScores
+  const daysWithData = trackedDays.length
+
+  // Productivity score stats
   const totalScore = daysWithScores.reduce((sum, d) => sum + (d.score || 0), 0)
-  const avgScore = totalScore / daysWithScores.length
+  const avgScore = daysWithScores.length > 0 ? totalScore / daysWithScores.length : 0
 
   const highDays = daysWithScores.filter((d) => d.score! >= 7).length
   const mediumDays = daysWithScores.filter((d) => d.score! >= 4 && d.score! < 7).length
   const lowDays = daysWithScores.filter((d) => d.score! < 4).length
 
-  const sortedByScore = [...daysWithScores].sort((a, b) => (b.score || 0) - (a.score || 0))
-  const bestDay = sortedByScore[0] || null
-  const worstDay = sortedByScore[sortedByScore.length - 1] || null
+  // Hours-based distribution
+  const avgHoursPerDay = daysWithHours.length > 0 ? totalHours / daysWithHours.length : 0
+  const highHoursDays = daysWithHours.filter((d) => d.totalHours >= maxHours * 0.8).length
+  const mediumHoursDays = daysWithHours.filter((d) => d.totalHours >= maxHours * 0.4 && d.totalHours < maxHours * 0.8).length
+  const lowHoursDays = daysWithHours.filter((d) => d.totalHours > 0 && d.totalHours < maxHours * 0.4).length
+
+  // Best/worst day based on mode
+  let bestDay: DayProductivity | null = null
+  let worstDay: DayProductivity | null = null
+
+  if (isHoursBased && daysWithHours.length > 0) {
+    const sortedByHours = [...daysWithHours].sort((a, b) => b.totalHours - a.totalHours)
+    bestDay = sortedByHours[0] || null
+    worstDay = sortedByHours[sortedByHours.length - 1] || null
+  } else if (daysWithScores.length > 0) {
+    const sortedByScore = [...daysWithScores].sort((a, b) => (b.score || 0) - (a.score || 0))
+    bestDay = sortedByScore[0] || null
+    worstDay = sortedByScore[sortedByScore.length - 1] || null
+  }
+
+  // Calculate streaks
+  const streaks = calculateStreaks(dayData, isHoursBased)
+  const longestStreak = streaks[0] || null
+  const secondLongestStreak = streaks[1] || null
+  const currentStreak = getCurrentStreak(dayData, isHoursBased)
 
   return {
     totalDays: dayData.length,
-    daysWithData: daysWithScores.length,
+    daysWithData,
     avgScore: Math.round(avgScore * 10) / 10,
     totalScore,
     totalHours,
+    avgHoursPerDay: Math.round(avgHoursPerDay * 10) / 10,
     highProductivityDays: highDays,
     mediumProductivityDays: mediumDays,
     lowProductivityDays: lowDays,
+    highHoursDays,
+    mediumHoursDays,
+    lowHoursDays,
     bestDay,
     worstDay,
+    longestStreak,
+    secondLongestStreak,
+    currentStreak,
   }
 }
 

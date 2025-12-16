@@ -75,9 +75,11 @@ export default function AnalyticsPage() {
     [dayDetails, dateRange],
   )
 
-  const summary = useMemo(() => calculateSummary(dayData), [dayData])
+  const summary = useMemo(() => calculateSummary(dayData, goal?.successCriterion), [dayData, goal?.successCriterion])
   const subjectStats = useMemo(() => calculateSubjectStats(dayData), [dayData])
   const topicStats = useMemo(() => calculateTopicStats(dayData), [dayData])
+  
+  const isHoursBased = goal?.successCriterion?.type === 'hours'
 
   // Loading state
   if (isLoading || goalsLoading || authLoading) {
@@ -185,7 +187,11 @@ export default function AnalyticsPage() {
             <h2 className="text-lg font-medium text-white/80 mb-4 flex items-center gap-2">
               <span>📈</span> Overview
             </h2>
-            <ExtendedSummary summary={summary} />
+            <ExtendedSummary 
+              summary={summary} 
+              isHoursBased={isHoursBased}
+              maxHours={goal?.successCriterion?.type === 'hours' ? goal.successCriterion.maxHours : undefined}
+            />
           </Card>
 
           {/* Subject & Topic Breakdown */}
@@ -200,7 +206,7 @@ export default function AnalyticsPage() {
                   <SubjectSummaryCard data={subjectStats} />
                 </div>
               )}
-              <SubjectBreakdown data={subjectStats} />
+              <SubjectBreakdown data={subjectStats} isHoursBased={isHoursBased} />
             </Card>
 
             {/* Topic Breakdown */}
@@ -208,7 +214,7 @@ export default function AnalyticsPage() {
               <h2 className="text-lg font-medium text-white/80 mb-4 flex items-center gap-2">
                 <span>🏷️</span> Topic Breakdown
               </h2>
-              <TopicBreakdown data={topicStats} />
+              <TopicBreakdown data={topicStats} isHoursBased={isHoursBased} />
             </Card>
           </div>
 

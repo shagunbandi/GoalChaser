@@ -7,9 +7,10 @@ import {
 
 interface SubjectBreakdownProps {
   data: SubjectStats[]
+  isHoursBased?: boolean
 }
 
-export function SubjectBreakdown({ data }: SubjectBreakdownProps) {
+export function SubjectBreakdown({ data, isHoursBased = false }: SubjectBreakdownProps) {
   if (data.length === 0) {
     return (
       <div className="text-center py-10 text-white/40">
@@ -59,15 +60,17 @@ export function SubjectBreakdown({ data }: SubjectBreakdownProps) {
               </div>
             </div>
 
-            {/* Avg Productivity */}
-            <div className="text-right">
-              <div
-                className={`text-lg font-semibold ${getScoreTextColor(subject.avgScore)}`}
-              >
-                {subject.avgScore}
+            {/* Avg Productivity - only show for productivity mode */}
+            {!isHoursBased && (
+              <div className="text-right">
+                <div
+                  className={`text-lg font-semibold ${getScoreTextColor(subject.avgScore)}`}
+                >
+                  {subject.avgScore}
+                </div>
+                <div className="text-xs text-white/30">avg</div>
               </div>
-              <div className="text-xs text-white/30">avg</div>
-            </div>
+            )}
           </div>
         </div>
       ))}

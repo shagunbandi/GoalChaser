@@ -19,6 +19,7 @@ interface DayDetails {
   topic: string
   subjects?: SubjectEntry[]
   note: string
+  directHours?: number
 }
 
 // Subject configuration with topics
@@ -113,6 +114,7 @@ async function loadDayDetailsFromFirebase(
         topic: data.topic || '',
         subjects: data.subjects || [],
         note: data.note || '',
+        directHours: data.directHours || 0,
       }
     })
 
@@ -303,6 +305,7 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
         topic: '',
         subjects: [],
         note: '',
+        directHours: 0,
       }
 
       const newDetails: DayDetails = {

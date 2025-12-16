@@ -4,9 +4,10 @@ import { type TopicStats, getScoreTextColor } from '@/lib/analyticsUtils'
 
 interface TopicBreakdownProps {
   data: TopicStats[]
+  isHoursBased?: boolean
 }
 
-export function TopicBreakdown({ data }: TopicBreakdownProps) {
+export function TopicBreakdown({ data, isHoursBased = false }: TopicBreakdownProps) {
   if (data.length === 0) {
     return (
       <div className="text-center py-10 text-white/40">
@@ -61,15 +62,17 @@ export function TopicBreakdown({ data }: TopicBreakdownProps) {
               </div>
             </div>
 
-            {/* Avg Productivity */}
-            <div className="text-right">
-              <div
-                className={`text-lg font-semibold ${getScoreTextColor(topic.avgScore)}`}
-              >
-                {topic.avgScore}
+            {/* Avg Productivity - only show for productivity mode */}
+            {!isHoursBased && (
+              <div className="text-right">
+                <div
+                  className={`text-lg font-semibold ${getScoreTextColor(topic.avgScore)}`}
+                >
+                  {topic.avgScore}
+                </div>
+                <div className="text-xs text-white/30">avg</div>
               </div>
-              <div className="text-xs text-white/30">avg</div>
-            </div>
+            )}
           </div>
         </div>
       ))}

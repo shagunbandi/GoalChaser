@@ -1,13 +1,16 @@
 'use client'
 
-import { type AnalyticsSummary, getScoreTextColor } from '@/lib/analyticsUtils'
+import { type AnalyticsSummary, type Streak, getScoreTextColor, getShortDate } from '@/lib/analyticsUtils'
+import { getVibgyorColors } from '@/lib/scoreUtils'
 
 interface SummaryStatsProps {
   summary: AnalyticsSummary
+  isHoursBased?: boolean
+  maxHours?: number
 }
 
-// Compact horizontal bar chart for distribution
-function DistributionBars({ summary }: SummaryStatsProps) {
+// Compact horizontal bar chart for productivity distribution
+function ProductivityDistributionBars({ summary }: { summary: AnalyticsSummary }) {
   const total = summary.daysWithData || 1
   const highPercent = (summary.highProductivityDays / total) * 100
   const mediumPercent = (summary.mediumProductivityDays / total) * 100
@@ -71,36 +74,135 @@ function DistributionBars({ summary }: SummaryStatsProps) {
   )
 }
 
-export function SummaryStats({ summary }: SummaryStatsProps) {
+// Streaks display component
+function StreaksDisplay({ summary }: { summary: AnalyticsSummary }) {
+  const { longestStreak, secondLongestStreak, currentStreak } = summary
+
+  if (!longestStreak) {
+    return (
+      <div className="flex flex-col justify-center h-full">
+        <div className="text-white/30 text-sm text-center">No streaks yet</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Longest Streak */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🏆</span>
+          <span className="text-xs text-white/50">Best</span>
+        </div>
+        <div className="text-right">
+          <span className="text-xl font-bold text-[#FFD60A]">{longestStreak.length}</span>
+          <span className="text-xs text-white/40 ml-1">days</span>
+        </div>
+      </div>
+
+      {/* Second Longest Streak */}
+      {secondLongestStreak && secondLongestStreak.length > 0 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🥈</span>
+            <span className="text-xs text-white/50">2nd</span>
+          </div>
+          <div className="text-right">
+            <span className="text-xl font-bold text-[#C0C0C0]">{secondLongestStreak.length}</span>
+            <span className="text-xs text-white/40 ml-1">days</span>
+          </div>
+        </div>
+      )}
+
+      {/* Current Streak */}
+      {currentStreak > 0 && (
+        <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🔥</span>
+            <span className="text-xs text-white/50">Now</span>
+          </div>
+          <div className="text-right">
+            <span className="text-xl font-bold text-[#FF9500]">{currentStreak}</span>
+            <span className="text-xs text-white/40 ml-1">days</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Get hours color based on VIBGYOR
+function getHoursTextColor(avgHours: number, maxHours: number): string {
+  if (avgHours === 0) return 'text-white/40'
+  const vibgyorColors = getVibgyorColors()
+  const ratio = avgHours / maxHours
+  const index = Math.min(Math.floor(ratio * vibgyorColors.length), vibgyorColors.length - 1)
+  return '' // Return empty, we'll use inline style
+}
+
+function getHoursColorValue(avgHours: number, maxHours: number): string {
+  if (avgHours === 0) return '#666'
+  const vibgyorColors = getVibgyorColors()
+  const ratio = avgHours / maxHours
+  const index = Math.min(Math.floor(ratio * vibgyorColors.length), vibgyorColors.length - 1)
+  return vibgyorColors[index].color
+}
+
+export function SummaryStats({ summary, isHoursBased = false, maxHours = 8 }: SummaryStatsProps) {
   const completionRate =
     summary.totalDays > 0
       ? Math.round((summary.daysWithData / summary.totalDays) * 100)
       : 0
 
+  const avgHoursColor = getHoursColorValue(summary.avgHoursPerDay, maxHours)
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-      {/* Average Score */}
-      <div
-        className="
-        bg-white/[0.02] backdrop-blur-sm
-        rounded-2xl p-5 
-        border border-white/[0.06]
-        transition-all duration-200
-        hover:bg-white/[0.04]
-      "
-      >
-        <div className="text-white/40 text-xs uppercase tracking-wider mb-2">
-          Avg Score
-        </div>
+      {/* Main metric - Avg Score or Avg Hours based on mode */}
+      {isHoursBased ? (
         <div
-          className={`text-3xl font-bold ${getScoreTextColor(
-            summary.avgScore,
-          )}`}
+          className="
+          bg-white/[0.02] backdrop-blur-sm
+          rounded-2xl p-5 
+          border border-white/[0.06]
+          transition-all duration-200
+          hover:bg-white/[0.04]
+        "
         >
-          {summary.avgScore || '—'}
+          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">
+            Avg Hours/Day
+          </div>
+          <div
+            className="text-3xl font-bold"
+            style={{ color: avgHoursColor }}
+          >
+            {summary.avgHoursPerDay || '—'}
+          </div>
+          <div className="text-white/30 text-xs mt-1">out of {maxHours}h</div>
         </div>
-        <div className="text-white/30 text-xs mt-1">out of 10</div>
-      </div>
+      ) : (
+        <div
+          className="
+          bg-white/[0.02] backdrop-blur-sm
+          rounded-2xl p-5 
+          border border-white/[0.06]
+          transition-all duration-200
+          hover:bg-white/[0.04]
+        "
+        >
+          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">
+            Avg Score
+          </div>
+          <div
+            className={`text-3xl font-bold ${getScoreTextColor(
+              summary.avgScore,
+            )}`}
+          >
+            {summary.avgScore || '—'}
+          </div>
+          <div className="text-white/30 text-xs mt-1">out of 10</div>
+        </div>
+      )}
 
       {/* Days Tracked */}
       <div
@@ -145,28 +247,53 @@ export function SummaryStats({ summary }: SummaryStatsProps) {
         </div>
       </div>
 
-      {/* Total Score */}
-      <div
-        className="
-        bg-white/[0.02] backdrop-blur-sm
-        rounded-2xl p-5
-        border border-white/[0.06]
-        transition-all duration-200
-        hover:bg-white/[0.04]
-      "
-      >
-        <div className="text-white/40 text-xs uppercase tracking-wider mb-2">
-          Total Points
+      {/* Total Score or Total Points - only show for productivity mode */}
+      {!isHoursBased && (
+        <div
+          className="
+          bg-white/[0.02] backdrop-blur-sm
+          rounded-2xl p-5
+          border border-white/[0.06]
+          transition-all duration-200
+          hover:bg-white/[0.04]
+        "
+        >
+          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">
+            Total Points
+          </div>
+          <div className="text-3xl font-bold text-[#32D4DE]">
+            {summary.totalScore}
+          </div>
+          <div className="text-white/30 text-xs mt-1">
+            productivity points
+          </div>
         </div>
-        <div className="text-3xl font-bold text-[#32D4DE]">
-          {summary.totalScore}
-        </div>
-        <div className="text-white/30 text-xs mt-1">
-          productivity points
-        </div>
-      </div>
+      )}
 
-      {/* Distribution */}
+      {/* Best Day Hours - only for hours mode */}
+      {isHoursBased && summary.bestDay && (
+        <div
+          className="
+          bg-white/[0.02] backdrop-blur-sm
+          rounded-2xl p-5
+          border border-white/[0.06]
+          transition-all duration-200
+          hover:bg-white/[0.04]
+        "
+        >
+          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">
+            Best Day
+          </div>
+          <div className="text-3xl font-bold text-[#30D158]">
+            {summary.bestDay.totalHours}h
+          </div>
+          <div className="text-white/30 text-xs mt-1">
+            {summary.bestDay.dayName}
+          </div>
+        </div>
+      )}
+
+      {/* Streaks for hours-based, Distribution for productivity */}
       <div
         className="
         bg-white/[0.02] backdrop-blur-sm
@@ -177,15 +304,19 @@ export function SummaryStats({ summary }: SummaryStatsProps) {
       "
       >
         <div className="text-white/40 text-xs uppercase tracking-wider mb-2">
-          Distribution
+          {isHoursBased ? 'Streaks' : 'Distribution'}
         </div>
-        <DistributionBars summary={summary} />
+        {isHoursBased ? (
+          <StreaksDisplay summary={summary} />
+        ) : (
+          <ProductivityDistributionBars summary={summary} />
+        )}
       </div>
     </div>
   )
 }
 
 // Simple export that just uses SummaryStats (no more best/worst days)
-export function ExtendedSummary({ summary }: SummaryStatsProps) {
-  return <SummaryStats summary={summary} />
+export function ExtendedSummary({ summary, isHoursBased, maxHours }: SummaryStatsProps) {
+  return <SummaryStats summary={summary} isHoursBased={isHoursBased} maxHours={maxHours} />
 }
