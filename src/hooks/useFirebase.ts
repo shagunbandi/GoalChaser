@@ -2,209 +2,23 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './useAuth'
+import type { DayDetails, SubjectConfig } from '@/types'
 
-// ============ Types ============
-// Productivity score: 1-10 scale (1-3: Low, 4-6: OK, 7-10: High)
-type DayStatus = number | null
-
-interface SubjectEntry {
-  subject: string
-  topics: string[]
-  hours: number
-}
-
-interface DayDetails {
-  status: DayStatus
-  subject: string
-  topic: string
-  subjects?: SubjectEntry[]
-  note: string
-  directHours?: number
-}
-
-// Subject configuration with topics
-interface SubjectConfig {
-  id: string
-  name: string
-  topics: string[]
-  hasTopics?: boolean // If false, subject doesn't need topics (default: true)
-  color?: string
-}
-
-// ============ LocalStorage Helpers ============
-function getStorageKey(userId: string, goalId: string, key: string): string {
-  return `nitya_${userId}_${goalId}_${key}`
-}
-
-function loadFromStorage<T>(key: string, defaultValue: T): T {
-  if (typeof window === 'undefined') return defaultValue
-  try {
-    const stored = localStorage.getItem(key)
-    return stored ? JSON.parse(stored) : defaultValue
-  } catch {
-    return defaultValue
-  }
-}
-
-function saveToStorage<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch (error) {
-    console.error('Error saving to localStorage:', error)
-  }
-}
-
-// ============ Firebase Helpers (with fallback) ============
-let firebaseAvailable = true
-let db: ReturnType<typeof import('firebase/firestore').getFirestore> | null =
-  null
-
-async function initFirebase() {
-  if (!firebaseAvailable) return null
-
-  try {
-    const { initializeApp, getApps } = await import('firebase/app')
-    const { getFirestore } = await import('firebase/firestore')
-
-    const firebaseConfig = {
-      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    }
-
-    if (!firebaseConfig.projectId) {
-      console.warn('Firebase config missing, using localStorage only')
-      firebaseAvailable = false
-      return null
-    }
-
-    const app =
-      getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
-    db = getFirestore(app)
-    return db
-  } catch (error) {
-    console.warn('Firebase initialization failed, using localStorage:', error)
-    firebaseAvailable = false
-    return null
-  }
-}
-
-// Goal-scoped Firebase helpers
-async function loadDayDetailsFromFirebase(
-  userId: string,
-  goalId: string,
-): Promise<Record<string, DayDetails> | null> {
-  if (!firebaseAvailable || !db) return null
-
-  try {
-    const { collection, getDocs } = await import('firebase/firestore')
-    const colRef = collection(db, 'users', userId, 'goals', goalId, 'days')
-    const querySnapshot = await getDocs(colRef)
-
-    const result: Record<string, DayDetails> = {}
-    querySnapshot.forEach((doc) => {
-      const data = doc.data()
-      result[doc.id] = {
-        status: data.status || null,
-        subject: data.subject || '',
-        topic: data.topic || '',
-        subjects: data.subjects || [],
-        note: data.note || '',
-        directHours: data.directHours || 0,
-      }
-    })
-
-    return result
-  } catch (error) {
-    console.warn('Firebase read failed, using localStorage:', error)
-    return null
-  }
-}
-
-async function saveDayDetailsToFirebase(
-  userId: string,
-  goalId: string,
-  date: string,
-  details: DayDetails,
-): Promise<boolean> {
-  if (!firebaseAvailable || !db) return false
-
-  try {
-    const { doc, setDoc } = await import('firebase/firestore')
-    const docRef = doc(db, 'users', userId, 'goals', goalId, 'days', date)
-    await setDoc(docRef, {
-      ...details,
-      updatedAt: new Date().toISOString(),
-    })
-    return true
-  } catch (error) {
-    console.warn('Firebase write failed:', error)
-    return false
-  }
-}
-
-async function loadSubjectConfigsFromFirebase(
-  userId: string,
-  goalId: string,
-): Promise<SubjectConfig[] | null> {
-  if (!firebaseAvailable || !db) return null
-
-  try {
-    const { doc, getDoc } = await import('firebase/firestore')
-    const docRef = doc(
-      db,
-      'users',
-      userId,
-      'goals',
-      goalId,
-      'settings',
-      'subjectConfigs',
-    )
-    const docSnap = await getDoc(docRef)
-
-    if (docSnap.exists()) {
-      const data = docSnap.data()
-      return data.configs || []
-    }
-    return []
-  } catch (error) {
-    console.warn('Firebase subject configs read failed:', error)
-    return null
-  }
-}
-
-async function saveSubjectConfigsToFirebase(
-  userId: string,
-  goalId: string,
-  configs: SubjectConfig[],
-): Promise<boolean> {
-  if (!firebaseAvailable || !db) return false
-
-  try {
-    const { doc, setDoc } = await import('firebase/firestore')
-    const docRef = doc(
-      db,
-      'users',
-      userId,
-      'goals',
-      goalId,
-      'settings',
-      'subjectConfigs',
-    )
-    await setDoc(docRef, {
-      configs,
-      updatedAt: new Date().toISOString(),
-    })
-    return true
-  } catch (error) {
-    console.warn('Firebase subject configs write failed:', error)
-    return false
-  }
-}
+// API imports
+import { initFirebase } from '@/lib/api/firebase-client'
+import {
+  loadDayDetailsFromFirebase,
+  saveDayDetailsToFirebase,
+} from '@/lib/api/day-details-api'
+import {
+  loadSubjectConfigsFromFirebase,
+  saveSubjectConfigsToFirebase,
+} from '@/lib/api/subject-configs-api'
+import {
+  getStorageKey,
+  loadFromStorage,
+  saveToStorage,
+} from '@/lib/api/storage'
 
 // ============ Main Hook ============
 interface UseFirebaseReturn {
@@ -223,7 +37,11 @@ interface UseFirebaseReturn {
   toggleSubjectHasTopics: (id: string) => Promise<void>
   addTopicToSubject: (subjectId: string, topic: string) => Promise<void>
   removeTopicFromSubject: (subjectId: string, topic: string) => Promise<void>
-  updateTopicInSubject: (subjectId: string, oldTopic: string, newTopic: string) => Promise<void>
+  updateTopicInSubject: (
+    subjectId: string,
+    oldTopic: string,
+    newTopic: string,
+  ) => Promise<void>
   isTopicInUse: (subjectId: string, topic: string) => boolean
 }
 
@@ -241,6 +59,37 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
   // Storage keys scoped to user and goal
   const dayDetailsKey = getStorageKey(userId, goalId, 'dayDetails')
   const subjectConfigsKey = getStorageKey(userId, goalId, 'subjectConfigs')
+
+  const normalizeDayDetailsRecord = (
+    record: Record<string, DayDetails>,
+  ): Record<string, DayDetails> => {
+    const normalized: Record<string, DayDetails> = {}
+    Object.entries(record).forEach(([iso, details]) => {
+      const legacyTravel = (details as any).travel
+      const travelPlans = details.travelPlans
+        ? [...details.travelPlans]
+        : legacyTravel
+        ? Array.isArray(legacyTravel)
+          ? legacyTravel
+          : [legacyTravel]
+        : []
+
+      const normalizedPlanned =
+        details.plannedItems?.map((item) => ({
+          ...item,
+          subjects: item.subjects || [],
+          completed: item.completed || false,
+          sequenceId: item.sequenceId || item.recurrenceId || item.id,
+        })) || []
+
+      normalized[iso] = {
+        ...details,
+        travelPlans,
+        plannedItems: normalizedPlanned,
+      }
+    })
+    return normalized
+  }
 
   // Load initial data
   useEffect(() => {
@@ -267,18 +116,23 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
         await initFirebase()
 
         const loadedDayDetails = await loadDayDetailsFromFirebase(userId, goalId)
-        const loadedSubjectConfigs = await loadSubjectConfigsFromFirebase(userId, goalId)
+        const loadedSubjectConfigs = await loadSubjectConfigsFromFirebase(
+          userId,
+          goalId,
+        )
 
         if (loadedDayDetails !== null && loadedSubjectConfigs !== null) {
           setIsUsingFirebase(true)
-          setDayDetails(loadedDayDetails)
+          // Normalize legacy travel -> travelPlans
+          const normalized = normalizeDayDetailsRecord(loadedDayDetails)
+          setDayDetails(normalized)
           setSubjectConfigs(loadedSubjectConfigs)
 
-          saveToStorage(dayDetailsKey, loadedDayDetails)
+          saveToStorage(dayDetailsKey, normalized)
           saveToStorage(subjectConfigsKey, loadedSubjectConfigs)
         } else {
           setIsUsingFirebase(false)
-          setDayDetails(loadFromStorage(dayDetailsKey, {}))
+          setDayDetails(normalizeDayDetailsRecord(loadFromStorage(dayDetailsKey, {})))
           setSubjectConfigs(loadFromStorage(subjectConfigsKey, []))
         }
       } catch (err) {
@@ -286,7 +140,7 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
         setError('Using offline mode')
         setIsUsingFirebase(false)
 
-        setDayDetails(loadFromStorage(dayDetailsKey, {}))
+        setDayDetails(normalizeDayDetailsRecord(loadFromStorage(dayDetailsKey, {})))
         setSubjectConfigs(loadFromStorage(subjectConfigsKey, []))
       } finally {
         setIsLoading(false)
@@ -299,33 +153,42 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
   // Update day details
   const updateDayDetails = useCallback(
     async (date: string, updates: Partial<DayDetails>) => {
-      const currentDetails = dayDetails[date] || {
-        status: null,
-        subject: '',
-        topic: '',
-        subjects: [],
-        note: '',
-        directHours: 0,
-      }
+      let updated: Record<string, DayDetails> = {}
 
-      const newDetails: DayDetails = {
-        ...currentDetails,
-        ...updates,
-      }
+      setDayDetails((prev) => {
+        const currentDetails = prev[date] || {
+          status: null,
+          subject: '',
+          topic: '',
+          subjects: [],
+          note: '',
+          directHours: 0,
+          plannedItems: [],
+          travelPlans: [],
+        }
 
-      const newDayDetails = {
-        ...dayDetails,
-        [date]: newDetails,
-      }
-      setDayDetails(newDayDetails)
+        const newDetails: DayDetails = {
+          ...currentDetails,
+          ...updates,
+        }
 
-      saveToStorage(dayDetailsKey, newDayDetails)
+        updated = {
+          ...prev,
+          [date]: newDetails,
+        }
 
-      if (isUsingFirebase && user) {
-        await saveDayDetailsToFirebase(user.uid, goalId, date, newDetails)
+        return updated
+      })
+
+      if (updated && Object.keys(updated).length > 0) {
+        saveToStorage(dayDetailsKey, updated)
+
+        if (isUsingFirebase && user) {
+          await saveDayDetailsToFirebase(user.uid, goalId, date, updated[date])
+        }
       }
     },
-    [dayDetails, isUsingFirebase, user, goalId, dayDetailsKey],
+    [isUsingFirebase, user, goalId, dayDetailsKey],
   )
 
   // Add subject config
@@ -461,7 +324,12 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
       // Update topic in subject config
       const newConfigs = subjectConfigs.map((s) =>
         s.id === subjectId
-          ? { ...s, topics: s.topics.map((t) => (t === oldTopic ? trimmedNewTopic : t)) }
+          ? {
+              ...s,
+              topics: s.topics.map((t) =>
+                t === oldTopic ? trimmedNewTopic : t,
+              ),
+            }
           : s,
       )
       setSubjectConfigs(newConfigs)
@@ -474,11 +342,16 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
       Object.entries(updatedDayDetails).forEach(([date, details]) => {
         if (details.subjects) {
           const updatedSubjects = details.subjects.map((entry) => {
-            if (entry.subject === subject.name && entry.topics.includes(oldTopic)) {
+            if (
+              entry.subject === subject.name &&
+              entry.topics.includes(oldTopic)
+            ) {
               hasChanges = true
               return {
                 ...entry,
-                topics: entry.topics.map((t) => (t === oldTopic ? trimmedNewTopic : t)),
+                topics: entry.topics.map((t) =>
+                  t === oldTopic ? trimmedNewTopic : t,
+                ),
               }
             }
             return entry
@@ -505,7 +378,15 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
         await saveSubjectConfigsToFirebase(user.uid, goalId, newConfigs)
       }
     },
-    [subjectConfigs, dayDetails, isUsingFirebase, user, goalId, subjectConfigsKey, dayDetailsKey],
+    [
+      subjectConfigs,
+      dayDetails,
+      isUsingFirebase,
+      user,
+      goalId,
+      subjectConfigsKey,
+      dayDetailsKey,
+    ],
   )
 
   // Check if a topic is in use in any day entry
@@ -518,7 +399,8 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
       return Object.values(dayDetails).some((details) => {
         if (!details.subjects) return false
         return details.subjects.some(
-          (entry) => entry.subject === subject.name && entry.topics.includes(topic),
+          (entry) =>
+            entry.subject === subject.name && entry.topics.includes(topic),
         )
       })
     },

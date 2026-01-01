@@ -11,7 +11,8 @@ import { useAuth } from '@/hooks/useAuth'
 
 // Components
 import { Card, Navbar } from '@/components/ui'
-import { Calendar, DetailView } from '@/components/features'
+import { StatusBar } from '@/components/ui/StatusBar'
+import { Calendar, DetailView, YearView } from '@/components/features'
 
 // Utils
 import {
@@ -20,10 +21,11 @@ import {
   getPreviousMonth,
   getNextMonth,
   getMsUntilMidnight,
+  enumerateDateRange,
 } from '@/lib/dateUtils'
 
 // Types
-import type { DayStatus, DayDetails } from '@/types'
+import type { DayStatus, DayDetails, TravelPlan } from '@/types'
 
 export default function GoalPage() {
   const params = useParams()
@@ -59,6 +61,21 @@ export default function GoalPage() {
   const [selectedDate, setSelectedDate] = useState(() =>
     toISODateString(new Date()),
   )
+  const [viewMode, setViewMode] = useState<'month' | 'year'>('month')
+
+  // Status bar message
+  const [statusText, setStatusText] = useState('Ready')
+  const [statusTone, setStatusTone] = useState<
+    'info' | 'success' | 'error' | 'progress'
+  >('info')
+
+  const pushStatus = (status: {
+    text: string
+    tone?: 'info' | 'success' | 'error' | 'progress'
+  }) => {
+    setStatusText(status.text)
+    setStatusTone(status.tone ?? 'info')
+  }
 
   // Update todayISO at midnight
   useEffect(() => {
@@ -117,12 +134,22 @@ export default function GoalPage() {
     setCurrentMonth(next.month)
   }
 
-  const handleDayClick = (iso: string) => {
-    setSelectedDate(iso)
+  const goToPreviousYear = () => {
+    setCurrentYear((prev) => prev - 1)
   }
 
-  const handleUpdateDetails = (iso: string, updates: Partial<DayDetails>) => {
-    updateDayDetails(iso, updates)
+  const goToNextYear = () => {
+    setCurrentYear((prev) => prev + 1)
+  }
+
+  const handleDayClick = (iso: string) => {
+    pushStatus({ text: 'Selecting date…', tone: 'progress' })
+    setSelectedDate(iso)
+    pushStatus({ text: 'Date selected', tone: 'success' })
+  }
+
+  const handleUpdateDetails = async (iso: string, updates: Partial<DayDetails>) => {
+    await updateDayDetails(iso, updates)
   }
 
   const handleAddSubject = (name: string) => {
@@ -149,8 +176,53 @@ export default function GoalPage() {
     removeTopicFromSubject(subjectId, topic)
   }
 
-  const handleUpdateTopic = (subjectId: string, oldTopic: string, newTopic: string) => {
+  const handleUpdateTopic = (
+    subjectId: string,
+    oldTopic: string,
+    newTopic: string,
+  ) => {
     updateTopicInSubject(subjectId, oldTopic, newTopic)
+  }
+
+  const handleAddTravel = async (travel: Omit<TravelPlan, 'id'>) => {
+    pushStatus({ text: 'Saving travel…', tone: 'progress' })
+
+    try {
+      const plan: TravelPlan = {
+        ...travel,
+        id: `travel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      }
+
+      const dates = enumerateDateRange(plan.startDate, plan.endDate)
+
+      await Promise.all(
+        dates.map((iso) => {
+          const existing = dayDetails[iso]?.travelPlans || []
+          const filtered = existing.filter((t) => t.id !== plan.id)
+          return updateDayDetails(iso, { travelPlans: [...filtered, plan] })
+        }),
+      )
+
+      setSelectedDate(plan.startDate)
+      pushStatus({
+        text: `Travel added to ${dates.length} day${
+          dates.length === 1 ? '' : 's'
+        }`,
+        tone: 'success',
+      })
+    } catch (err) {
+      console.error('Failed to save travel', err)
+      pushStatus({ text: 'Failed to save travel', tone: 'error' })
+    }
+  }
+
+  const handleJumpToDay = (iso: string) => {
+    const date = new Date(`${iso}T00:00:00`)
+    setCurrentYear(date.getFullYear())
+    setCurrentMonth(date.getMonth() + 1)
+    setSelectedDate(iso)
+    setViewMode('month')
+    pushStatus({ text: 'Day selected', tone: 'success' })
   }
 
   // Loading state (including auth check)
@@ -163,7 +235,7 @@ export default function GoalPage() {
           <div className="orb-2" />
         </div>
         <div className="noise-overlay" />
-        
+
         <div className="relative z-10 text-center">
           <div className="w-12 h-12 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-white/50">Loading your goal...</p>
@@ -187,10 +259,12 @@ export default function GoalPage() {
           <div className="orb-2" />
         </div>
         <div className="noise-overlay" />
-        
+
         <div className="relative z-10 text-center">
           <div className="text-6xl mb-4 opacity-80">🤔</div>
-          <h1 className="text-2xl font-semibold text-white/90 mb-4">Goal Not Found</h1>
+          <h1 className="text-2xl font-semibold text-white/90 mb-4">
+            Goal Not Found
+          </h1>
           <p className="text-white/50 mb-6">
             This goal doesn&apos;t exist or was deleted.
           </p>
@@ -232,104 +306,204 @@ export default function GoalPage() {
         {/* Error Banner */}
         {error && (
           <div className="max-w-7xl mx-auto mb-4">
-            <div className="
+            <div
+              className="
               bg-red-500/10 backdrop-blur-xl
               border border-red-500/30 rounded-2xl 
               p-4 text-center
-            ">
+            "
+            >
               <p className="text-red-400">{error}</p>
             </div>
           </div>
         )}
 
-        <div className="max-w-7xl mx-auto">
-          {/* Mobile View - Stacked layout with divider */}
-          <div className="md:hidden">
-            <Card className="p-0 overflow-hidden">
-              <div className="divide-y divide-white/[0.06]">
-                {/* Calendar on top */}
-                <Calendar
-                  currentYear={currentYear}
-                  currentMonth={currentMonth}
-                  monthInfo={currentMonthInfo}
-                  dayStatuses={dayStatuses}
-                  dayDetails={dayDetails}
-                  selectedDate={selectedDate}
-                  todayISO={todayISO}
-                  onPrevMonth={goToPreviousMonth}
-                  onNextMonth={goToNextMonth}
-                  onDayClick={handleDayClick}
-                  goalStartDate={goal?.startDate}
-                  goalEndDate={goal?.endDate}
-                  successCriterion={goal?.successCriterion}
-                  noCard
-                />
-
-                {/* Day Details below */}
-                <DetailView
-                  selectedDate={selectedDate}
-                  dayDetails={dayDetails}
-                  subjectConfigs={subjectConfigs}
-                  onUpdateDetails={handleUpdateDetails}
-                  onAddSubject={handleAddSubject}
-                  onRemoveSubject={handleRemoveSubject}
-                  onUpdateSubject={handleUpdateSubject}
-                  onToggleHasTopics={handleToggleHasTopics}
-                  onAddTopic={handleAddTopic}
-                  onRemoveTopic={handleRemoveTopic}
-                  onUpdateTopic={handleUpdateTopic}
-                  isTopicInUse={isTopicInUse}
-                  successCriterion={goal?.successCriterion}
-                  noCard
-                />
-              </div>
-            </Card>
+        <div className="max-w-7xl mx-auto space-y-4">
+          <div className="flex justify-end">
+            <div className="inline-flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
+              <button
+                onClick={() => setViewMode('month')}
+                className={`
+                  px-4 py-2 text-sm font-medium rounded-xl transition-all duration-150
+                  ${
+                    viewMode === 'month'
+                      ? 'bg-white/90 text-black shadow-[0_0_16px_rgba(255,255,255,0.25)]'
+                      : 'text-white/70 hover:bg-white/10'
+                  }
+                `}
+              >
+                Month view
+              </button>
+              <button
+                onClick={() => setViewMode('year')}
+                className={`
+                  px-4 py-2 text-sm font-medium rounded-xl transition-all duration-150
+                  ${
+                    viewMode === 'year'
+                      ? 'bg-white/90 text-black shadow-[0_0_16px_rgba(255,255,255,0.25)]'
+                      : 'text-white/70 hover:bg-white/10'
+                  }
+                `}
+              >
+                Year view
+              </button>
+            </div>
           </div>
 
-          {/* Desktop View - Combined card with side-by-side layout */}
-          <div className="hidden md:block">
-            <Card className="p-0 overflow-hidden">
-              <div className="grid grid-cols-2 divide-x divide-white/[0.06]">
-                {/* Left Side - Calendar */}
-                <Calendar
-                  currentYear={currentYear}
-                  currentMonth={currentMonth}
-                  monthInfo={currentMonthInfo}
-                  dayStatuses={dayStatuses}
-                  dayDetails={dayDetails}
-                  selectedDate={selectedDate}
-                  todayISO={todayISO}
-                  onPrevMonth={goToPreviousMonth}
-                  onNextMonth={goToNextMonth}
-                  onDayClick={(iso) => setSelectedDate(iso)}
-                  goalStartDate={goal?.startDate}
-                  goalEndDate={goal?.endDate}
-                  successCriterion={goal?.successCriterion}
-                  noCard
-                />
+          {viewMode === 'month' && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setViewMode('year')
+                  pushStatus({ text: 'Year view', tone: 'info' })
+                }}
+                className="
+                  inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium
+                  bg-white/5 hover:bg-white/10 text-white/80 border border-white/10
+                  transition-all duration-150
+                "
+              >
+                ← Back to year view
+              </button>
+            </div>
+          )}
 
-                {/* Right Side - Day Details */}
-                <DetailView
-                  selectedDate={selectedDate}
-                  dayDetails={dayDetails}
-                  subjectConfigs={subjectConfigs}
-                  onUpdateDetails={handleUpdateDetails}
-                  onAddSubject={handleAddSubject}
-                  onRemoveSubject={handleRemoveSubject}
-                  onUpdateSubject={handleUpdateSubject}
-                  onToggleHasTopics={handleToggleHasTopics}
-                  onAddTopic={handleAddTopic}
-                  onRemoveTopic={handleRemoveTopic}
-                  onUpdateTopic={handleUpdateTopic}
-                  isTopicInUse={isTopicInUse}
-                  successCriterion={goal?.successCriterion}
-                  noCard
-                />
+          {viewMode === 'month' ? (
+            <>
+              {/* Mobile View - Stacked layout with divider */}
+              <div className="md:hidden">
+                <Card className="p-0 overflow-hidden">
+                  <div className="divide-y divide-white/[0.06]">
+                    {/* Calendar on top */}
+                    <Calendar
+                      currentYear={currentYear}
+                      currentMonth={currentMonth}
+                      monthInfo={currentMonthInfo}
+                      dayStatuses={dayStatuses}
+                      dayDetails={dayDetails}
+                      selectedDate={selectedDate}
+                      todayISO={todayISO}
+                      onPrevMonth={() => {
+                        pushStatus({ text: 'Previous month', tone: 'progress' })
+                        goToPreviousMonth()
+                        pushStatus({ text: 'Month changed', tone: 'success' })
+                      }}
+                      onNextMonth={() => {
+                        pushStatus({ text: 'Next month', tone: 'progress' })
+                        goToNextMonth()
+                        pushStatus({ text: 'Month changed', tone: 'success' })
+                      }}
+                      onDayClick={handleDayClick}
+                      goalStartDate={goal?.startDate}
+                      goalEndDate={goal?.endDate}
+                      successCriterion={goal?.successCriterion}
+                      noCard
+                    />
+
+                    {/* Day Details below */}
+                    <DetailView
+                      selectedDate={selectedDate}
+                      todayISO={todayISO}
+                      dayDetails={dayDetails}
+                      subjectConfigs={subjectConfigs}
+                      onUpdateDetails={handleUpdateDetails}
+                      onAddSubject={handleAddSubject}
+                      onRemoveSubject={handleRemoveSubject}
+                      onUpdateSubject={handleUpdateSubject}
+                      onToggleHasTopics={handleToggleHasTopics}
+                      onAddTopic={handleAddTopic}
+                      onRemoveTopic={handleRemoveTopic}
+                      onUpdateTopic={handleUpdateTopic}
+                      isTopicInUse={isTopicInUse}
+                      successCriterion={goal?.successCriterion}
+                      noCard
+                      onStatus={pushStatus}
+                    />
+                  </div>
+                </Card>
               </div>
-            </Card>
-          </div>
+
+              {/* Desktop View - Combined card with side-by-side layout */}
+              <div className="hidden md:block">
+                <Card className="p-0 overflow-hidden">
+                  <div className="grid grid-cols-2 divide-x divide-white/[0.06]">
+                    {/* Left Side - Calendar */}
+                    <Calendar
+                      currentYear={currentYear}
+                      currentMonth={currentMonth}
+                      monthInfo={currentMonthInfo}
+                      dayStatuses={dayStatuses}
+                      dayDetails={dayDetails}
+                      selectedDate={selectedDate}
+                      todayISO={todayISO}
+                      onPrevMonth={() => {
+                        pushStatus({ text: 'Previous month', tone: 'progress' })
+                        goToPreviousMonth()
+                        pushStatus({ text: 'Month changed', tone: 'success' })
+                      }}
+                      onNextMonth={() => {
+                        pushStatus({ text: 'Next month', tone: 'progress' })
+                        goToNextMonth()
+                        pushStatus({ text: 'Month changed', tone: 'success' })
+                      }}
+                      onDayClick={(iso) => {
+                        pushStatus({ text: 'Selecting date…', tone: 'progress' })
+                        setSelectedDate(iso)
+                        pushStatus({ text: 'Date selected', tone: 'success' })
+                      }}
+                      goalStartDate={goal?.startDate}
+                      goalEndDate={goal?.endDate}
+                      successCriterion={goal?.successCriterion}
+                      noCard
+                    />
+
+                    {/* Right Side - Day Details */}
+                    <DetailView
+                      selectedDate={selectedDate}
+                      todayISO={todayISO}
+                      dayDetails={dayDetails}
+                      subjectConfigs={subjectConfigs}
+                      onUpdateDetails={handleUpdateDetails}
+                      onAddSubject={handleAddSubject}
+                      onRemoveSubject={handleRemoveSubject}
+                      onUpdateSubject={handleUpdateSubject}
+                      onToggleHasTopics={handleToggleHasTopics}
+                      onAddTopic={handleAddTopic}
+                      onRemoveTopic={handleRemoveTopic}
+                      onUpdateTopic={handleUpdateTopic}
+                      isTopicInUse={isTopicInUse}
+                      successCriterion={goal?.successCriterion}
+                      noCard
+                      onStatus={pushStatus}
+                    />
+                  </div>
+                </Card>
+              </div>
+            </>
+          ) : (
+            <YearView
+              year={currentYear}
+              todayISO={todayISO}
+              dayDetails={dayDetails}
+              onUpdateDay={handleUpdateDetails}
+              onJumpToDay={handleJumpToDay}
+              onPrevYear={() => {
+                pushStatus({ text: 'Previous year', tone: 'progress' })
+                goToPreviousYear()
+                pushStatus({ text: 'Year changed', tone: 'success' })
+              }}
+              onNextYear={() => {
+                pushStatus({ text: 'Next year', tone: 'progress' })
+                goToNextYear()
+                pushStatus({ text: 'Year changed', tone: 'success' })
+              }}
+              onAddTravel={handleAddTravel}
+            />
+          )}
         </div>
       </div>
+
+      <StatusBar text={statusText} tone={statusTone} />
     </div>
   )
 }

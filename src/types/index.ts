@@ -10,6 +10,40 @@ export interface SubjectEntry {
   hours: number
 }
 
+export type RepeatType = 'none' | 'daily' | 'weekly' | 'custom'
+
+export interface RepeatRule {
+  type: RepeatType
+  days?: string[] // Weekday codes e.g. ['mon','wed','fri']
+}
+
+export interface PlannedItem {
+  id: string
+  title: string
+  startTime?: string
+  endTime?: string
+  note?: string
+  recurrenceId?: string | null
+  sequenceId?: string
+  repeat?: RepeatRule | null
+  subjects?: string[]
+  completed?: boolean
+  recurrenceStart?: string
+  recurrenceEnd?: string
+}
+
+// ============ Travel Types ============
+
+export interface TravelPlan {
+  id: string
+  title: string
+  startDate: string // ISO date
+  endDate: string // ISO date
+  note?: string
+  color?: string
+  destination?: string
+}
+
 export interface DayDetails {
   status: DayStatus
   // Legacy single subject/topic (for backward compatibility)
@@ -20,6 +54,10 @@ export interface DayDetails {
   note: string
   // Direct hours input (used when not tracking via subjects)
   directHours?: number
+  // Planned items for the day
+  plannedItems?: PlannedItem[]
+  // Travel plans (multiple allowed)
+  travelPlans?: TravelPlan[]
 }
 
 export interface DayInfo {

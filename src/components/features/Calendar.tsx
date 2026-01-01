@@ -1,6 +1,11 @@
 'use client'
 
-import type { DayStatus, MonthInfo, SuccessCriterion, DayDetails } from '@/types'
+import type {
+  DayStatus,
+  MonthInfo,
+  SuccessCriterion,
+  DayDetails,
+} from '@/types'
 import { Card } from '@/components/ui/Card'
 import { getScoreColorClass, getStatusColorStyle } from '@/lib/scoreUtils'
 import { WEEKDAY_LABELS, MONTH_NAMES } from '@/constants'
@@ -55,7 +60,8 @@ export function Calendar({
   const getTotalHours = (iso: string): number => {
     const details = dayDetails[iso]
     if (!details) return 0
-    const subjectHours = details.subjects?.reduce((sum, entry) => sum + (entry.hours || 0), 0) || 0
+    const subjectHours =
+      details.subjects?.reduce((sum, entry) => sum + (entry.hours || 0), 0) || 0
     const directHours = details.directHours || 0
     // Subject hours take priority over direct hours
     return subjectHours > 0 ? subjectHours : directHours
@@ -65,18 +71,23 @@ export function Calendar({
     status: DayStatus,
     isToday: boolean,
     isSelected: boolean,
-    isInRange: boolean
+    isInRange: boolean,
   ): string => {
     // For productivity criterion or default, use the existing color class
-    const useProductivityColors = !successCriterion || successCriterion.type === 'productivity'
+    const useProductivityColors =
+      !successCriterion || successCriterion.type === 'productivity'
     const bg = useProductivityColors ? getScoreColorClass(status) : ''
-    
-    const todayRing = isToday ? 'ring-2 ring-[#007AFF] ring-offset-1 ring-offset-[#0a0a12]' : ''
+
+    const todayRing = isToday
+      ? 'ring-2 ring-[#007AFF] ring-offset-1 ring-offset-[#0a0a12]'
+      : ''
     const selectedRing = isSelected
       ? 'ring-2 ring-[#AF52DE] ring-offset-2 ring-offset-[#0a0a12] shadow-[0_0_20px_rgba(175,82,222,0.3)]'
       : ''
-    const outOfRange = !isInRange ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:scale-[1.05]'
-    
+    const outOfRange = !isInRange
+      ? 'opacity-30 cursor-not-allowed'
+      : 'cursor-pointer hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:scale-[1.05]'
+
     return `
       ${bg} ${todayRing} ${selectedRing} ${outOfRange}
       aspect-square rounded-xl
@@ -91,6 +102,33 @@ export function Calendar({
     if (!successCriterion || successCriterion.type !== 'hours') return {}
     const totalHours = getTotalHours(iso)
     return getStatusColorStyle(successCriterion, null, totalHours)
+  }
+
+  const getPlannedItemsPreview = (iso: string) => {
+    const items = dayDetails[iso]?.plannedItems || []
+    if (items.length === 0) return null
+    const top = items.slice(0, 2)
+    const overflow = items.length - top.length
+    return (
+      <div className="mt-2 w-full space-y-1">
+        {top.map((item) => (
+          <div
+            key={item.id}
+            className="
+              text-[11px] leading-tight truncate
+              bg-white/[0.08] text-white/80 px-2 py-1 rounded-lg
+              border border-white/[0.06]
+            "
+            title={item.title}
+          >
+            {item.title}
+          </div>
+        ))}
+        {overflow > 0 && (
+          <div className="text-[10px] text-white/50">+{overflow} more</div>
+        )}
+      </div>
+    )
   }
 
   const content = (
@@ -131,7 +169,7 @@ export function Calendar({
         >
           →
         </button>
-        
+
         {/* Glass divider */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
       </div>
@@ -158,6 +196,7 @@ export function Calendar({
           const isToday = day.iso === todayISO
           const isSelected = day.iso === selectedDate
           const isInRange = isDateInRange(day.iso)
+          const plannedPreview = getPlannedItemsPreview(day.iso)
           return (
             <div
               key={day.iso}
@@ -166,6 +205,7 @@ export function Calendar({
               style={isInRange ? getDayStyle(day.iso) : undefined}
             >
               <span className="text-sm font-medium">{day.dayOfMonth}</span>
+              {plannedPreview}
             </div>
           )
         })}

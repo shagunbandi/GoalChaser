@@ -132,3 +132,37 @@ export function getTimeRanges(todayISO: string): TimeRange[] {
   ]
 }
 
+/**
+ * Get all ISO dates between two dates (inclusive). Automatically normalizes order.
+ */
+export function enumerateDateRange(
+  startISO: string,
+  endISO: string,
+): string[] {
+  const startDate = new Date(`${startISO}T00:00:00`)
+  const endDate = new Date(`${endISO}T00:00:00`)
+
+  const [from, to] =
+    startDate.getTime() <= endDate.getTime()
+      ? [startDate, endDate]
+      : [endDate, startDate]
+
+  const dates: string[] = []
+  const cursor = new Date(from)
+
+  while (cursor.getTime() <= to.getTime()) {
+    dates.push(toISODateString(cursor))
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  return dates
+}
+
+/**
+ * Check if an ISO date falls on a weekend (Sat/Sun).
+ */
+export function isWeekend(iso: string): boolean {
+  const day = new Date(`${iso}T00:00:00`).getDay()
+  return day === 0 || day === 6
+}
+

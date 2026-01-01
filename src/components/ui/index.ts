@@ -4,4 +4,5 @@ export { CardHeader } from './CardHeader'
 export { Navbar } from './Navbar'
 export { Tabs } from './Tabs'
 export type { Tab } from './Tabs'
+export { Modal } from './Modal'
 
