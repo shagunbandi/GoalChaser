@@ -107,26 +107,23 @@ export function Calendar({
   const getPlannedItemsPreview = (iso: string) => {
     const items = dayDetails[iso]?.plannedItems || []
     if (items.length === 0) return null
-    const top = items.slice(0, 2)
-    const overflow = items.length - top.length
+    
+    // Create tooltip content with all items
+    const tooltipContent = items.map(item => item.title).join('\n')
+    
     return (
-      <div className="mt-2 w-full space-y-1">
-        {top.map((item) => (
-          <div
-            key={item.id}
-            className="
-              text-[11px] leading-tight truncate
-              bg-white/[0.08] text-white/80 px-2 py-1 rounded-lg
-              border border-white/[0.06]
-            "
-            title={item.title}
-          >
-            {item.title}
-          </div>
-        ))}
-        {overflow > 0 && (
-          <div className="text-[10px] text-white/50">+{overflow} more</div>
-        )}
+      <div className="mt-auto w-full flex justify-center" title={tooltipContent}>
+        <div className="flex items-center gap-1">
+          {items.slice(0, 3).map((_, idx) => (
+            <div
+              key={idx}
+              className="w-1.5 h-1.5 rounded-full bg-[#AF52DE] shadow-[0_0_6px_rgba(175,82,222,0.6)]"
+            />
+          ))}
+          {items.length > 3 && (
+            <span className="text-[9px] text-white/60 ml-0.5">+{items.length - 3}</span>
+          )}
+        </div>
       </div>
     )
   }

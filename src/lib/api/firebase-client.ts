@@ -4,9 +4,13 @@ let firebaseAvailable = true
 let db: ReturnType<typeof import('firebase/firestore').getFirestore> | null = null
 
 export async function initFirebase() {
-  if (!firebaseAvailable) return null
+  if (!firebaseAvailable) {
+    console.log('🔴 Firebase already marked as unavailable')
+    return null
+  }
 
   try {
+    console.log('🔵 Initializing Firebase...')
     const { initializeApp, getApps } = await import('firebase/app')
     const { getFirestore } = await import('firebase/firestore')
 
@@ -19,8 +23,17 @@ export async function initFirebase() {
       appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     }
 
+    console.log('🔵 Firebase config:', {
+      hasApiKey: !!firebaseConfig.apiKey,
+      hasAuthDomain: !!firebaseConfig.authDomain,
+      projectId: firebaseConfig.projectId,
+      hasStorageBucket: !!firebaseConfig.storageBucket,
+      hasMessagingSenderId: !!firebaseConfig.messagingSenderId,
+      hasAppId: !!firebaseConfig.appId,
+    })
+
     if (!firebaseConfig.projectId) {
-      console.warn('Firebase config missing, using localStorage only')
+      console.warn('🔴 Firebase config missing, using localStorage only')
       firebaseAvailable = false
       return null
     }
@@ -28,9 +41,11 @@ export async function initFirebase() {
     const app =
       getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
     db = getFirestore(app)
+    console.log('✅ Firebase initialized successfully')
+    console.log('🔵 Firestore instance:', !!db)
     return db
   } catch (error) {
-    console.warn('Firebase initialization failed, using localStorage:', error)
+    console.error('🔴 Firebase initialization failed:', error)
     firebaseAvailable = false
     return null
   }

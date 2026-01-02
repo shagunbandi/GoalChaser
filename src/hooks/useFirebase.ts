@@ -95,6 +95,7 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
   useEffect(() => {
     async function loadData() {
       if (!goalId || authLoading) {
+        console.log('⏸️ Waiting for goal/auth:', { goalId, authLoading })
         if (!authLoading && !goalId) {
           setIsLoading(false)
         }
@@ -103,6 +104,7 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
 
       // If not logged in, don't load any data
       if (!user) {
+        console.log('🔴 No user logged in')
         setIsLoading(false)
         setDayDetails({})
         setSubjectConfigs([])
@@ -110,6 +112,7 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
       }
 
       try {
+        console.log('🔵 useFirebase: Starting data load for', { userId, goalId })
         setIsLoading(true)
         setError(null)
 
@@ -121,22 +124,48 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
           goalId,
         )
 
+        console.log('📊 Load results:', {
+          dayDetailsLoaded: loadedDayDetails !== null,
+          dayDetailsCount: loadedDayDetails ? Object.keys(loadedDayDetails).length : 0,
+          subjectConfigsLoaded: loadedSubjectConfigs !== null,
+          subjectConfigsCount: loadedSubjectConfigs?.length || 0
+        })
+
         if (loadedDayDetails !== null && loadedSubjectConfigs !== null) {
+          console.log('✅ Using Firebase data')
           setIsUsingFirebase(true)
           // Normalize legacy travel -> travelPlans
           const normalized = normalizeDayDetailsRecord(loadedDayDetails)
+          
+          // Check for travel in loaded data
+          const datesWithTravel = Object.entries(normalized)
+            .filter(([, details]) => details.travelPlans && details.travelPlans.length > 0)
+          console.log(`🛫 Loaded ${datesWithTravel.length} dates with travel:`, 
+            datesWithTravel.map(([date, details]) => ({
+              date,
+              travelCount: details.travelPlans?.length
+            }))
+          )
+          
           setDayDetails(normalized)
           setSubjectConfigs(loadedSubjectConfigs)
 
           saveToStorage(dayDetailsKey, normalized)
           saveToStorage(subjectConfigsKey, loadedSubjectConfigs)
         } else {
+          console.log('🔴 Firebase load failed, using localStorage')
           setIsUsingFirebase(false)
-          setDayDetails(normalizeDayDetailsRecord(loadFromStorage(dayDetailsKey, {})))
+          const localData = normalizeDayDetailsRecord(loadFromStorage(dayDetailsKey, {}))
+          setDayDetails(localData)
           setSubjectConfigs(loadFromStorage(subjectConfigsKey, []))
+          
+          // Check local data for travel
+          const localDatesWithTravel = Object.entries(localData)
+            .filter(([, details]) => details.travelPlans && details.travelPlans.length > 0)
+          console.log(`🛫 localStorage has ${localDatesWithTravel.length} dates with travel`)
         }
       } catch (err) {
-        console.error('Error loading data:', err)
+        console.error('🔴 Error loading data:', err)
         setError('Using offline mode')
         setIsUsingFirebase(false)
 
@@ -144,6 +173,7 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
         setSubjectConfigs(loadFromStorage(subjectConfigsKey, []))
       } finally {
         setIsLoading(false)
+        console.log('✅ useFirebase: Data load complete')
       }
     }
 
@@ -153,10 +183,21 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
   // Update day details
   const updateDayDetails = useCallback(
     async (date: string, updates: Partial<DayDetails>) => {
-      let updated: Record<string, DayDetails> = {}
+      console.log(`🔵 updateDayDetails called for ${date}`, { updates })
+      
+      // Debug log for travel updates
+      if (updates.travelPlans) {
+        console.log(`📝 useFirebase updateDayDetails for ${date}:`, {
+          updates,
+          travelPlans: updates.travelPlans
+        })
+      }
 
-      setDayDetails((prev) => {
-        const currentDetails = prev[date] || {
+      let savedDetails: DayDetails | null = null
+
+      // Use functional setState to always get the latest state
+      setDayDetails((prevState) => {
+        const currentDetails = prevState[date] || {
           status: null,
           subject: '',
           topic: '',
@@ -172,20 +213,45 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
           ...updates,
         }
 
-        updated = {
-          ...prev,
+        savedDetails = newDetails
+
+        const updated = {
+          ...prevState,
           [date]: newDetails,
         }
+
+        console.log(`🔵 Calculated new state for ${date}:`, {
+          updatedKeys: Object.keys(updated).length,
+          hasDateInUpdated: !!updated[date],
+        })
+
+        // Save to localStorage
+        saveToStorage(dayDetailsKey, updated)
 
         return updated
       })
 
-      if (updated && Object.keys(updated).length > 0) {
-        saveToStorage(dayDetailsKey, updated)
+      // Wait for state update to complete
+      await new Promise(resolve => setTimeout(resolve, 0))
 
-        if (isUsingFirebase && user) {
-          await saveDayDetailsToFirebase(user.uid, goalId, date, updated[date])
-        }
+      // Save to Firebase (runs after state update)
+      console.log(`🔍 Save condition check for ${date}:`, {
+        isUsingFirebase,
+        hasUser: !!user,
+        userId: user?.uid,
+        shouldSaveToFirebase: isUsingFirebase && user
+      })
+
+      if (isUsingFirebase && user && savedDetails) {
+        console.log(`🔥 Triggering Firebase save for ${date}`)
+        const saveResult = await saveDayDetailsToFirebase(user.uid, goalId, date, savedDetails)
+        
+        console.log(`💾 Firebase save result for ${date}:`, saveResult ? 'SUCCESS ✅' : 'FAILED ❌')
+      } else {
+        console.log(`⚠️ Skipping Firebase save for ${date} - using localStorage only`, {
+          isUsingFirebase,
+          hasUser: !!user
+        })
       }
     },
     [isUsingFirebase, user, goalId, dayDetailsKey],

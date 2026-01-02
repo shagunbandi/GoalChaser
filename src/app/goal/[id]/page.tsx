@@ -148,7 +148,10 @@ export default function GoalPage() {
     pushStatus({ text: 'Date selected', tone: 'success' })
   }
 
-  const handleUpdateDetails = async (iso: string, updates: Partial<DayDetails>) => {
+  const handleUpdateDetails = async (
+    iso: string,
+    updates: Partial<DayDetails>,
+  ) => {
     await updateDayDetails(iso, updates)
   }
 
@@ -193,25 +196,53 @@ export default function GoalPage() {
         id: `travel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       }
 
-      const dates = enumerateDateRange(plan.startDate, plan.endDate)
+      console.log('🛫 Travel Plan to Save:', plan)
 
-      await Promise.all(
-        dates.map((iso) => {
+      const dates = enumerateDateRange(plan.startDate, plan.endDate)
+      console.log('📅 Dates to Update:', dates)
+
+      // Show progress
+      pushStatus({
+        text: `Saving travel to ${dates.length} day${dates.length === 1 ? '' : 's'}...`,
+        tone: 'progress',
+      })
+
+      const results = await Promise.all(
+        dates.map(async (iso) => {
           const existing = dayDetails[iso]?.travelPlans || []
           const filtered = existing.filter((t) => t.id !== plan.id)
-          return updateDayDetails(iso, { travelPlans: [...filtered, plan] })
+          const updatedPlans = [...filtered, plan]
+
+          console.log(`💾 Saving to ${iso}:`, {
+            existing: existing.length,
+            updatedPlans: updatedPlans.length,
+            data: updatedPlans,
+          })
+
+          return updateDayDetails(iso, { travelPlans: updatedPlans })
         }),
       )
 
+      const successCount = results.filter(Boolean).length
+      const failCount = results.length - successCount
+
       setSelectedDate(plan.startDate)
-      pushStatus({
-        text: `Travel added to ${dates.length} day${
-          dates.length === 1 ? '' : 's'
-        }`,
-        tone: 'success',
-      })
+      
+      if (failCount > 0) {
+        pushStatus({
+          text: `⚠️ Travel saved to ${successCount}/${dates.length} days (${failCount} failed)`,
+          tone: 'error',
+        })
+      } else {
+        pushStatus({
+          text: `✅ Travel saved to ${dates.length} day${dates.length === 1 ? '' : 's'} • Firebase synced`,
+          tone: 'success',
+        })
+      }
+
+      console.log('✅ Travel save completed successfully')
     } catch (err) {
-      console.error('Failed to save travel', err)
+      console.error('❌ Failed to save travel:', err)
       pushStatus({ text: 'Failed to save travel', tone: 'error' })
     }
   }
@@ -319,7 +350,27 @@ export default function GoalPage() {
         )}
 
         <div className="max-w-7xl mx-auto space-y-4">
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            {/* Left side - Back to year view button (only shown in month view) */}
+            <div>
+              {viewMode === 'month' && (
+                <button
+                  onClick={() => {
+                    setViewMode('year')
+                    pushStatus({ text: 'Year view', tone: 'info' })
+                  }}
+                  className="
+                    inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium
+                    bg-white/5 hover:bg-white/10 text-white/80 border border-white/10
+                    transition-all duration-150
+                  "
+                >
+                  ← Back to year view
+                </button>
+              )}
+            </div>
+
+            {/* Right side - View mode toggle */}
             <div className="inline-flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
               <button
                 onClick={() => setViewMode('month')}
@@ -349,24 +400,6 @@ export default function GoalPage() {
               </button>
             </div>
           </div>
-
-          {viewMode === 'month' && (
-            <div className="flex justify-end">
-              <button
-                onClick={() => {
-                  setViewMode('year')
-                  pushStatus({ text: 'Year view', tone: 'info' })
-                }}
-                className="
-                  inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium
-                  bg-white/5 hover:bg-white/10 text-white/80 border border-white/10
-                  transition-all duration-150
-                "
-              >
-                ← Back to year view
-              </button>
-            </div>
-          )}
 
           {viewMode === 'month' ? (
             <>
@@ -447,7 +480,10 @@ export default function GoalPage() {
                         pushStatus({ text: 'Month changed', tone: 'success' })
                       }}
                       onDayClick={(iso) => {
-                        pushStatus({ text: 'Selecting date…', tone: 'progress' })
+                        pushStatus({
+                          text: 'Selecting date…',
+                          tone: 'progress',
+                        })
                         setSelectedDate(iso)
                         pushStatus({ text: 'Date selected', tone: 'success' })
                       }}

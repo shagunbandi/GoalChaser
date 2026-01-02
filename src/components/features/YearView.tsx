@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import type { DayDetails, TravelPlan } from '@/types'
 import { Card, Modal } from '@/components/ui'
+import { TravelCard, TravelForm } from './travel'
 import { MONTH_NAMES, WEEKDAY_LABELS } from '@/constants'
 import {
   computeMonthInfo,
@@ -39,13 +40,6 @@ export function YearView({
   onJumpToDay,
 }: YearViewProps) {
   const [showTravelModal, setShowTravelModal] = useState(false)
-  const [travelTitle, setTravelTitle] = useState('')
-  const [travelDestination, setTravelDestination] = useState('')
-  const [travelNote, setTravelNote] = useState('')
-  const [travelColor, setTravelColor] = useState('#0EA5E9')
-  const [startDate, setStartDate] = useState(() => toISODateString(new Date()))
-  const [endDate, setEndDate] = useState(() => toISODateString(new Date()))
-  const [error, setError] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [removingPlanId, setRemovingPlanId] = useState<string | null>(null)
@@ -59,14 +53,25 @@ export function YearView({
     [year],
   )
 
-  const travelEntries = useMemo(
-    () =>
-      Object.entries(dayDetails).filter(
-        ([iso, details]) =>
-          iso.startsWith(yearPrefix) && (details.travelPlans?.length || 0) > 0,
-      ),
-    [dayDetails, yearPrefix],
-  )
+  const travelEntries = useMemo(() => {
+    const entries = Object.entries(dayDetails).filter(
+      ([iso, details]) =>
+        iso.startsWith(yearPrefix) && (details.travelPlans?.length || 0) > 0,
+    )
+    
+    console.log(`📅 YearView: Processing ${year} travel entries:`, {
+      totalDayDetails: Object.keys(dayDetails).length,
+      yearPrefix,
+      travelEntriesFound: entries.length,
+      entries: entries.map(([iso, details]) => ({
+        date: iso,
+        travelCount: details.travelPlans?.length,
+        travels: details.travelPlans
+      }))
+    })
+    
+    return entries
+  }, [dayDetails, yearPrefix, year])
 
   const weekdayTravelCount = useMemo(
     () => travelEntries.filter(([iso]) => !isWeekend(iso)).length,
@@ -77,6 +82,8 @@ export function YearView({
 
   const travelPlans: TravelSummary[] = useMemo(() => {
     const map = new Map<string, TravelSummary>()
+
+    console.log(`🗺️ YearView: Building travel plans map from ${travelEntries.length} entries`)
 
     travelEntries.forEach(([iso, details]) => {
       const travels = details.travelPlans || []
@@ -93,33 +100,40 @@ export function YearView({
       })
     })
 
-    return Array.from(map.values()).map((plan) => ({
+    const plans = Array.from(map.values()).map((plan) => ({
       ...plan,
       days: plan.days.sort(),
     }))
+    
+    console.log(`🗺️ YearView: Final travel plans count: ${plans.length}`, plans)
+    
+    return plans
   }, [travelEntries])
 
-  const handleSaveTravel = async () => {
-    if (!travelTitle.trim() || !startDate || !endDate) {
-      setError('Title and dates are required')
-      return
-    }
-
+  const handleSaveTravel = async (formData: {
+    title: string
+    destination: string
+    startDate: string
+    endDate: string
+    color: string
+    note: string
+  }) => {
     setIsSavingTravel(true)
     try {
-      const dates = enumerateDateRange(startDate, endDate)
+      const dates = enumerateDateRange(formData.startDate, formData.endDate)
       const normalizedStart = dates[0]
       const normalizedEnd = dates[dates.length - 1]
 
       if (editingTravel) {
+        // Update existing travel
         const updatedTravel: TravelPlan = {
           ...editingTravel,
-          title: travelTitle.trim(),
+          title: formData.title,
           startDate: normalizedStart,
           endDate: normalizedEnd,
-          note: travelNote.trim() ? travelNote.trim() : undefined,
-          color: travelColor || undefined,
-          destination: travelDestination.trim() ? travelDestination.trim() : undefined,
+          note: formData.note || undefined,
+          color: formData.color || undefined,
+          destination: formData.destination || undefined,
         }
 
         const oldDates = enumerateDateRange(editingTravel.startDate, editingTravel.endDate)
@@ -127,12 +141,14 @@ export function YearView({
 
         const updates: Promise<void>[] = []
 
+        // Remove from old dates
         oldDates.forEach((iso) => {
           const existing = dayDetails[iso]?.travelPlans || []
           const filtered = existing.filter((t) => t.id !== editingTravel.id)
           updates.push(onUpdateDay(iso, { travelPlans: filtered }))
         })
 
+        // Add to new dates
         newDates.forEach((iso) => {
           const existing = dayDetails[iso]?.travelPlans || []
           const filtered = existing.filter((t) => t.id !== updatedTravel.id)
@@ -143,19 +159,19 @@ export function YearView({
 
         setSelectedDay(updatedTravel.startDate)
       } else {
+        // Create new travel
         await onAddTravel({
-          title: travelTitle.trim(),
+          title: formData.title,
           startDate: normalizedStart,
           endDate: normalizedEnd,
-          note: travelNote.trim() ? travelNote.trim() : undefined,
-          color: travelColor || undefined,
-          destination: travelDestination.trim() ? travelDestination.trim() : undefined,
+          note: formData.note || undefined,
+          color: formData.color || undefined,
+          destination: formData.destination || undefined,
         })
       }
 
-      setError(null)
       setShowTravelModal(false)
-      resetTravelForm()
+      setEditingTravel(null)
     } finally {
       setIsSavingTravel(false)
     }
@@ -176,15 +192,31 @@ export function YearView({
     return toISODateString(d)
   }
 
-  const resetTravelForm = () => {
+  const handleEditTravel = (travel: TravelPlan) => {
+    setEditingTravel(travel)
+    setShowTravelModal(true)
+  }
+
+  const handleAddNewTravel = () => {
     setEditingTravel(null)
-    setTravelTitle('')
-    setTravelDestination('')
-    setTravelNote('')
-    setTravelColor('#0EA5E9')
-    setStartDate(toISODateString(new Date()))
-    setEndDate(toISODateString(new Date()))
-    setError(null)
+    setShowTravelModal(true)
+  }
+
+  const handleAddTravelFromDay = (startDate: string) => {
+    // Create a partial travel plan with the start date pre-filled
+    setEditingTravel({
+      id: '',
+      title: '',
+      startDate: startDate,
+      endDate: startDate,
+    } as TravelPlan)
+    setSelectedDay(null) // Close the day modal
+    setShowTravelModal(true)
+  }
+
+  const handleCloseTravelModal = () => {
+    setShowTravelModal(false)
+    setEditingTravel(null)
   }
 
   const removeTravelForDay = async (iso: string, travelId: string) => {
@@ -275,10 +307,7 @@ export function YearView({
               Weekends: <span className="text-white">{weekendTravelCount}</span>
             </div>
             <button
-              onClick={() => {
-                resetTravelForm()
-                setShowTravelModal(true)
-              }}
+              onClick={handleAddNewTravel}
               className="
                 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
                 bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
@@ -292,35 +321,7 @@ export function YearView({
           </div>
         </div>
 
-        {travelPlans.length > 0 && (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {travelPlans.map((plan) => (
-              <div
-                key={plan.id}
-                className="rounded-xl border border-white/[0.08] bg-white/[0.04] p-3"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold text-white">{plan.title}</div>
-                  <span
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/[0.12] text-[11px]"
-                    style={{ backgroundColor: `${plan.color || 'rgba(14,165,233,0.25)'}` }}
-                    title={plan.destination}
-                  >
-                    ✈️
-                  </span>
-                </div>
-                <div className="mt-1 text-xs text-white/60">
-                  {plan.destination && <span>{plan.destination} • </span>}
-                  {formatShortDate(plan.startDate)} → {formatShortDate(plan.endDate)}
-                </div>
-                <div className="mt-2 text-[11px] text-white/50">
-                  {plan.days.length} day{plan.days.length === 1 ? '' : 's'}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
+        {/* Calendar Grid - Now shown FIRST */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {months.map((month) => {
             const monthTravel = travelCountByMonth[month.month] || 0
@@ -445,6 +446,22 @@ export function YearView({
             )
           })}
         </div>
+
+        {/* Travel Plans Section - Now shown AFTER calendar */}
+        {travelPlans.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-white/70 mb-3">Travel Plans</h3>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {travelPlans.map((plan) => (
+                <TravelCard
+                  key={plan.id}
+                  travel={plan}
+                  onClick={() => handleEditTravel(plan)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </Card>
 
       <Modal
@@ -482,15 +499,8 @@ export function YearView({
                     <div className="mt-3 flex flex-wrap gap-2 text-xs">
                       <button
                         onClick={() => {
-                          setEditingTravel(travel)
-                          setTravelTitle(travel.title)
-                          setTravelDestination(travel.destination || '')
-                          setTravelNote(travel.note || '')
-                          setTravelColor(travel.color || '#0EA5E9')
-                          setStartDate(travel.startDate)
-                          setEndDate(travel.endDate)
-                          setError(null)
-                          setShowTravelModal(true)
+                          setSelectedDay(null)
+                          handleEditTravel(travel)
                         }}
                         className="
                           px-3 py-1.5 rounded-lg border border-white/10
@@ -568,20 +578,33 @@ export function YearView({
               )}
             </div>
 
-            {onJumpToDay && (
-              <div className="flex justify-end">
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleAddTravelFromDay(selectedDay)}
+                className="
+                  flex-1 px-4 py-2 rounded-xl text-sm font-medium
+                  bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
+                  text-white hover:shadow-[0_0_20px_rgba(0,122,255,0.3)]
+                  transition-all duration-150
+                "
+              >
+                ✈️ Add travel plan
+              </button>
+              {onJumpToDay && (
                 <button
                   onClick={() => selectedDay && onJumpToDay(selectedDay)}
                   className="
-                    px-4 py-2 rounded-xl text-sm font-medium
+                    flex-1 px-4 py-2 rounded-xl text-sm font-medium
                     bg-white/10 text-white hover:bg-white/15
                     border border-white/15
+                    transition-all duration-150
                   "
                 >
                   Open day view
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </Modal>
@@ -589,130 +612,14 @@ export function YearView({
       <Modal
         open={showTravelModal}
         title={editingTravel ? 'Edit travel' : 'Add travel'}
-        onClose={() => {
-          setShowTravelModal(false)
-          resetTravelForm()
-        }}
-        footer={
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={() => setShowTravelModal(false)}
-              className="
-                px-4 py-2 rounded-xl text-sm font-medium
-                bg-white/[0.05] text-white/70 hover:bg-white/[0.1]
-              "
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveTravel}
-              disabled={isSavingTravel}
-              className="
-                px-4 py-2 rounded-xl text-sm font-medium
-                bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
-                text-white hover:shadow-[0_0_20px_rgba(0,122,255,0.3)]
-                transition-all duration-150
-                disabled:opacity-50 disabled:cursor-not-allowed
-              "
-            >
-              {isSavingTravel ? 'Saving…' : editingTravel ? 'Update travel' : 'Save travel'}
-            </button>
-          </div>
-        }
+        onClose={handleCloseTravelModal}
       >
-        <div className="space-y-4">
-          {error && (
-            <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-              {error}
-            </div>
-          )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-xs text-white/60">Title</label>
-              <input
-                value={travelTitle}
-                onChange={(e) => setTravelTitle(e.target.value)}
-                placeholder="e.g. Work trip to NYC"
-                className="
-                  w-full rounded-xl border border-white/10 bg-white/5
-                  px-3 py-2 text-sm text-white placeholder-white/40
-                  focus:border-[#AF52DE]/60 focus:outline-none
-                "
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-white/60">Destination (optional)</label>
-              <input
-                value={travelDestination}
-                onChange={(e) => setTravelDestination(e.target.value)}
-                placeholder="City or country"
-                className="
-                  w-full rounded-xl border border-white/10 bg-white/5
-                  px-3 py-2 text-sm text-white placeholder-white/40
-                  focus:border-[#AF52DE]/60 focus:outline-none
-                "
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-xs text-white/60">Start date</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="
-                  w-full rounded-xl border border-white/10 bg-white/5
-                  px-3 py-2 text-sm text-white placeholder-white/40
-                  focus:border-[#AF52DE]/60 focus:outline-none
-                "
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-white/60">End date</label>
-              <input
-                type="date"
-                value={endDate}
-                min={startDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="
-                  w-full rounded-xl border border-white/10 bg-white/5
-                  px-3 py-2 text-sm text-white placeholder-white/40
-                  focus:border-[#AF52DE]/60 focus:outline-none
-                "
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-white/60">Color</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={travelColor}
-                onChange={(e) => setTravelColor(e.target.value)}
-                className="h-10 w-12 rounded-lg border border-white/10 bg-transparent"
-              />
-              <span className="text-xs text-white/50">Used to highlight travel days</span>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-white/60">Notes (optional)</label>
-            <textarea
-              value={travelNote}
-              onChange={(e) => setTravelNote(e.target.value)}
-              rows={2}
-              placeholder="Details, tickets, confirmation numbers..."
-              className="
-                w-full rounded-xl border border-white/10 bg-white/5
-                px-3 py-2 text-sm text-white placeholder-white/40
-                focus:border-[#AF52DE]/60 focus:outline-none
-                resize-none
-              "
-            />
-          </div>
-        </div>
+        <TravelForm
+          initialData={editingTravel || undefined}
+          onSubmit={handleSaveTravel}
+          onCancel={handleCloseTravelModal}
+          isSubmitting={isSavingTravel}
+        />
       </Modal>
     </>
   )
