@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import type { PlannedItem, DayDetails, RepeatType } from '@/types'
+import type { AgendaItem, DayDetails, RepeatType } from '@/types'
 import { Modal } from '@/components/ui'
 import { toISODateString } from '@/lib/dateUtils'
 import {
@@ -11,11 +11,11 @@ import {
   addDays,
 } from '@/lib/utils/recurrence'
 
-interface PlanManagerProps {
+interface AgendaManagerProps {
   selectedDate: string
   todayISO: string
   dayDetails: Record<string, DayDetails>
-  plannedItems: PlannedItem[]
+  agendaItems: AgendaItem[]
   availableSubjects: string[]
   onUpdateDetails: (iso: string, details: Partial<DayDetails>) => Promise<void>
   onStatus?: (status: {
@@ -24,26 +24,28 @@ interface PlanManagerProps {
   }) => void
 }
 
-export function PlanManager({
+export function AgendaManager({
   selectedDate,
   todayISO,
   dayDetails,
-  plannedItems,
+  agendaItems,
   availableSubjects,
   onUpdateDetails,
   onStatus,
-}: PlanManagerProps) {
-  const [planTitle, setPlanTitle] = useState('')
+}: AgendaManagerProps) {
+  const [agendaTitle, setAgendaTitle] = useState('')
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
-  const [planNote, setPlanNote] = useState('')
+  const [agendaNote, setAgendaNote] = useState('')
   const [repeatType, setRepeatType] = useState<RepeatType>('none')
   const [repeatDays, setRepeatDays] = useState<string[]>([])
-  const [showPlanModal, setShowPlanModal] = useState(false)
-  const [selectedPlanSubjects, setSelectedPlanSubjects] = useState<string[]>([])
+  const [showAgendaModal, setShowAgendaModal] = useState(false)
+  const [selectedAgendaSubjects, setSelectedAgendaSubjects] = useState<
+    string[]
+  >([])
   const [endDateOverride, setEndDateOverride] = useState<string | ''>('')
   const [recurrenceStart, setRecurrenceStart] = useState<string>(selectedDate)
-  const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
+  const [editingAgendaId, setEditingAgendaId] = useState<string | null>(null)
   const [editingRecurrenceId, setEditingRecurrenceId] = useState<string | null>(
     null,
   )
@@ -65,21 +67,21 @@ export function PlanManager({
     [selectedDate, todayISO],
   )
 
-  const sortedPlannedItems = useMemo(() => {
-    const priority = (item: PlannedItem) => {
+  const sortedAgendaItems = useMemo(() => {
+    const priority = (item: AgendaItem) => {
       const type = item.repeat?.type || 'none'
       if (type === 'weekly') return 0
       if (type === 'daily' || type === 'custom') return 1
       return 2
     }
-    return [...plannedItems].sort((a, b) => {
+    return [...agendaItems].sort((a, b) => {
       const p = priority(a) - priority(b)
       if (p !== 0) return p
       if (a.startTime && b.startTime)
         return a.startTime.localeCompare(b.startTime)
       return a.title.localeCompare(b.title)
     })
-  }, [plannedItems])
+  }, [agendaItems])
 
   // Initialize repeat days when changing to weekly/custom mode
   useEffect(() => {
@@ -92,16 +94,16 @@ export function PlanManager({
     }
   }, [repeatType, repeatDays.length, selectedWeekdayCode])
 
-  // Sync recurrence start with selected date (but don't override end date when editing)
+  // Sync form with selected date (but preserve saved values when editing)
   useEffect(() => {
     queueMicrotask(() => {
-      setRecurrenceStart(selectedDate)
-      // Only update end date if we're not currently editing
-      if (!editingPlanId) {
+      // Only update dates if we're NOT currently editing
+      if (!editingAgendaId) {
+        setRecurrenceStart(selectedDate)
         setEndDateOverride(getDefaultEndDate())
       }
     })
-  }, [selectedDate, getDefaultEndDate, editingPlanId])
+  }, [selectedDate, getDefaultEndDate, editingAgendaId])
 
   const toggleRepeatDay = (code: string) => {
     setRepeatDays((prev) =>
@@ -109,27 +111,27 @@ export function PlanManager({
     )
   }
 
-  const resetPlanForm = () => {
-    setPlanTitle('')
+  const resetAgendaForm = () => {
+    setAgendaTitle('')
     setStartTime('')
     setEndTime('')
-    setPlanNote('')
+    setAgendaNote('')
     setRepeatType('none')
     setRepeatDays([])
-    setShowPlanModal(false)
-    setSelectedPlanSubjects([])
+    setShowAgendaModal(false)
+    setSelectedAgendaSubjects([])
     setEndDateOverride(getDefaultEndDate())
-    setEditingPlanId(null)
+    setEditingAgendaId(null)
     setEditingRecurrenceId(null)
   }
 
-  const handleAddPlanItem = async () => {
-    if (!planTitle.trim()) {
-      onStatus?.({ text: 'Plan title required', tone: 'error' })
+  const handleAddAgendaItem = async () => {
+    if (!agendaTitle.trim()) {
+      onStatus?.({ text: 'Agenda title required', tone: 'error' })
       return
     }
 
-    onStatus?.({ text: 'Adding plan…', tone: 'progress' })
+    onStatus?.({ text: 'Adding agenda…', tone: 'progress' })
 
     try {
       const recurrenceStartISO = editingRecurrenceId
@@ -138,7 +140,7 @@ export function PlanManager({
       const recurrenceEndISO = endDateOverride || undefined
 
       // Editing existing
-      if (editingPlanId) {
+      if (editingAgendaId) {
         if (editingRecurrenceId) {
           // Series edit
           const recId = editingRecurrenceId
@@ -158,20 +160,20 @@ export function PlanManager({
           // Perform all updates in parallel using Promise.all
           const results = await Promise.all(
             datesToUpdate.map(async (iso) => {
-              const items = dayDetails[iso]?.plannedItems || []
+              const items = dayDetails[iso]?.agendaItems || []
               const isPast = iso < todayISO
               const withoutSeries = isPast
                 ? items
                 : items.filter((i) => i.recurrenceId !== recId)
               const shouldAdd = !isPast && futureRecurrenceDates.includes(iso)
-              const newItem: PlannedItem = {
-                id: `plan_${Date.now()}_${Math.random()
+              const newItem: AgendaItem = {
+                id: `agenda_${Date.now()}_${Math.random()
                   .toString(36)
                   .slice(2, 8)}`,
-                title: planTitle.trim(),
+                title: agendaTitle.trim(),
                 startTime: startTime || undefined,
                 endTime: endTime || undefined,
-                note: planNote.trim() ? planNote.trim() : undefined,
+                note: agendaNote.trim() ? agendaNote.trim() : undefined,
                 recurrenceId: recId,
                 repeat:
                   repeatType === 'none'
@@ -185,7 +187,7 @@ export function PlanManager({
                             ? repeatDays
                             : [selectedWeekdayCode],
                       },
-                subjects: selectedPlanSubjects,
+                subjects: selectedAgendaSubjects,
                 completed: false,
                 recurrenceStart: recurrenceStartISO,
                 recurrenceEnd: recurrenceEndISO,
@@ -195,7 +197,7 @@ export function PlanManager({
                 : withoutSeries
               if (JSON.stringify(nextItems) !== JSON.stringify(items)) {
                 try {
-                  await onUpdateDetails(iso, { plannedItems: nextItems })
+                  await onUpdateDetails(iso, { agendaItems: nextItems })
                   return { success: true, iso }
                 } catch (err) {
                   console.error(`❌ Failed to update ${iso}:`, err)
@@ -210,7 +212,7 @@ export function PlanManager({
           const failCount = results.length - successCount
 
           onStatus?.({ text: 'Series updated', tone: 'success' })
-          resetPlanForm()
+          resetAgendaForm()
           return
         } else {
           // Single occurrence edit - update all days that have this plan
@@ -218,25 +220,25 @@ export function PlanManager({
 
           const results = await Promise.all(
             datesToUpdate.map(async (iso) => {
-              const items = dayDetails[iso]?.plannedItems || []
+              const items = dayDetails[iso]?.agendaItems || []
               const updatedItems = items.map((item) => {
-                if (item.id === editingPlanId) {
-                  const updated: PlannedItem = {
+                if (item.id === editingAgendaId) {
+                  const updated: AgendaItem = {
                     ...item,
-                    title: planTitle.trim(),
-                    subjects: selectedPlanSubjects,
+                    title: agendaTitle.trim(),
+                    subjects: selectedAgendaSubjects,
                   }
                   // Only include optional fields if they have values
                   if (startTime) updated.startTime = startTime
                   if (endTime) updated.endTime = endTime
-                  if (planNote.trim()) updated.note = planNote.trim()
+                  if (agendaNote.trim()) updated.note = agendaNote.trim()
                   return updated
                 }
                 return item
               })
               if (JSON.stringify(updatedItems) !== JSON.stringify(items)) {
                 try {
-                  await onUpdateDetails(iso, { plannedItems: updatedItems })
+                  await onUpdateDetails(iso, { agendaItems: updatedItems })
                   return { success: true, iso }
                 } catch (err) {
                   console.error(`❌ Failed to update ${iso}:`, err)
@@ -254,7 +256,7 @@ export function PlanManager({
             text: '✅ Plan updated • Firebase synced',
             tone: 'success',
           })
-          resetPlanForm()
+          resetAgendaForm()
           return
         }
       }
@@ -276,7 +278,7 @@ export function PlanManager({
       )
       if (futureRecurrenceDates.length === 0) {
         onStatus?.({ text: 'No future dates to add', tone: 'info' })
-        resetPlanForm()
+        resetAgendaForm()
         return
       }
 
@@ -294,14 +296,14 @@ export function PlanManager({
             }
 
       for (const iso of futureRecurrenceDates) {
-        const existingItems = dayDetails[iso]?.plannedItems || []
-        const newItem: PlannedItem = {
-          id: `plan_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          title: planTitle.trim(),
+        const existingItems = dayDetails[iso]?.agendaItems || []
+        const newItem: AgendaItem = {
+          id: `agenda_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          title: agendaTitle.trim(),
           recurrenceId,
           sequenceId: recurrenceId || `seq_${Date.now()}`,
           repeat,
-          subjects: selectedPlanSubjects,
+          subjects: selectedAgendaSubjects,
           completed: false,
           recurrenceStart: recurrenceStartISO,
           recurrenceEnd: recurrenceEndISO,
@@ -309,7 +311,7 @@ export function PlanManager({
         // Only include optional fields if they have values
         if (startTime) newItem.startTime = startTime
         if (endTime) newItem.endTime = endTime
-        if (planNote.trim()) newItem.note = planNote.trim()
+        if (agendaNote.trim()) newItem.note = agendaNote.trim()
 
         // Show progress for multi-day operations
         if (
@@ -323,7 +325,7 @@ export function PlanManager({
         }
 
         await onUpdateDetails(iso, {
-          plannedItems: [...existingItems, newItem],
+          agendaItems: [...existingItems, newItem],
         })
       }
 
@@ -335,22 +337,22 @@ export function PlanManager({
         tone: 'success',
       })
     } catch (error) {
-      console.error('Failed to add plan', error)
-      onStatus?.({ text: 'Failed to add plan', tone: 'error' })
+      console.error('Failed to add agenda', error)
+      onStatus?.({ text: 'Failed to add agenda', tone: 'error' })
       return
     }
 
-    resetPlanForm()
+    resetAgendaForm()
   }
 
-  const handleDeletePlanItem = (iso: string, id: string) => {
+  const handleDeleteAgendaItem = (iso: string, id: string) => {
     try {
-      const existingItems = dayDetails[iso]?.plannedItems || []
+      const existingItems = dayDetails[iso]?.agendaItems || []
       const filtered = existingItems.filter((item) => item.id !== id)
-      onUpdateDetails(iso, { plannedItems: filtered })
+      onUpdateDetails(iso, { agendaItems: filtered })
       onStatus?.({ text: '🗑️ Plan deleted • Firebase synced', tone: 'info' })
     } catch (error) {
-      console.error('Failed to delete plan', error)
+      console.error('Failed to delete agenda', error)
       onStatus?.({ text: '❌ Failed to delete plan', tone: 'error' })
     }
   }
@@ -360,7 +362,7 @@ export function PlanManager({
       // Collect all dates that need updating
       const datesToUpdate: string[] = []
       for (const [iso, details] of Object.entries(dayDetails)) {
-        const items = details?.plannedItems || []
+        const items = details?.agendaItems || []
         if (items.some((item) => item.recurrenceId === recurrenceId)) {
           datesToUpdate.push(iso)
         }
@@ -379,12 +381,12 @@ export function PlanManager({
       // Perform all updates in parallel using Promise.all
       const results = await Promise.all(
         datesToUpdate.map(async (iso) => {
-          const items = dayDetails[iso]?.plannedItems || []
+          const items = dayDetails[iso]?.agendaItems || []
           const filtered = items.filter(
             (item) => item.recurrenceId !== recurrenceId,
           )
           try {
-            await onUpdateDetails(iso, { plannedItems: filtered })
+            await onUpdateDetails(iso, { agendaItems: filtered })
             return { success: true, iso }
           } catch (err) {
             console.error(`❌ Failed to update ${iso}:`, err)
@@ -417,17 +419,17 @@ export function PlanManager({
     }
   }
 
-  const togglePlanCompletion = (
+  const toggleAgendaCompletion = (
     iso: string,
     id: string,
     completed: boolean,
   ) => {
     try {
-      const existingItems = dayDetails[iso]?.plannedItems || []
+      const existingItems = dayDetails[iso]?.agendaItems || []
       const updatedItems = existingItems.map((item) =>
         item.id === id ? { ...item, completed } : item,
       )
-      onUpdateDetails(iso, { plannedItems: updatedItems })
+      onUpdateDetails(iso, { agendaItems: updatedItems })
 
       if (completed) {
         const subjectsToAttach =
@@ -472,44 +474,44 @@ export function PlanManager({
     }, 900)
   }
 
-  const togglePlanSubject = (name: string) => {
-    setSelectedPlanSubjects((prev) =>
+  const toggleAgendaSubject = (name: string) => {
+    setSelectedAgendaSubjects((prev) =>
       prev.includes(name) ? prev.filter((s) => s !== name) : [...prev, name],
     )
   }
 
-  const handleEditPlan = (item: PlannedItem) => {
-    onStatus?.({ text: 'Editing plan…', tone: 'progress' })
-    setShowPlanModal(true)
-    setPlanTitle(item.title)
+  const handleEditAgenda = (item: AgendaItem) => {
+    onStatus?.({ text: 'Editing agenda…', tone: 'progress' })
+    setShowAgendaModal(true)
+    setAgendaTitle(item.title)
     setStartTime(item.startTime || '')
     setEndTime(item.endTime || '')
-    setPlanNote(item.note || '')
+    setAgendaNote(item.note || '')
     setRepeatType(item.repeat?.type || 'none')
     setRepeatDays(
       item.repeat?.days && item.repeat.type !== 'daily' ? item.repeat.days : [],
     )
-    setSelectedPlanSubjects(item.subjects || [])
+    setSelectedAgendaSubjects(item.subjects || [])
     setRecurrenceStart(item.recurrenceStart || selectedDate)
     setEndDateOverride(item.recurrenceEnd || '')
-    setEditingPlanId(item.id)
+    setEditingAgendaId(item.id)
     setEditingRecurrenceId(item.recurrenceId || null)
   }
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-white/70">Plan</label>
+        <label className="text-sm font-medium text-white/70">Agenda</label>
         <div className="flex items-center gap-2">
-          {plannedItems.length > 0 && (
+          {agendaItems.length > 0 && (
             <span className="text-xs text-white/40">
-              {plannedItems.length} item{plannedItems.length === 1 ? '' : 's'}
+              {agendaItems.length} item{agendaItems.length === 1 ? '' : 's'}
             </span>
           )}
           <button
             onClick={() => {
-              resetPlanForm()
-              setShowPlanModal(true)
+              resetAgendaForm()
+              setShowAgendaModal(true)
             }}
             className="
               px-3 py-1.5 rounded-lg text-xs font-medium
@@ -517,14 +519,14 @@ export function PlanManager({
               hover:bg-white/[0.1] transition-all duration-150
             "
           >
-            + Add plan
+            + Add agenda
           </button>
         </div>
       </div>
 
-      {sortedPlannedItems.length > 0 && (
+      {sortedAgendaItems.length > 0 && (
         <div className="space-y-2">
-          {sortedPlannedItems.map((item) => (
+          {sortedAgendaItems.map((item) => (
             <div
               key={item.id}
               className="
@@ -565,7 +567,7 @@ export function PlanManager({
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleEditPlan(item)}
+                  onClick={() => handleEditAgenda(item)}
                   className="
                     text-base text-white/50 hover:text-white
                     p-2 rounded-lg hover:bg-white/10 transition-all duration-150
@@ -577,7 +579,7 @@ export function PlanManager({
                 {isPastOrToday && (
                   <button
                     onClick={() =>
-                      togglePlanCompletion(
+                      toggleAgendaCompletion(
                         selectedDate,
                         item.id,
                         !item.completed,
@@ -600,23 +602,29 @@ export function PlanManager({
                   <button
                     onClick={() => handleDeleteSeries(item.recurrenceId!)}
                     className="
-                      text-base text-white/50 hover:text-red-300
-                      p-2 rounded-lg hover:bg-red-500/10 transition-all duration-150
+                      text-sm px-2 py-1 rounded-lg
+                      bg-red-500/10 hover:bg-red-500/20
+                      text-red-300 hover:text-red-200
+                      border border-red-500/30
+                      transition-all duration-150
                     "
-                    title="Delete series"
+                    title="Delete all occurrences in this series"
                   >
-                    🗑️
+                    🗑️ Series
                   </button>
                 )}
                 <button
-                  onClick={() => handleDeletePlanItem(selectedDate, item.id)}
+                  onClick={() => handleDeleteAgendaItem(selectedDate, item.id)}
                   className="
-                    text-base text-white/50 hover:text-red-300
-                    p-2 rounded-lg hover:bg-red-500/10 transition-all duration-150
+                    text-sm px-2 py-1 rounded-lg
+                    bg-white/5 hover:bg-white/10
+                    text-white/70 hover:text-white
+                    border border-white/10
+                    transition-all duration-150
                   "
-                  title="Delete"
+                  title="Delete only this day"
                 >
-                  ❌
+                  ❌ This day
                 </button>
               </div>
             </div>
@@ -624,15 +632,15 @@ export function PlanManager({
         </div>
       )}
 
-      {showPlanModal && (
+      {showAgendaModal && (
         <Modal
-          open={showPlanModal}
-          title={editingPlanId ? 'Edit plan' : 'Add plan'}
-          onClose={resetPlanForm}
+          open={showAgendaModal}
+          title={editingAgendaId ? 'Edit agenda' : 'Add agenda'}
+          onClose={resetAgendaForm}
           footer={
             <div className="flex justify-end gap-2">
               <button
-                onClick={resetPlanForm}
+                onClick={resetAgendaForm}
                 className="
                   px-4 py-2 rounded-xl text-sm font-medium
                   bg-white/[0.05] text-white/70 hover:bg-white/[0.1]
@@ -641,8 +649,8 @@ export function PlanManager({
                 Cancel
               </button>
               <button
-                onClick={handleAddPlanItem}
-                disabled={!planTitle.trim()}
+                onClick={handleAddAgendaItem}
+                disabled={!agendaTitle.trim()}
                 className="
                   px-4 py-2 rounded-xl text-sm font-medium
                   bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
@@ -652,7 +660,7 @@ export function PlanManager({
                   transition-all duration-200
                 "
               >
-                {editingPlanId ? 'Update' : 'Add'}
+                {editingAgendaId ? 'Update' : 'Add'}
               </button>
             </div>
           }
@@ -660,12 +668,12 @@ export function PlanManager({
           <div className="space-y-4">
             <div className="space-y-2">
               <input
-                value={planTitle}
+                value={agendaTitle}
                 onChange={(e) => {
-                  setPlanTitle(e.target.value)
+                  setAgendaTitle(e.target.value)
                   notifyTyping('Typing…')
                 }}
-                placeholder="Add a plan item..."
+                placeholder="Add an agenda item..."
                 className="
                   w-full px-3 py-2 rounded-xl
                   bg-white/[0.04] border border-white/[0.08]
@@ -683,7 +691,7 @@ export function PlanManager({
                       : `Custom ${repeatDays.join(', ')}`}
                   </span>
                 )}
-                {editingPlanId && (
+                {editingAgendaId && (
                   <span className="text-white/40">
                     Editing {editingRecurrenceId ? 'series' : 'occurrence'}
                   </span>
@@ -773,16 +781,16 @@ export function PlanManager({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-white/40 w-20">Start</label>
+                  <label className="text-xs text-white/40 w-20">Start on</label>
                   <input
                     type="date"
-                    value={selectedDate}
-                    disabled
+                    value={recurrenceStart}
+                    onChange={(e) => setRecurrenceStart(e.target.value)}
                     className="
                       flex-1 px-3 py-2 rounded-xl
                       bg-white/[0.04] border border-white/[0.08]
-                      text-white/60 placeholder-white/40
-                      cursor-not-allowed
+                      text-white placeholder-white/40
+                      focus:outline-none focus:border-[#AF52DE]/60
                     "
                   />
                 </div>
@@ -792,7 +800,6 @@ export function PlanManager({
                     type="date"
                     value={endDateOverride || ''}
                     onChange={(e) => setEndDateOverride(e.target.value)}
-                    min={todayISO}
                     className="
                       flex-1 px-3 py-2 rounded-xl
                       bg-white/[0.04] border border-white/[0.08]
@@ -810,12 +817,12 @@ export function PlanManager({
                   {availableSubjects.map((subject) => (
                     <button
                       key={subject}
-                      onClick={() => togglePlanSubject(subject)}
+                      onClick={() => toggleAgendaSubject(subject)}
                       className={`
                         px-3 py-1.5 rounded-xl text-xs font-medium
                         transition-all duration-150 border
                         ${
-                          selectedPlanSubjects.includes(subject)
+                          selectedAgendaSubjects.includes(subject)
                             ? 'bg-[#30D158]/20 border-[#30D158]/50 text-[#30D158]'
                             : 'bg-white/[0.04] border-white/[0.08] text-white/60 hover:bg-white/[0.08]'
                         }
@@ -835,8 +842,8 @@ export function PlanManager({
               <div className="space-y-2">
                 <label className="text-xs text-white/50">Note</label>
                 <textarea
-                  value={planNote}
-                  onChange={(e) => setPlanNote(e.target.value)}
+                  value={agendaNote}
+                  onChange={(e) => setAgendaNote(e.target.value)}
                   rows={2}
                   placeholder="Add a note (optional)"
                   className="

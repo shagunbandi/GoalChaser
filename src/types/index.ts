@@ -17,7 +17,8 @@ export interface RepeatRule {
   days?: string[] // Weekday codes e.g. ['mon','wed','fri']
 }
 
-export interface PlannedItem {
+// Renamed from PlannedItem to AgendaItem to avoid confusion with TravelPlan
+export interface AgendaItem {
   id: string
   title: string
   startTime?: string
@@ -31,6 +32,10 @@ export interface PlannedItem {
   recurrenceStart?: string
   recurrenceEnd?: string
 }
+
+// For backward compatibility - will be removed in future
+/** @deprecated Use AgendaItem instead */
+export type PlannedItem = AgendaItem
 
 // ============ Travel Types ============
 
@@ -54,8 +59,11 @@ export interface DayDetails {
   note: string
   // Direct hours input (used when not tracking via subjects)
   directHours?: number
-  // Planned items for the day
-  plannedItems?: PlannedItem[]
+  // Agenda items for the day (renamed from plannedItems)
+  agendaItems?: AgendaItem[]
+  // For backward compatibility - will be removed in future
+  /** @deprecated Use agendaItems instead */
+  plannedItems?: AgendaItem[]
   // Travel plans (multiple allowed)
   travelPlans?: TravelPlan[]
 }

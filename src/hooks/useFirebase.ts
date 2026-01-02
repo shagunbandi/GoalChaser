@@ -75,18 +75,22 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
           : [legacyTravel]
         : []
 
-      const normalizedPlanned =
-        details.plannedItems?.map((item) => ({
+      // Support both agendaItems and plannedItems for backward compatibility
+      const agendaSource = details.agendaItems || details.plannedItems || []
+      const normalizedAgenda =
+        agendaSource.map((item) => ({
           ...item,
           subjects: item.subjects || [],
           completed: item.completed || false,
           sequenceId: item.sequenceId || item.recurrenceId || item.id,
-        })) || []
+        }))
 
       normalized[iso] = {
         ...details,
         travelPlans,
-        plannedItems: normalizedPlanned,
+        agendaItems: normalizedAgenda,
+        // Keep plannedItems for backward compatibility
+        plannedItems: normalizedAgenda,
       }
     })
     return normalized
@@ -174,7 +178,8 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
           subjects: [],
           note: '',
           directHours: 0,
-          plannedItems: [],
+          agendaItems: [],
+          plannedItems: [], // backward compatibility
           travelPlans: [],
         }
 

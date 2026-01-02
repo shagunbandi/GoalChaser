@@ -246,9 +246,9 @@ export function YearView({
   const removePlannedItem = async (iso: string, planId: string) => {
     setRemovingPlanId(planId)
     try {
-      const items = dayDetails[iso]?.plannedItems || []
+      const items = dayDetails[iso]?.agendaItems || dayDetails[iso]?.plannedItems || []
       const filtered = items.filter((item) => item.id !== planId)
-      await onUpdateDay(iso, { plannedItems: filtered })
+      await onUpdateDay(iso, { agendaItems: filtered, plannedItems: filtered })
     } finally {
       setRemovingPlanId(null)
     }
@@ -358,8 +358,8 @@ export function YearView({
                   ))}
                   {month.days.map((day) => {
                     const travels = dayDetails[day.iso]?.travelPlans || []
-                    const plannedCount =
-                      dayDetails[day.iso]?.plannedItems?.length || 0
+                    const agendaCount =
+                      (dayDetails[day.iso]?.agendaItems || dayDetails[day.iso]?.plannedItems || []).length
                     const isToday = day.iso === todayISO
                     const hasTravel = travels.length > 0
                     const hasMultipleTravels = travels.length > 1
@@ -418,23 +418,23 @@ export function YearView({
                           </div>
                         )}
 
-                        {/* Planned items indicator at the bottom */}
-                        {plannedCount > 0 && !hasTravel && (
+                        {/* Agenda items indicator at the bottom */}
+                        {agendaCount > 0 && !hasTravel && (
                           <span
                             className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5"
-                            title={`${plannedCount} planned item${
-                              plannedCount === 1 ? '' : 's'
+                            title={`${agendaCount} agenda item${
+                              agendaCount === 1 ? '' : 's'
                             }`}
                           >
                             {Array.from({
-                              length: Math.min(plannedCount, 3),
+                              length: Math.min(agendaCount, 3),
                             }).map((_, idx) => (
                               <span
                                 key={idx}
                                 className="h-1 w-1 rounded-full bg-white/60"
                               />
                             ))}
-                            {plannedCount > 3 && (
+                            {agendaCount > 3 && (
                               <span className="text-[7px] text-white/50 leading-none">
                                 +
                               </span>
@@ -555,11 +555,11 @@ export function YearView({
 
             <div className="rounded-xl border border-white/10 bg-white/5 p-3">
               <div className="text-sm font-semibold text-white mb-2">
-                Planned items
+                Agenda items
               </div>
-              {dayDetails[selectedDay]?.plannedItems?.length ? (
+              {(dayDetails[selectedDay]?.agendaItems || dayDetails[selectedDay]?.plannedItems)?.length ? (
                 <ul className="space-y-1 text-xs text-white/80">
-                  {dayDetails[selectedDay]?.plannedItems?.map((item) => (
+                  {(dayDetails[selectedDay]?.agendaItems || dayDetails[selectedDay]?.plannedItems)?.map((item) => (
                     <li
                       key={item.id}
                       className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/3 px-3 py-2"

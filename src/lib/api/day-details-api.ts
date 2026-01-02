@@ -1,6 +1,6 @@
 // API layer for day details operations
 
-import type { DayDetails, PlannedItem } from '@/types'
+import type { DayDetails, AgendaItem } from '@/types'
 import { getFirebaseDb, isFirebaseAvailable } from './firebase-client'
 import { logger } from '@/lib/logger'
 
@@ -71,6 +71,9 @@ export async function loadDayDetailsFromFirebase(
           : [legacyTravel]
         : []
 
+      // Support both old (plannedItems) and new (agendaItems) field names
+      const agendaItems = data.agendaItems || data.plannedItems || []
+      
       result[doc.id] = {
         status: data.status || null,
         subject: data.subject || '',
@@ -78,7 +81,13 @@ export async function loadDayDetailsFromFirebase(
         subjects: data.subjects || [],
         note: data.note || '',
         directHours: data.directHours || 0,
-        plannedItems: (data.plannedItems || []).map((item: PlannedItem) => ({
+        agendaItems: agendaItems.map((item: AgendaItem) => ({
+          ...item,
+          subjects: item.subjects || [],
+          completed: item.completed || false,
+        })),
+        // Keep plannedItems for backward compatibility
+        plannedItems: agendaItems.map((item: AgendaItem) => ({
           ...item,
           subjects: item.subjects || [],
           completed: item.completed || false,

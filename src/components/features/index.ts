@@ -5,7 +5,7 @@ export { YearView } from './YearView'
 export { StatusSelector } from './StatusSelector'
 export { SubjectManager } from './SubjectManager'
 export { HoursSummary } from './HoursSummary'
-export { PlanManager } from './PlanManager'
+export { AgendaManager } from './AgendaManager'
 export { SubjectEntries } from './SubjectEntries'
 
 // Analytics components

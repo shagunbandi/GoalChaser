@@ -12,6 +12,7 @@ import { StatusSelector } from './StatusSelector'
 import { HoursSummary } from './HoursSummary'
 import { SubjectManager } from './SubjectManager'
 import { PlanManager } from './PlanManager'
+import { AgendaManager } from './AgendaManager'
 import { SubjectEntries } from './SubjectEntries'
 import { formatDateDisplay } from '@/lib/dateUtils'
 
@@ -63,9 +64,10 @@ export function DetailView({
   const currentStatus = details?.status || null
   const currentNote = details?.note || ''
   const currentSubjects: SubjectEntry[] = details?.subjects || []
-  const plannedItems = useMemo(
-    () => details?.plannedItems || [],
-    [details?.plannedItems],
+  // Support both old (plannedItems) and new (agendaItems) field names for backward compatibility
+  const agendaItems = useMemo(
+    () => details?.agendaItems || details?.plannedItems || [],
+    [details?.agendaItems, details?.plannedItems],
   )
 
   // Calculate hours from subjects
@@ -109,12 +111,12 @@ export function DetailView({
       />
 
       <div className="space-y-6">
-        {/* Planning Section */}
-        <PlanManager
+        {/* Agenda Section */}
+        <AgendaManager
           selectedDate={selectedDate}
           todayISO={todayISO}
           dayDetails={dayDetails}
-          plannedItems={plannedItems}
+          agendaItems={agendaItems}
           availableSubjects={availableSubjects}
           onUpdateDetails={onUpdateDetails}
           onStatus={onStatus}

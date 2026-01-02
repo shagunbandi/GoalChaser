@@ -105,7 +105,8 @@ export function Calendar({
   }
 
   const getPlannedItemsPreview = (iso: string) => {
-    const items = dayDetails[iso]?.plannedItems || []
+    // Support both agendaItems and plannedItems for backward compatibility
+    const items = dayDetails[iso]?.agendaItems || dayDetails[iso]?.plannedItems || []
     if (items.length === 0) return null
     
     // Create tooltip content with all items
