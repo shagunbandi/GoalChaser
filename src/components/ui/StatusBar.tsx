@@ -35,7 +35,7 @@ export function StatusBar() {
   const symbol = toneSymbol[tone] || toneSymbol.info
 
   return (
-    <div 
+    <div
       className={`
         fixed bottom-0 left-0 right-0 z-50
         h-7 px-4

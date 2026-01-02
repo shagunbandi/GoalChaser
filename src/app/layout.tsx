@@ -1,49 +1,49 @@
-import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Providers } from "@/components/Providers";
-import { StatusBar } from "@/components/ui/StatusBar";
-import "./globals.css";
+import type { Metadata, Viewport } from 'next'
+import { Geist, Geist_Mono } from 'next/font/google'
+import { Providers } from '@/components/Providers'
+import { StatusBar } from '@/components/ui/StatusBar'
+import './globals.css'
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
+})
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+})
 
 export const metadata: Metadata = {
-  title: "Nitya",
-  description: "Track and achieve your goals with daily habit tracking",
-  manifest: "/manifest.json",
+  title: 'Nitya',
+  description: 'Track and achieve your goals with daily habit tracking',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
-    title: "Nitya",
+    statusBarStyle: 'default',
+    title: 'Nitya',
   },
   formatDetection: {
     telephone: false,
   },
   icons: {
-    icon: "/icons/icon-192x192.svg",
-    apple: "/icons/icon-192x192.svg",
+    icon: '/icons/icon-192x192.svg',
+    apple: '/icons/icon-192x192.svg',
   },
-};
+}
 
 export const viewport: Viewport = {
-  themeColor: "#f97316",
-  width: "device-width",
+  themeColor: '#f97316',
+  width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-};
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
     <html lang="en">
@@ -62,5 +62,5 @@ export default function RootLayout({
         </Providers>
       </body>
     </html>
-  );
+  )
 }

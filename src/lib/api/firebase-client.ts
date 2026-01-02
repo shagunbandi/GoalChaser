@@ -44,9 +44,6 @@ export async function initFirebase() {
 }
 
 export function getFirebaseDb() {
-  if (!db) {
-    logger.info('Firebase DB not available')
-  }
   return db
 }
 
