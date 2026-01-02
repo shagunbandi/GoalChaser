@@ -13,6 +13,14 @@
 # testing
 /coverage
 
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+*.trace
+*.zip
+
 # next.js
 /.next/
 /out/
@@ -32,6 +40,11 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.test
+!.env.local.example
+
+# test environment (keep .env.test committed for team)
+.env.test.local
 
 # vercel
 .vercel
@@ -49,3 +62,13 @@ public/worker-*.js
 public/worker-*.js.map
 public/fallback-*.js
 public/fallback-*.js.map
+
+# Firebase Emulator
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*.log
+
+# Firebase Emulator data (if persisted)
+.emulator-data/

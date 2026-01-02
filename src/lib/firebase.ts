@@ -5,10 +5,9 @@ import {
   setDoc,
   getDoc,
   collection,
-  query,
-  where,
   getDocs,
   writeBatch,
+  connectFirestoreEmulator,
 } from 'firebase/firestore'
 
 // Firebase configuration
@@ -27,6 +26,7 @@ const firebaseConfig = {
 // Firebase is only initialized when actually needed at runtime
 let app: ReturnType<typeof initializeApp> | null = null
 let db: ReturnType<typeof getFirestore> | null = null
+let isEmulatorConnected = false
 
 function getApp() {
   if (!app) {
@@ -38,6 +38,28 @@ function getApp() {
 function getDb() {
   if (!db) {
     db = getFirestore(getApp())
+    
+    // Connect to emulator if configured (must happen before any operations)
+    if (
+      !isEmulatorConnected &&
+      process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true'
+    ) {
+      try {
+        const emulatorHost = process.env.NEXT_PUBLIC_FIREBASE_FIRESTORE_EMULATOR_HOST || 'localhost:8080'
+        const [host, port] = emulatorHost.split(':')
+        
+        connectFirestoreEmulator(db, host, parseInt(port, 10))
+        isEmulatorConnected = true
+        console.log(`✅ Connected to Firestore Emulator at ${host}:${port}`)
+      } catch (error) {
+        // Ignore if already connected (shouldn't happen with our flag, but just in case)
+        if (error instanceof Error && !error.message.includes('already been called')) {
+          console.error('❌ Error connecting to Firestore Emulator:', error)
+        } else {
+          isEmulatorConnected = true // Mark as connected even if error says already connected
+        }
+      }
+    }
   }
   return db
 }

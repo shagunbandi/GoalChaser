@@ -12,7 +12,7 @@ import { StatusSelector } from './StatusSelector'
 import { HoursSummary } from './HoursSummary'
 import { SubjectManager } from './SubjectManager'
 import { PlanManager } from './PlanManager'
-import { AgendaManager } from './AgendaManager'
+import { AgendaManager } from './agenda'
 import { SubjectEntries } from './SubjectEntries'
 import { formatDateDisplay } from '@/utils'
 

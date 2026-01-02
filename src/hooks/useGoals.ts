@@ -73,6 +73,23 @@ async function initFirebase() {
     const app =
       getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
     db = getFirestore(app)
+    
+    // Connect to emulator if configured
+    if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
+      try {
+        const { connectFirestoreEmulator } = await import('firebase/firestore')
+        const emulatorHost = process.env.NEXT_PUBLIC_FIREBASE_FIRESTORE_EMULATOR_HOST || 'localhost:8080'
+        const [host, port] = emulatorHost.split(':')
+        connectFirestoreEmulator(db, host, parseInt(port, 10))
+        logger.success('✅ Connected to Firestore Emulator (goals)')
+      } catch (error) {
+        // Ignore if already connected
+        if (error instanceof Error && !error.message.includes('already been called')) {
+          logger.error('Error connecting to Firestore Emulator (goals):', error)
+        }
+      }
+    }
+    
     logger.success('Firebase initialized (goals)')
     return db
   } catch (error) {

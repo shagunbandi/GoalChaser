@@ -80,3 +80,43 @@ docker-prune:
 traefik-check:
     docker network inspect nitya_network
 
+# ==================== Firebase Emulators ====================
+
+# Start Firebase emulators for testing
+emulators:
+    firebase emulators:start --only auth,firestore --project demo-test
+
+# ==================== E2E Testing ====================
+
+# Run all E2E tests
+test-e2e:
+    npm run test:e2e
+
+# Run E2E tests in UI mode (interactive)
+test-e2e-ui:
+    npm run test:e2e:ui
+
+# Run E2E tests in headed mode (see browser)
+test-e2e-headed:
+    npm run test:e2e:headed
+
+# Run E2E tests in debug mode
+test-e2e-debug:
+    npm run test:e2e:debug
+
+# Run only auth tests
+test-auth:
+    npx playwright test auth.spec.ts
+
+# Run only auth tests in UI mode
+test-auth-ui:
+    npx playwright test auth.spec.ts --ui
+
+# Install Playwright browsers
+install-playwright:
+    npx playwright install
+
+# Show Playwright test report
+show-report:
+    npx playwright show-report
+

@@ -17,6 +17,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
+  connectAuthEmulator,
   User,
 } from 'firebase/auth'
 import { initializeApp, getApps } from 'firebase/app'
@@ -36,6 +37,7 @@ const firebaseConfig = {
 let app: ReturnType<typeof initializeApp> | null = null
 let auth: ReturnType<typeof getAuth> | null = null
 let googleProvider: GoogleAuthProvider | null = null
+let isAuthEmulatorConnected = false
 
 function getFirebaseApp() {
   if (!app) {
@@ -47,6 +49,35 @@ function getFirebaseApp() {
 function getFirebaseAuth() {
   if (!auth) {
     auth = getAuth(getFirebaseApp())
+
+    // Connect to emulator if configured (must happen before any auth operations)
+    if (
+      !isAuthEmulatorConnected &&
+      process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true'
+    ) {
+      try {
+        const emulatorHost =
+          process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST ||
+          'localhost:9099'
+        const [host, port] = emulatorHost.split(':')
+
+        connectAuthEmulator(auth, `http://${host}:${port}`, {
+          disableWarnings: true,
+        })
+        isAuthEmulatorConnected = true
+        logger.info(`✅ Connected to Auth Emulator at ${host}:${port}`)
+      } catch (error) {
+        // Ignore if already connected (shouldn't happen with our flag, but just in case)
+        if (
+          error instanceof Error &&
+          !error.message.includes('already been called')
+        ) {
+          logger.error('❌ Error connecting to Auth Emulator:', error)
+        } else {
+          isAuthEmulatorConnected = true // Mark as connected even if error says already connected
+        }
+      }
+    }
   }
   return auth
 }
@@ -511,7 +542,7 @@ export function UserAvatar({ size = 'md', showName = false }: UserAvatarProps) {
     '?'
 
   return (
-    <div className="relative">
+    <div className="relative" data-testid="user-avatar">
       <button
         onClick={() => setShowMenu(!showMenu)}
         className="flex items-center gap-2 group"
