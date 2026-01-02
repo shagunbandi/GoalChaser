@@ -3,7 +3,7 @@
 import {
   type SubjectStats,
   getScoreTextColor,
-} from '@/lib/analyticsUtils'
+} from '@/utils'
 
 interface SubjectBreakdownProps {
   data: SubjectStats[]

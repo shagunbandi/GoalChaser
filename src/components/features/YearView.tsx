@@ -11,7 +11,7 @@ import {
   formatShortDate,
   formatDateDisplay,
   isWeekend,
-} from '@/lib/dateUtils'
+} from '@/utils'
 
 interface YearViewProps {
   year: number

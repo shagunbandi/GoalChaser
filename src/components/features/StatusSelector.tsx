@@ -1,7 +1,7 @@
 'use client'
 
 import type { DayStatus } from '@/types'
-import { getScoreCategory, getScoreLabel } from '@/lib/scoreUtils'
+import { getScoreCategory, getScoreLabel } from '@/utils'
 
 interface StatusSelectorProps {
   value: DayStatus

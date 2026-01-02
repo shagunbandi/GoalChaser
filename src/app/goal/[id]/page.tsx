@@ -4,16 +4,13 @@ import { useState, useMemo, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-// Hooks
 import { useFirebase } from '@/hooks/useFirebase'
 import { useGoals } from '@/hooks/useGoals'
 import { useAuth } from '@/hooks/useAuth'
 
-// Components
 import { Card, Navbar } from '@/components/ui'
 import { Calendar, DetailView, YearView } from '@/components/features'
 
-// Utils
 import {
   toISODateString,
   computeMonthInfo,
@@ -21,9 +18,8 @@ import {
   getNextMonth,
   getMsUntilMidnight,
   enumerateDateRange,
-} from '@/lib/dateUtils'
+} from '@/utils'
 
-// Types
 import type { DayStatus, DayDetails, TravelPlan } from '@/types'
 
 export default function GoalPage() {

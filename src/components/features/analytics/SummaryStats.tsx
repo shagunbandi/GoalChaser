@@ -1,7 +1,6 @@
 'use client'
 
-import { type AnalyticsSummary, type Streak, getScoreTextColor, getShortDate } from '@/lib/analyticsUtils'
-import { getVibgyorColors } from '@/lib/scoreUtils'
+import { type AnalyticsSummary, type Streak, getScoreTextColor, getShortDate, getVibgyorColors } from '@/utils'
 
 interface SummaryStatsProps {
   summary: AnalyticsSummary

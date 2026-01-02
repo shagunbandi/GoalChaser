@@ -3,23 +3,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './useAuth'
 import type { DayDetails, SubjectConfig } from '@/types'
-import { logger } from '@/lib/logger'
-
-// API imports
-import { initFirebase } from '@/lib/api/firebase-client'
+import { logger } from '@/utils/logger'
 import {
+  initFirebase,
   loadDayDetailsFromFirebase,
   saveDayDetailsToFirebase,
-} from '@/lib/api/day-details-api'
-import {
   loadSubjectConfigsFromFirebase,
   saveSubjectConfigsToFirebase,
-} from '@/lib/api/subject-configs-api'
-import {
   getStorageKey,
   loadFromStorage,
   saveToStorage,
-} from '@/lib/api/storage'
+} from '@/services'
 
 // ============ Main Hook ============
 interface UseFirebaseReturn {

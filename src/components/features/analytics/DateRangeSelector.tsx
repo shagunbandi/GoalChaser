@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { getDateRangePresets, type DateRange } from '@/lib/analyticsUtils'
+import { getDateRangePresets, type DateRange } from '@/utils'
 
 interface DateRangeSelectorProps {
   selectedRange: DateRange

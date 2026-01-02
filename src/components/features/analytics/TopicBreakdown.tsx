@@ -1,6 +1,6 @@
 'use client'
 
-import { type TopicStats, getScoreTextColor } from '@/lib/analyticsUtils'
+import { type TopicStats, getScoreTextColor } from '@/utils'
 
 interface TopicBreakdownProps {
   data: TopicStats[]

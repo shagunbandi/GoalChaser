@@ -7,7 +7,7 @@ import type {
   DayDetails,
 } from '@/types'
 import { Card } from '@/components/ui/Card'
-import { getScoreColorClass, getStatusColorStyle } from '@/lib/scoreUtils'
+import { getScoreColorClass, getStatusColorStyle } from '@/utils'
 import { WEEKDAY_LABELS, MONTH_NAMES } from '@/constants'
 
 interface CalendarProps {

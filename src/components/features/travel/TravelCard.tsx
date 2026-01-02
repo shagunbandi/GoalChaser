@@ -1,5 +1,5 @@
 import type { TravelPlan } from '@/types'
-import { formatShortDate } from '@/lib/dateUtils'
+import { formatShortDate } from '@/utils'
 
 interface TravelCardProps {
   travel: TravelPlan & { days?: string[] }

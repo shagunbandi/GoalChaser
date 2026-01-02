@@ -20,7 +20,7 @@ import {
   User,
 } from 'firebase/auth'
 import { initializeApp, getApps } from 'firebase/app'
-import { logger } from '@/lib/logger'
+import { logger } from '@/utils/logger'
 
 // Firebase configuration
 const firebaseConfig = {

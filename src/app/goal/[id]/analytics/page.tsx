@@ -4,12 +4,10 @@ import { useState, useMemo, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-// Hooks
 import { useFirebase } from '@/hooks/useFirebase'
 import { useGoals } from '@/hooks/useGoals'
 import { useAuth } from '@/hooks/useAuth'
 
-// Components
 import { Card, Navbar } from '@/components/ui'
 import {
   DateRangeSelector,
@@ -19,7 +17,6 @@ import {
   ExtendedSummary,
 } from '@/components/features/analytics'
 
-// Utils
 import {
   type DateRange,
   getDateRangePresets,
@@ -27,7 +24,7 @@ import {
   calculateSummary,
   calculateSubjectStats,
   calculateTopicStats,
-} from '@/lib/analyticsUtils'
+} from '@/utils'
 import { toISODateString } from '@/lib/dateUtils'
 
 export default function AnalyticsPage() {

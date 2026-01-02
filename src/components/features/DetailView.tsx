@@ -14,7 +14,7 @@ import { SubjectManager } from './SubjectManager'
 import { PlanManager } from './PlanManager'
 import { AgendaManager } from './AgendaManager'
 import { SubjectEntries } from './SubjectEntries'
-import { formatDateDisplay } from '@/lib/dateUtils'
+import { formatDateDisplay } from '@/utils'
 
 interface DetailViewProps {
   selectedDate: string

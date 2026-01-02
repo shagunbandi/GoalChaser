@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
-import { getHoursLabel, getVibgyorColors } from '@/lib/scoreUtils'
+import { getHoursLabel, getVibgyorColors } from '@/utils'
 
 interface HoursSummaryProps {
   totalHours: number

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './useAuth'
 import type { SuccessCriterion } from '@/types'
-import { logger } from '@/lib/logger'
+import { logger } from '@/utils/logger'
 
 // ============ Types ============
 export interface Goal {

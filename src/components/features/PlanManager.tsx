@@ -3,13 +3,13 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import type { PlannedItem, DayDetails, RepeatType } from '@/types'
 import { Modal } from '@/components/ui'
-import { toISODateString } from '@/lib/dateUtils'
 import {
+  toISODateString,
   generateRecurrenceDates,
   getWeekdayCode,
   WEEKDAY_CODES,
   addDays,
-} from '@/lib/utils/recurrence'
+} from '@/utils'
 
 interface PlanManagerProps {
   selectedDate: string
