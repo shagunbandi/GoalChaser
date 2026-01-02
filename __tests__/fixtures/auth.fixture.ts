@@ -1,11 +1,6 @@
-import { test as base, expect, Page } from '@playwright/test'
-import { setupTestUserWithAuth } from '../helpers/firebase-test-helpers'
+import { Page } from '@playwright/test'
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
-
-export interface AuthFixtures {
-  authenticatedPage: Page
-}
 
 async function waitForAuth(page: Page) {
   await Promise.race([
@@ -17,7 +12,22 @@ async function waitForAuth(page: Page) {
   ])
 }
 
-export async function signUpUser(page: Page, email: string, password: string, name?: string) {
+export interface SignUpOptions {
+  email: string
+  password: string
+  name?: string
+}
+
+export interface SignInOptions {
+  email: string
+  password: string
+}
+
+/**
+ * Signs up a new user via the UI.
+ * This performs actual UI interactions: fills the form and clicks submit.
+ */
+export async function signUp(page: Page, options: SignUpOptions) {
   await page.goto(BASE_URL)
   await page.waitForLoadState('networkidle')
   await page.waitForSelector('input[type="email"]', { timeout: 10000 })
@@ -28,15 +38,15 @@ export async function signUpUser(page: Page, email: string, password: string, na
     await page.waitForTimeout(500)
   }
 
-  if (name) {
+  if (options.name) {
     const nameInput = page.locator('input[type="text"]').first()
     if (await nameInput.isVisible().catch(() => false)) {
-      await nameInput.fill(name)
+      await nameInput.fill(options.name)
     }
   }
 
-  await page.fill('input[type="email"]', email)
-  await page.fill('input[type="password"]', password)
+  await page.fill('input[type="email"]', options.email)
+  await page.fill('input[type="password"]', options.password)
   await page.click('button[type="submit"]')
 
   await page.waitForTimeout(1000)
@@ -46,7 +56,11 @@ export async function signUpUser(page: Page, email: string, password: string, na
   await waitForAuth(page)
 }
 
-export async function signInUser(page: Page, email: string, password: string) {
+/**
+ * Signs in an existing user via the UI.
+ * This performs actual UI interactions: fills the form and clicks submit.
+ */
+export async function signIn(page: Page, options: SignInOptions) {
   await page.goto(BASE_URL)
   await page.waitForLoadState('networkidle')
   await page.waitForSelector('input[type="email"]', { timeout: 10000 })
@@ -57,8 +71,8 @@ export async function signInUser(page: Page, email: string, password: string) {
     await page.waitForTimeout(500)
   }
 
-  await page.fill('input[type="email"]', email)
-  await page.fill('input[type="password"]', password)
+  await page.fill('input[type="email"]', options.email)
+  await page.fill('input[type="password"]', options.password)
   await page.click('button[type="submit"]')
 
   await page.waitForTimeout(1000)
@@ -67,14 +81,3 @@ export async function signInUser(page: Page, email: string, password: string) {
   
   await waitForAuth(page)
 }
-
-export async function signInUserWithAuth(
-  page: Page,
-  options?: { email?: string; password?: string; displayName?: string }
-) {
-  const { user, credentials } = await setupTestUserWithAuth(options)
-  await signInUser(page, credentials.email, credentials.password)
-  return { user, credentials }
-}
-
-export { expect }
