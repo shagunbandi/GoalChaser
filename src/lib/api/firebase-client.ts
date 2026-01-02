@@ -1,16 +1,18 @@
 // Firebase client initialization and instance management
 
+import { logger } from '@/lib/logger'
+
 let firebaseAvailable = true
 let db: ReturnType<typeof import('firebase/firestore').getFirestore> | null = null
 
 export async function initFirebase() {
   if (!firebaseAvailable) {
-    console.log('🔴 Firebase already marked as unavailable')
+    logger.error('Firebase not available - previously failed to initialize')
     return null
   }
 
   try {
-    console.log('🔵 Initializing Firebase...')
+    logger.progress('Initializing Firebase...')
     const { initializeApp, getApps } = await import('firebase/app')
     const { getFirestore } = await import('firebase/firestore')
 
@@ -23,17 +25,8 @@ export async function initFirebase() {
       appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     }
 
-    console.log('🔵 Firebase config:', {
-      hasApiKey: !!firebaseConfig.apiKey,
-      hasAuthDomain: !!firebaseConfig.authDomain,
-      projectId: firebaseConfig.projectId,
-      hasStorageBucket: !!firebaseConfig.storageBucket,
-      hasMessagingSenderId: !!firebaseConfig.messagingSenderId,
-      hasAppId: !!firebaseConfig.appId,
-    })
-
     if (!firebaseConfig.projectId) {
-      console.warn('🔴 Firebase config missing, using localStorage only')
+      logger.error('Firebase config missing (no projectId), using localStorage only')
       firebaseAvailable = false
       return null
     }
@@ -41,17 +34,19 @@ export async function initFirebase() {
     const app =
       getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
     db = getFirestore(app)
-    console.log('✅ Firebase initialized successfully')
-    console.log('🔵 Firestore instance:', !!db)
+    logger.success('Firebase initialized successfully')
     return db
   } catch (error) {
-    console.error('🔴 Firebase initialization failed:', error)
+    logger.error('Firebase initialization failed', error)
     firebaseAvailable = false
     return null
   }
 }
 
 export function getFirebaseDb() {
+  if (!db) {
+    logger.info('Firebase DB not available')
+  }
   return db
 }
 

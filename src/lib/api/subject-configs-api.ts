@@ -2,17 +2,26 @@
 
 import type { SubjectConfig } from '@/types'
 import { getFirebaseDb, isFirebaseAvailable } from './firebase-client'
+import { logger } from '@/lib/logger'
 
 export async function loadSubjectConfigsFromFirebase(
   userId: string,
   goalId: string,
 ): Promise<SubjectConfig[] | null> {
-  if (!isFirebaseAvailable() || !getFirebaseDb()) return null
+  logger.progress('Loading subject configs from Firebase...')
+  
+  if (!isFirebaseAvailable() || !getFirebaseDb()) {
+    logger.error('Cannot load subject configs - Firebase not available')
+    return null
+  }
 
   try {
     const { doc, getDoc } = await import('firebase/firestore')
     const db = getFirebaseDb()
-    if (!db) return null
+    if (!db) {
+      logger.error('Cannot load subject configs - Firebase DB became null')
+      return null
+    }
 
     const docRef = doc(
       db,
@@ -27,11 +36,13 @@ export async function loadSubjectConfigsFromFirebase(
 
     if (docSnap.exists()) {
       const data = docSnap.data()
+      logger.success(`Loaded ${(data.configs || []).length} subject configs`)
       return data.configs || []
     }
+    logger.info('No subject configs found, returning empty array')
     return []
   } catch (error) {
-    console.warn('Firebase subject configs read failed:', error)
+    logger.error('Firebase subject configs read failed', error)
     return null
   }
 }
@@ -41,12 +52,20 @@ export async function saveSubjectConfigsToFirebase(
   goalId: string,
   configs: SubjectConfig[],
 ): Promise<boolean> {
-  if (!isFirebaseAvailable() || !getFirebaseDb()) return false
+  logger.progress(`Saving ${configs.length} subject configs`)
+  
+  if (!isFirebaseAvailable() || !getFirebaseDb()) {
+    logger.error('Cannot save subject configs - Firebase not available')
+    return false
+  }
 
   try {
     const { doc, setDoc } = await import('firebase/firestore')
     const db = getFirebaseDb()
-    if (!db) return false
+    if (!db) {
+      logger.error('Cannot save subject configs - Firebase DB became null')
+      return false
+    }
 
     const docRef = doc(
       db,
@@ -61,9 +80,10 @@ export async function saveSubjectConfigsToFirebase(
       configs,
       updatedAt: new Date().toISOString(),
     })
+    logger.success('Saved subject configs to Firebase')
     return true
   } catch (error) {
-    console.warn('Firebase subject configs write failed:', error)
+    logger.error('Firebase subject configs write failed', error)
     return false
   }
 }

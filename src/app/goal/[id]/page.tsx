@@ -11,7 +11,6 @@ import { useAuth } from '@/hooks/useAuth'
 
 // Components
 import { Card, Navbar } from '@/components/ui'
-import { StatusBar } from '@/components/ui/StatusBar'
 import { Calendar, DetailView, YearView } from '@/components/features'
 
 // Utils
@@ -196,10 +195,7 @@ export default function GoalPage() {
         id: `travel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       }
 
-      console.log('🛫 Travel Plan to Save:', plan)
-
       const dates = enumerateDateRange(plan.startDate, plan.endDate)
-      console.log('📅 Dates to Update:', dates)
 
       // Show progress
       pushStatus({
@@ -214,12 +210,6 @@ export default function GoalPage() {
           const existing = dayDetails[iso]?.travelPlans || []
           const filtered = existing.filter((t) => t.id !== plan.id)
           const updatedPlans = [...filtered, plan]
-
-          console.log(`💾 Saving to ${iso}:`, {
-            existing: existing.length,
-            updatedPlans: updatedPlans.length,
-            data: updatedPlans,
-          })
 
           try {
             await updateDayDetails(iso, { travelPlans: updatedPlans })
@@ -249,8 +239,6 @@ export default function GoalPage() {
           tone: 'success',
         })
       }
-
-      console.log('✅ Travel save completed successfully')
     } catch (err) {
       console.error('❌ Failed to save travel:', err)
       pushStatus({ text: 'Failed to save travel', tone: 'error' })
@@ -548,8 +536,6 @@ export default function GoalPage() {
           )}
         </div>
       </div>
-
-      <StatusBar text={statusText} tone={statusTone} />
     </div>
   )
 }

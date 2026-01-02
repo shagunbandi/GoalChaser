@@ -65,19 +65,8 @@ export function YearView({
         iso.startsWith(yearPrefix) && (details.travelPlans?.length || 0) > 0,
     )
 
-    console.log(`📅 YearView: Processing ${year} travel entries:`, {
-      totalDayDetails: Object.keys(dayDetails).length,
-      yearPrefix,
-      travelEntriesFound: entries.length,
-      entries: entries.map(([iso, details]) => ({
-        date: iso,
-        travelCount: details.travelPlans?.length,
-        travels: details.travelPlans,
-      })),
-    })
-
     return entries
-  }, [dayDetails, yearPrefix, year])
+  }, [dayDetails, yearPrefix])
 
   const weekdayTravelCount = useMemo(
     () => travelEntries.filter(([iso]) => !isWeekend(iso)).length,
@@ -88,12 +77,6 @@ export function YearView({
 
   const travelPlans: TravelSummary[] = useMemo(() => {
     const map = new Map<string, TravelSummary>()
-
-    console.log(`🗺️ YearView: Building travel plans map from all dayDetails`)
-    console.log(
-      `📊 Total dayDetails entries: ${Object.keys(dayDetails).length}`,
-    )
-    console.log(`📅 Current year prefix: ${yearPrefix}`)
 
     // Check ALL dayDetails, not just filtered travelEntries
     Object.entries(dayDetails).forEach(([iso, details]) => {
@@ -111,49 +94,13 @@ export function YearView({
       })
     })
 
-    console.log(`🗺️ Total unique travel IDs in map: ${map.size}`)
-    console.log(`🗺️ All travel IDs:`, Array.from(map.keys()))
-
-    // Check for potential duplicates
-    const travelsByTitle = new Map<string, string[]>()
-    Array.from(map.values()).forEach((plan) => {
-      const key = `${plan.title}-${plan.startDate}-${plan.endDate}`
-      if (!travelsByTitle.has(key)) {
-        travelsByTitle.set(key, [])
-      }
-      travelsByTitle.get(key)!.push(plan.id)
-    })
-
-    travelsByTitle.forEach((ids, key) => {
-      if (ids.length > 1) {
-        console.warn(`⚠️ Duplicate travel plans found for "${key}":`, ids)
-      }
-    })
-
     // Filter to only show travel plans that have at least one day in current year
-    const allPlans = Array.from(map.values())
-    console.log(`🗺️ All plans before year filter: ${allPlans.length}`)
-
-    const plans = allPlans
-      .filter((plan) => {
-        const hasYearDay = plan.days.some((iso) => iso.startsWith(yearPrefix))
-        if (!hasYearDay) {
-          console.log(
-            `⚠️ Filtering out plan "${plan.title}" (ID: ${plan.id}) - no days in ${yearPrefix}`,
-          )
-        }
-        return hasYearDay
-      })
+    const plans = Array.from(map.values())
+      .filter((plan) => plan.days.some((iso) => iso.startsWith(yearPrefix)))
       .map((plan) => ({
         ...plan,
         days: plan.days.sort(),
       }))
-
-    console.log(`🗺️ YearView: Final travel plans count: ${plans.length}`)
-    console.log(
-      `🗺️ Final plans:`,
-      plans.map((p) => ({ id: p.id, title: p.title, dayCount: p.days.length })),
-    )
 
     return plans
   }, [dayDetails, yearPrefix])

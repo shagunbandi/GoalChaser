@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './useAuth'
 import type { SuccessCriterion } from '@/types'
+import { logger } from '@/lib/logger'
 
 // ============ Types ============
 export interface Goal {
@@ -35,7 +36,7 @@ function saveToStorage<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value))
   } catch (error) {
-    console.error('Error saving to localStorage:', error)
+    logger.error('Error saving to localStorage', error)
   }
 }
 
@@ -44,9 +45,13 @@ let firebaseAvailable = true
 let db: ReturnType<typeof import('firebase/firestore').getFirestore> | null = null
 
 async function initFirebase() {
-  if (!firebaseAvailable) return null
+  if (!firebaseAvailable) {
+    logger.error('Firebase not available (useGoals)')
+    return null
+  }
 
   try {
+    logger.progress('Initializing Firebase (goals)...')
     const { initializeApp, getApps } = await import('firebase/app')
     const { getFirestore } = await import('firebase/firestore')
 
@@ -60,7 +65,7 @@ async function initFirebase() {
     }
 
     if (!firebaseConfig.projectId) {
-      console.warn('Firebase config missing, using localStorage only')
+      logger.error('Firebase config missing (useGoals)')
       firebaseAvailable = false
       return null
     }
@@ -68,16 +73,22 @@ async function initFirebase() {
     const app =
       getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
     db = getFirestore(app)
+    logger.success('Firebase initialized (goals)')
     return db
   } catch (error) {
-    console.warn('Firebase initialization failed, using localStorage:', error)
+    logger.error('Firebase initialization failed (goals)', error)
     firebaseAvailable = false
     return null
   }
 }
 
 async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
-  if (!firebaseAvailable || !db) return null
+  logger.progress('Loading goals from Firebase...')
+  
+  if (!firebaseAvailable || !db) {
+    logger.error('Cannot load goals - Firebase not available')
+    return null
+  }
 
   try {
     const { collection, getDocs, query, orderBy } = await import(
@@ -102,15 +113,21 @@ async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
       })
     })
 
+    logger.success(`Loaded ${goals.length} goals from Firebase`)
     return goals
   } catch (error) {
-    console.warn('Firebase goals read failed:', error)
+    logger.error('Firebase goals read failed', error)
     return null
   }
 }
 
 async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> {
-  if (!firebaseAvailable || !db) return false
+  logger.progress(`Saving goal ${goal.name}`)
+  
+  if (!firebaseAvailable || !db) {
+    logger.error('Cannot save goal - Firebase not available')
+    return false
+  }
 
   try {
     const { doc, setDoc } = await import('firebase/firestore')
@@ -125,23 +142,30 @@ async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> 
       successCriterion: goal.successCriterion || null,
       updatedAt: new Date().toISOString(),
     })
+    logger.success(`Saved goal ${goal.name}`)
     return true
   } catch (error) {
-    console.warn('Firebase goal save failed:', error)
+    logger.error('Firebase goal save failed', error)
     return false
   }
 }
 
 async function deleteGoalFromFirebase(userId: string, goalId: string): Promise<boolean> {
-  if (!firebaseAvailable || !db) return false
+  logger.progress(`Deleting goal`)
+  
+  if (!firebaseAvailable || !db) {
+    logger.error('Cannot delete goal - Firebase not available')
+    return false
+  }
 
   try {
     const { doc, deleteDoc } = await import('firebase/firestore')
     const goalRef = doc(db, 'users', userId, 'goals', goalId)
     await deleteDoc(goalRef)
+    logger.success('Deleted goal from Firebase')
     return true
   } catch (error) {
-    console.warn('Firebase goal delete failed:', error)
+    logger.error('Firebase goal delete failed', error)
     return false
   }
 }
@@ -179,10 +203,13 @@ export function useGoals(): UseGoalsReturn {
   // Load initial data
   useEffect(() => {
     async function loadData() {
+      logger.info('Loading goals...')
+      
       // Wait for auth to finish loading
       if (authLoading) return
 
       try {
+        logger.progress('Starting goals load...')
         setIsLoading(true)
         setError(null)
 
@@ -193,20 +220,23 @@ export function useGoals(): UseGoalsReturn {
           const loadedGoals = await loadGoalsFromFirebase(user.uid)
 
         if (loadedGoals !== null) {
+          logger.success('Firebase goals loaded successfully')
           setIsUsingFirebase(true)
           setGoals(loadedGoals)
             saveToStorage(userStorageKey, loadedGoals)
           } else {
+            logger.info('Firebase unavailable, using localStorage')
             setIsUsingFirebase(false)
             setGoals(loadFromStorage(userStorageKey, []))
           }
         } else {
           // Not logged in, use localStorage with default key
+          logger.info('User not logged in, clearing goals')
           setIsUsingFirebase(false)
           setGoals([])
         }
       } catch (err) {
-        console.error('Error loading goals:', err)
+        logger.error('Error loading goals', err)
         setError('Failed to load goals')
         setIsUsingFirebase(false)
         setGoals(loadFromStorage(userStorageKey, []))

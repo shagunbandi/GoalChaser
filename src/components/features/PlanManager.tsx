@@ -138,11 +138,6 @@ export function PlanManager({
       if (editingPlanId) {
         if (editingRecurrenceId) {
           // Series edit
-          console.log(
-            '📝 Editing series with recurrenceId:',
-            editingRecurrenceId,
-          )
-
           const recId = editingRecurrenceId
           const recurrenceDates = generateRecurrenceDates(
             recurrenceStartISO,
@@ -154,18 +149,10 @@ export function PlanManager({
             (iso) => iso >= todayISO,
           )
 
-          console.log(
-            '📅 Future recurrence dates:',
-            futureRecurrenceDates.length,
-            futureRecurrenceDates,
-          )
-
           // Collect all dates to update
           const datesToUpdate = Object.keys(dayDetails)
-          console.log('📅 Total dates in dayDetails:', datesToUpdate.length)
 
           // Perform all updates in parallel using Promise.all
-          console.log('🔄 Starting parallel series edit operations...')
           const results = await Promise.all(
             datesToUpdate.map(async (iso) => {
               const items = dayDetails[iso]?.plannedItems || []
@@ -204,9 +191,6 @@ export function PlanManager({
                 ? [...withoutSeries, newItem]
                 : withoutSeries
               if (JSON.stringify(nextItems) !== JSON.stringify(items)) {
-                console.log(
-                  `📝 Updating ${iso}: ${items.length} -> ${nextItems.length} items`,
-                )
                 try {
                   await onUpdateDetails(iso, { plannedItems: nextItems })
                   return { success: true, iso }
@@ -219,23 +203,15 @@ export function PlanManager({
             }),
           )
 
-          console.log('📊 Series edit results:', results)
           const successCount = results.filter((r) => r.success).length
           const failCount = results.length - successCount
-          console.log(`✅ Success: ${successCount}, ❌ Failed: ${failCount}`)
 
           onStatus?.({ text: 'Series updated', tone: 'success' })
           resetPlanForm()
           return
         } else {
           // Single occurrence edit - update all days that have this plan
-          console.log(
-            '📝 Editing single occurrence with planId:',
-            editingPlanId,
-          )
-
           const datesToUpdate = Object.keys(dayDetails)
-          console.log('📅 Total dates to check:', datesToUpdate.length)
 
           const results = await Promise.all(
             datesToUpdate.map(async (iso) => {
@@ -256,7 +232,6 @@ export function PlanManager({
                 return item
               })
               if (JSON.stringify(updatedItems) !== JSON.stringify(items)) {
-                console.log(`📝 Updating ${iso}`)
                 try {
                   await onUpdateDetails(iso, { plannedItems: updatedItems })
                   return { success: true, iso }
@@ -269,10 +244,8 @@ export function PlanManager({
             }),
           )
 
-          console.log('📊 Single edit results:', results)
           const successCount = results.filter((r) => r.success).length
           const failCount = results.length - successCount
-          console.log(`✅ Success: ${successCount}, ❌ Failed: ${failCount}`)
 
           onStatus?.({
             text: '✅ Plan updated • Firebase synced',
@@ -380,8 +353,6 @@ export function PlanManager({
   }
 
   const handleDeleteSeries = async (recurrenceId: string) => {
-    console.log('🗑️ handleDeleteSeries called with recurrenceId:', recurrenceId)
-
     try {
       // Collect all dates that need updating
       const datesToUpdate: string[] = []
@@ -392,10 +363,7 @@ export function PlanManager({
         }
       }
 
-      console.log('📅 Dates to update:', datesToUpdate.length, datesToUpdate)
-
       if (datesToUpdate.length === 0) {
-        console.log('⚠️ No items found to delete')
         onStatus?.({ text: 'No items found to delete', tone: 'info' })
         return
       }
@@ -406,19 +374,14 @@ export function PlanManager({
       })
 
       // Perform all updates in parallel using Promise.all
-      console.log('🔄 Starting parallel delete operations...')
       const results = await Promise.all(
         datesToUpdate.map(async (iso) => {
           const items = dayDetails[iso]?.plannedItems || []
           const filtered = items.filter(
             (item) => item.recurrenceId !== recurrenceId,
           )
-          console.log(
-            `📝 Deleting from ${iso}: ${items.length} -> ${filtered.length} items`,
-          )
           try {
             await onUpdateDetails(iso, { plannedItems: filtered })
-            console.log(`✅ Successfully updated ${iso}`)
             return { success: true, iso }
           } catch (err) {
             console.error(`❌ Failed to update ${iso}:`, err)
@@ -427,12 +390,8 @@ export function PlanManager({
         }),
       )
 
-      console.log('📊 Delete results:', results)
-
       const successCount = results.filter((r) => r.success).length
       const failCount = results.length - successCount
-
-      console.log(`✅ Success: ${successCount}, ❌ Failed: ${failCount}`)
 
       if (failCount > 0) {
         console.error(
@@ -444,7 +403,6 @@ export function PlanManager({
           tone: 'error',
         })
       } else {
-        console.log('✅ All deletes successful')
         onStatus?.({
           text: `✅ Series deleted from ${datesToUpdate.length} day(s) • Firebase synced`,
           tone: 'success',

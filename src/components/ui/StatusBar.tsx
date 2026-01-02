@@ -1,45 +1,55 @@
-interface StatusBarProps {
-  text: string
-  tone?: 'info' | 'success' | 'error' | 'progress'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { subscribeToStatus } from '@/lib/logger'
+
+type StatusTone = 'info' | 'success' | 'error' | 'progress'
+
+const toneStyles: Record<StatusTone, string> = {
+  info: 'bg-white/[0.08] text-white/80',
+  success: 'bg-[#30D158]/20 text-[#30D158]',
+  error: 'bg-red-500/20 text-red-300',
+  progress: 'bg-[#007AFF]/20 text-[#007AFF]',
 }
 
-const toneStyles: Record<NonNullable<StatusBarProps['tone']>, string> = {
-  info: 'bg-white/[0.06] text-white/80 border-white/[0.12]',
-  success: 'bg-[#30D158]/15 text-[#30D158] border-[#30D158]/30',
-  error: 'bg-red-500/10 text-red-300 border-red-500/30',
-  progress: 'bg-[#007AFF]/10 text-[#007AFF] border-[#007AFF]/25',
+const toneSymbol: Record<StatusTone, string> = {
+  info: '•',
+  success: '✓',
+  error: '✕',
+  progress: '◌',
 }
 
-const toneSymbol: Record<NonNullable<StatusBarProps['tone']>, string> = {
-  info: 'ℹ️',
-  success: '✅',
-  error: '⚠️',
-  progress: '⏳',
-}
+export function StatusBar() {
+  const [text, setText] = useState('Ready')
+  const [tone, setTone] = useState<StatusTone>('info')
 
-export function StatusBar({ text, tone = 'info' }: StatusBarProps) {
+  useEffect(() => {
+    const unsubscribe = subscribeToStatus((message, level) => {
+      setText(message)
+      setTone(level)
+    })
+    return unsubscribe
+  }, [])
+
   const style = toneStyles[tone] || toneStyles.info
   const symbol = toneSymbol[tone] || toneSymbol.info
 
   return (
-    <div className="fixed inset-x-0 bottom-3 pointer-events-none z-40">
-      <div className="flex justify-center px-4">
-        <div
-          className={`
-            pointer-events-auto min-h-[44px] min-w-[240px]
-            px-4 py-2 rounded-2xl border
-            shadow-[0_10px_30px_rgba(0,0,0,0.35)]
-            backdrop-blur-xl
-            ${style}
-          `}
-          role="status"
-          aria-live="polite"
-        >
-          <div className="flex items-center gap-2 text-sm">
-            <span>{symbol}</span>
-            <span className="truncate">{text || 'Ready'}</span>
-          </div>
-        </div>
+    <div 
+      className={`
+        fixed bottom-0 left-0 right-0 z-50
+        h-7 px-4
+        flex items-center
+        backdrop-blur-xl border-t border-white/10
+        ${style}
+        transition-colors duration-200
+      `}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="flex items-center gap-2 text-xs font-medium">
+        <span className="text-[10px]">{symbol}</span>
+        <span className="truncate">{text}</span>
       </div>
     </div>
   )

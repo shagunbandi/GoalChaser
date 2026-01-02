@@ -20,6 +20,7 @@ import {
   User,
 } from 'firebase/auth'
 import { initializeApp, getApps } from 'firebase/app'
+import { logger } from '@/lib/logger'
 
 // Firebase configuration
 const firebaseConfig = {
@@ -82,7 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    logger.info('Setting up auth state listener')
     const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (user) => {
+      if (user) {
+        logger.success(`User authenticated: ${user.email}`)
+      } else {
+        logger.info('No user authenticated')
+      }
       setUser(user)
       setIsLoading(false)
     })
@@ -94,11 +101,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
+      logger.progress('Signing in with Google...')
       setError(null)
       setIsLoading(true)
       await signInWithPopup(getFirebaseAuth(), getGoogleProvider())
+      logger.success('Google sign in successful')
     } catch (err: unknown) {
-      console.error('Error signing in with Google:', err)
+      logger.error('Error signing in with Google', err)
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to sign in with Google'
       setError(errorMessage)
@@ -110,11 +119,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
+      logger.progress(`Signing in with email...`)
       setError(null)
       setIsLoading(true)
       await signInWithEmailAndPassword(getFirebaseAuth(), email, password)
+      logger.success('Email sign in successful')
     } catch (err: unknown) {
-      console.error('Error signing in with email:', err)
+      logger.error('Error signing in with email', err)
       // Parse Firebase error codes for user-friendly messages
       const firebaseError = err as { code?: string }
       let errorMessage = 'Failed to sign in'
@@ -142,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     displayName?: string,
   ) => {
     try {
+      logger.progress(`Creating account...`)
       setError(null)
       setIsLoading(true)
       const userCredential = await createUserWithEmailAndPassword(
@@ -154,8 +166,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (displayName && userCredential.user) {
         await updateProfile(userCredential.user, { displayName })
       }
+      logger.success('Account created successfully')
     } catch (err: unknown) {
-      console.error('Error signing up with email:', err)
+      logger.error('Error signing up with email', err)
       // Parse Firebase error codes for user-friendly messages
       const firebaseError = err as { code?: string }
       let errorMessage = 'Failed to create account'
@@ -175,10 +188,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
+      logger.progress('Signing out...')
       setError(null)
       await firebaseSignOut(getFirebaseAuth())
+      logger.success('Sign out successful')
     } catch (err) {
-      console.error('Error signing out:', err)
+      logger.error('Error signing out', err)
       setError('Failed to sign out')
       throw err
     }
