@@ -71,3 +71,10 @@ import { LocalComponent } from './LocalComponent'
 - ❌ Don't duplicate types across files
 - ❌ Don't write helper functions inside components if they can be pure utilities
 
+### 8. Testing Guidelines
+- **No Test Documentation**: Do NOT create README.md, documentation, or guide files in `__tests__/` folders
+- **Keep Tests Simple**: Write minimal, focused tests - avoid unnecessary complexity
+- **No Over-Engineering**: Only add helpers/fixtures that are actually needed for the tests
+- **Fixed Credentials**: Use fixed test credentials instead of generating them dynamically
+- **Direct Setup**: Use database helpers to set up test data, avoid UI interactions for setup
+
