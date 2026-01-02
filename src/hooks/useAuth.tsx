@@ -9,7 +9,6 @@ import {
 } from 'react'
 import Image from 'next/image'
 import {
-  getAuth,
   signInWithPopup,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
@@ -17,70 +16,13 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
-  connectAuthEmulator,
   User,
 } from 'firebase/auth'
-import { initializeApp, getApps } from 'firebase/app'
+import { getFirebaseAuth } from '@/lib/firebase-service'
 import { logger } from '@/utils/logger'
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-}
-
-// Lazy initialization to avoid build-time errors
-let app: ReturnType<typeof initializeApp> | null = null
-let auth: ReturnType<typeof getAuth> | null = null
+// Lazy provider initialization
 let googleProvider: GoogleAuthProvider | null = null
-let isAuthEmulatorConnected = false
-
-function getFirebaseApp() {
-  if (!app) {
-    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
-  }
-  return app
-}
-
-function getFirebaseAuth() {
-  if (!auth) {
-    auth = getAuth(getFirebaseApp())
-
-    // Connect to emulator if configured (must happen before any auth operations)
-    if (
-      !isAuthEmulatorConnected &&
-      process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true'
-    ) {
-      try {
-        const emulatorHost =
-          process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST ||
-          'localhost:9099'
-        const [host, port] = emulatorHost.split(':')
-
-        connectAuthEmulator(auth, `http://${host}:${port}`, {
-          disableWarnings: true,
-        })
-        isAuthEmulatorConnected = true
-        logger.info(`✅ Connected to Auth Emulator at ${host}:${port}`)
-      } catch (error) {
-        // Ignore if already connected (shouldn't happen with our flag, but just in case)
-        if (
-          error instanceof Error &&
-          !error.message.includes('already been called')
-        ) {
-          logger.error('❌ Error connecting to Auth Emulator:', error)
-        } else {
-          isAuthEmulatorConnected = true // Mark as connected even if error says already connected
-        }
-      }
-    }
-  }
-  return auth
-}
 
 function getGoogleProvider() {
   if (!googleProvider) {

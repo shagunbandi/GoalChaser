@@ -1,68 +1,12 @@
-import { initializeApp, getApps } from 'firebase/app'
 import {
-  getFirestore,
   doc,
   setDoc,
   getDoc,
   collection,
   getDocs,
   writeBatch,
-  connectFirestoreEmulator,
 } from 'firebase/firestore'
-
-// Firebase configuration
-// TODO: Replace with your Firebase project credentials
-// Get these from: Firebase Console > Project Settings > Your Apps > Config
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-}
-
-// Lazy initialization to avoid build-time errors
-// Firebase is only initialized when actually needed at runtime
-let app: ReturnType<typeof initializeApp> | null = null
-let db: ReturnType<typeof getFirestore> | null = null
-let isEmulatorConnected = false
-
-function getApp() {
-  if (!app) {
-    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
-  }
-  return app
-}
-
-function getDb() {
-  if (!db) {
-    db = getFirestore(getApp())
-    
-    // Connect to emulator if configured (must happen before any operations)
-    if (
-      !isEmulatorConnected &&
-      process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true'
-    ) {
-      try {
-        const emulatorHost = process.env.NEXT_PUBLIC_FIREBASE_FIRESTORE_EMULATOR_HOST || 'localhost:8080'
-        const [host, port] = emulatorHost.split(':')
-        
-        connectFirestoreEmulator(db, host, parseInt(port, 10))
-        isEmulatorConnected = true
-        console.log(`✅ Connected to Firestore Emulator at ${host}:${port}`)
-      } catch (error) {
-        // Ignore if already connected (shouldn't happen with our flag, but just in case)
-        if (error instanceof Error && !error.message.includes('already been called')) {
-          console.error('❌ Error connecting to Firestore Emulator:', error)
-        } else {
-          isEmulatorConnected = true // Mark as connected even if error says already connected
-        }
-      }
-    }
-  }
-  return db
-}
+import { getFirebaseDb } from './firebase-service'
 
 // ============ Types ============
 export type DayStatus = 'RED' | 'YELLOW' | 'GREEN' | null
@@ -92,7 +36,8 @@ export async function saveDayDetails(
   details: DayDetails
 ): Promise<void> {
   try {
-    const docRef = doc(getDb(), 'users', USER_ID, 'days', date)
+    const db = getFirebaseDb()
+    const docRef = doc(db, 'users', USER_ID, 'days', date)
     await setDoc(docRef, {
       ...details,
       updatedAt: new Date().toISOString(),
@@ -108,7 +53,8 @@ export async function saveDayDetails(
  */
 export async function getDayDetails(date: string): Promise<DayDetails | null> {
   try {
-    const docRef = doc(getDb(), 'users', USER_ID, 'days', date)
+    const db = getFirebaseDb()
+    const docRef = doc(db, 'users', USER_ID, 'days', date)
     const docSnap = await getDoc(docRef)
     
     if (docSnap.exists()) {
@@ -131,7 +77,8 @@ export async function getDayDetails(date: string): Promise<DayDetails | null> {
  */
 export async function getAllDayDetails(): Promise<Record<string, DayDetails>> {
   try {
-    const colRef = collection(getDb(), 'users', USER_ID, 'days')
+    const db = getFirebaseDb()
+    const colRef = collection(db, 'users', USER_ID, 'days')
     const querySnapshot = await getDocs(colRef)
     
     const result: Record<string, DayDetails> = {}
@@ -158,10 +105,11 @@ export async function saveBatchDayDetails(
   details: Record<string, DayDetails>
 ): Promise<void> {
   try {
-    const batch = writeBatch(getDb())
+    const db = getFirebaseDb()
+    const batch = writeBatch(db)
     
     Object.entries(details).forEach(([date, dayDetails]) => {
-      const docRef = doc(getDb(), 'users', USER_ID, 'days', date)
+      const docRef = doc(db, 'users', USER_ID, 'days', date)
       batch.set(docRef, {
         ...dayDetails,
         updatedAt: new Date().toISOString(),
@@ -184,7 +132,8 @@ export async function saveSuggestionsToFirestore(
   suggestions: SavedSuggestions
 ): Promise<void> {
   try {
-    const docRef = doc(getDb(), 'users', USER_ID, 'settings', 'suggestions')
+    const db = getFirebaseDb()
+    const docRef = doc(db, 'users', USER_ID, 'settings', 'suggestions')
     await setDoc(docRef, {
       ...suggestions,
       updatedAt: new Date().toISOString(),
@@ -200,7 +149,8 @@ export async function saveSuggestionsToFirestore(
  */
 export async function getSuggestionsFromFirestore(): Promise<SavedSuggestions> {
   try {
-    const docRef = doc(getDb(), 'users', USER_ID, 'settings', 'suggestions')
+    const db = getFirebaseDb()
+    const docRef = doc(db, 'users', USER_ID, 'settings', 'suggestions')
     const docSnap = await getDoc(docRef)
     
     if (docSnap.exists()) {
@@ -217,36 +167,6 @@ export async function getSuggestionsFromFirestore(): Promise<SavedSuggestions> {
   }
 }
 
-// ============ Migration Helper ============
-
-/**
- * Migrate data from localStorage to Firebase
- */
-export async function migrateFromLocalStorage(): Promise<{
-  dayDetails: Record<string, DayDetails>
-  suggestions: SavedSuggestions
-} | null> {
-  if (typeof window === 'undefined') return null
-
-  try {
-    // Get localStorage data (if any)
-    const suggestionsKey = 'nitya_suggestions'
-    const storedSuggestions = localStorage.getItem(suggestionsKey)
-    
-    const suggestions: SavedSuggestions = storedSuggestions
-      ? JSON.parse(storedSuggestions)
-      : { subjects: [], topics: [] }
-
-    // Note: Day details weren't stored in localStorage in the original app
-    // They were only in React state. So we return empty for now.
-    const dayDetails: Record<string, DayDetails> = {}
-
-    return { dayDetails, suggestions }
-  } catch (error) {
-    console.error('Error migrating from localStorage:', error)
-    return null
-  }
-}
-
-export { getDb, getApp }
+// Re-export service functions for backwards compatibility
+export { getFirebaseDb as getDb, getFirebaseApp as getApp } from './firebase-service'
 

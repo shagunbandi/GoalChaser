@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './useAuth'
+import { getFirebaseDb, isUsingEmulator } from '@/lib/firebase-service'
 import type { SuccessCriterion } from '@/types'
 import { logger } from '@/utils/logger'
 
@@ -41,76 +42,13 @@ function saveToStorage<T>(key: string, value: T): void {
 }
 
 // ============ Firebase Helpers ============
-let firebaseAvailable = true
-let db: ReturnType<typeof import('firebase/firestore').getFirestore> | null = null
-
-async function initFirebase() {
-  if (!firebaseAvailable) {
-    logger.error('Firebase not available (useGoals)')
-    return null
-  }
-
-  try {
-    logger.progress('Initializing Firebase (goals)...')
-    const { initializeApp, getApps } = await import('firebase/app')
-    const { getFirestore } = await import('firebase/firestore')
-
-    const firebaseConfig = {
-      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    }
-
-    if (!firebaseConfig.projectId) {
-      logger.error('Firebase config missing (useGoals)')
-      firebaseAvailable = false
-      return null
-    }
-
-    const app =
-      getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
-    db = getFirestore(app)
-    
-    // Connect to emulator if configured
-    if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
-      try {
-        const { connectFirestoreEmulator } = await import('firebase/firestore')
-        const emulatorHost = process.env.NEXT_PUBLIC_FIREBASE_FIRESTORE_EMULATOR_HOST || 'localhost:8080'
-        const [host, port] = emulatorHost.split(':')
-        connectFirestoreEmulator(db, host, parseInt(port, 10))
-        logger.success('✅ Connected to Firestore Emulator (goals)')
-      } catch (error) {
-        // Ignore if already connected
-        if (error instanceof Error && !error.message.includes('already been called')) {
-          logger.error('Error connecting to Firestore Emulator (goals):', error)
-        }
-      }
-    }
-    
-    logger.success('Firebase initialized (goals)')
-    return db
-  } catch (error) {
-    logger.error('Firebase initialization failed (goals)', error)
-    firebaseAvailable = false
-    return null
-  }
-}
-
 async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
-  logger.progress('Loading goals from Firebase...')
-  
-  if (!firebaseAvailable || !db) {
-    logger.error('Cannot load goals - Firebase not available')
-    return null
-  }
-
   try {
-    const { collection, getDocs, query, orderBy } = await import(
-      'firebase/firestore'
-    )
+    logger.progress('Loading goals from Firebase...')
+    
+    const db = getFirebaseDb()
+    const { collection, getDocs, query, orderBy } = await import('firebase/firestore')
+    
     const goalsRef = collection(db, 'users', userId, 'goals')
     const q = query(goalsRef, orderBy('createdAt', 'desc'))
     const querySnapshot = await getDocs(q)
@@ -130,7 +68,7 @@ async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
       })
     })
 
-    logger.success(`Loaded ${goals.length} goals from Firebase`)
+    logger.success(`Loaded ${goals.length} goals from Firebase${isUsingEmulator() ? ' (emulator)' : ''}`)
     return goals
   } catch (error) {
     logger.error('Firebase goals read failed', error)
@@ -139,15 +77,12 @@ async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
 }
 
 async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> {
-  logger.progress(`Saving goal ${goal.name}`)
-  
-  if (!firebaseAvailable || !db) {
-    logger.error('Cannot save goal - Firebase not available')
-    return false
-  }
-
   try {
+    logger.progress(`Saving goal ${goal.name}`)
+    
+    const db = getFirebaseDb()
     const { doc, setDoc } = await import('firebase/firestore')
+    
     const goalRef = doc(db, 'users', userId, 'goals', goal.id)
     await setDoc(goalRef, {
       name: goal.name,
@@ -159,7 +94,7 @@ async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> 
       successCriterion: goal.successCriterion || null,
       updatedAt: new Date().toISOString(),
     })
-    logger.success(`Saved goal ${goal.name}`)
+    logger.success(`Saved goal ${goal.name}${isUsingEmulator() ? ' (emulator)' : ''}`)
     return true
   } catch (error) {
     logger.error('Firebase goal save failed', error)
@@ -168,18 +103,15 @@ async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> 
 }
 
 async function deleteGoalFromFirebase(userId: string, goalId: string): Promise<boolean> {
-  logger.progress(`Deleting goal`)
-  
-  if (!firebaseAvailable || !db) {
-    logger.error('Cannot delete goal - Firebase not available')
-    return false
-  }
-
   try {
+    logger.progress(`Deleting goal`)
+    
+    const db = getFirebaseDb()
     const { doc, deleteDoc } = await import('firebase/firestore')
+    
     const goalRef = doc(db, 'users', userId, 'goals', goalId)
     await deleteDoc(goalRef)
-    logger.success('Deleted goal from Firebase')
+    logger.success(`Deleted goal from Firebase${isUsingEmulator() ? ' (emulator)' : ''}`)
     return true
   } catch (error) {
     logger.error('Firebase goal delete failed', error)
@@ -230,16 +162,14 @@ export function useGoals(): UseGoalsReturn {
         setIsLoading(true)
         setError(null)
 
-        await initFirebase()
-
         // If user is logged in, load from Firebase with their user ID
         if (user) {
           const loadedGoals = await loadGoalsFromFirebase(user.uid)
 
-        if (loadedGoals !== null) {
-          logger.success('Firebase goals loaded successfully')
-          setIsUsingFirebase(true)
-          setGoals(loadedGoals)
+          if (loadedGoals !== null) {
+            logger.success('Firebase goals loaded successfully')
+            setIsUsingFirebase(true)
+            setGoals(loadedGoals)
             saveToStorage(userStorageKey, loadedGoals)
           } else {
             logger.info('Firebase unavailable, using localStorage')
