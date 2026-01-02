@@ -11,7 +11,6 @@ import {
   formatShortDate,
   formatDateDisplay,
   isWeekend,
-  toISODateString,
 } from '@/lib/dateUtils'
 
 interface YearViewProps {
@@ -45,11 +44,18 @@ export function YearView({
   const [removingPlanId, setRemovingPlanId] = useState<string | null>(null)
   const [editingTravel, setEditingTravel] = useState<TravelPlan | null>(null)
   const [isSavingTravel, setIsSavingTravel] = useState(false)
+  const [prefilledDates, setPrefilledDates] = useState<{
+    startDate: string
+    endDate: string
+  } | null>(null)
 
   const yearPrefix = `${year}-`
 
   const months = useMemo(
-    () => Array.from({ length: 12 }, (_, index) => computeMonthInfo(year, index + 1)),
+    () =>
+      Array.from({ length: 12 }, (_, index) =>
+        computeMonthInfo(year, index + 1),
+      ),
     [year],
   )
 
@@ -58,7 +64,7 @@ export function YearView({
       ([iso, details]) =>
         iso.startsWith(yearPrefix) && (details.travelPlans?.length || 0) > 0,
     )
-    
+
     console.log(`📅 YearView: Processing ${year} travel entries:`, {
       totalDayDetails: Object.keys(dayDetails).length,
       yearPrefix,
@@ -66,10 +72,10 @@ export function YearView({
       entries: entries.map(([iso, details]) => ({
         date: iso,
         travelCount: details.travelPlans?.length,
-        travels: details.travelPlans
-      }))
+        travels: details.travelPlans,
+      })),
     })
-    
+
     return entries
   }, [dayDetails, yearPrefix, year])
 
@@ -83,9 +89,14 @@ export function YearView({
   const travelPlans: TravelSummary[] = useMemo(() => {
     const map = new Map<string, TravelSummary>()
 
-    console.log(`🗺️ YearView: Building travel plans map from ${travelEntries.length} entries`)
+    console.log(`🗺️ YearView: Building travel plans map from all dayDetails`)
+    console.log(
+      `📊 Total dayDetails entries: ${Object.keys(dayDetails).length}`,
+    )
+    console.log(`📅 Current year prefix: ${yearPrefix}`)
 
-    travelEntries.forEach(([iso, details]) => {
+    // Check ALL dayDetails, not just filtered travelEntries
+    Object.entries(dayDetails).forEach(([iso, details]) => {
       const travels = details.travelPlans || []
       travels.forEach((travel) => {
         const existing = map.get(travel.id)
@@ -100,15 +111,52 @@ export function YearView({
       })
     })
 
-    const plans = Array.from(map.values()).map((plan) => ({
-      ...plan,
-      days: plan.days.sort(),
-    }))
-    
-    console.log(`🗺️ YearView: Final travel plans count: ${plans.length}`, plans)
-    
+    console.log(`🗺️ Total unique travel IDs in map: ${map.size}`)
+    console.log(`🗺️ All travel IDs:`, Array.from(map.keys()))
+
+    // Check for potential duplicates
+    const travelsByTitle = new Map<string, string[]>()
+    Array.from(map.values()).forEach((plan) => {
+      const key = `${plan.title}-${plan.startDate}-${plan.endDate}`
+      if (!travelsByTitle.has(key)) {
+        travelsByTitle.set(key, [])
+      }
+      travelsByTitle.get(key)!.push(plan.id)
+    })
+
+    travelsByTitle.forEach((ids, key) => {
+      if (ids.length > 1) {
+        console.warn(`⚠️ Duplicate travel plans found for "${key}":`, ids)
+      }
+    })
+
+    // Filter to only show travel plans that have at least one day in current year
+    const allPlans = Array.from(map.values())
+    console.log(`🗺️ All plans before year filter: ${allPlans.length}`)
+
+    const plans = allPlans
+      .filter((plan) => {
+        const hasYearDay = plan.days.some((iso) => iso.startsWith(yearPrefix))
+        if (!hasYearDay) {
+          console.log(
+            `⚠️ Filtering out plan "${plan.title}" (ID: ${plan.id}) - no days in ${yearPrefix}`,
+          )
+        }
+        return hasYearDay
+      })
+      .map((plan) => ({
+        ...plan,
+        days: plan.days.sort(),
+      }))
+
+    console.log(`🗺️ YearView: Final travel plans count: ${plans.length}`)
+    console.log(
+      `🗺️ Final plans:`,
+      plans.map((p) => ({ id: p.id, title: p.title, dayCount: p.days.length })),
+    )
+
     return plans
-  }, [travelEntries])
+  }, [dayDetails, yearPrefix])
 
   const handleSaveTravel = async (formData: {
     title: string
@@ -136,7 +184,10 @@ export function YearView({
           destination: formData.destination || undefined,
         }
 
-        const oldDates = enumerateDateRange(editingTravel.startDate, editingTravel.endDate)
+        const oldDates = enumerateDateRange(
+          editingTravel.startDate,
+          editingTravel.endDate,
+        )
         const newDates = dates
 
         const updates: Promise<void>[] = []
@@ -152,7 +203,9 @@ export function YearView({
         newDates.forEach((iso) => {
           const existing = dayDetails[iso]?.travelPlans || []
           const filtered = existing.filter((t) => t.id !== updatedTravel.id)
-          updates.push(onUpdateDay(iso, { travelPlans: [...filtered, updatedTravel] }))
+          updates.push(
+            onUpdateDay(iso, { travelPlans: [...filtered, updatedTravel] }),
+          )
         })
 
         await Promise.all(updates)
@@ -186,30 +239,22 @@ export function YearView({
     return counts
   }, [travelEntries])
 
-  const getIsoWithOffset = (iso: string, offsetDays: number) => {
-    const d = new Date(`${iso}T00:00:00`)
-    d.setDate(d.getDate() + offsetDays)
-    return toISODateString(d)
-  }
-
   const handleEditTravel = (travel: TravelPlan) => {
     setEditingTravel(travel)
+    setPrefilledDates(null)
     setShowTravelModal(true)
   }
 
   const handleAddNewTravel = () => {
     setEditingTravel(null)
+    setPrefilledDates(null)
     setShowTravelModal(true)
   }
 
   const handleAddTravelFromDay = (startDate: string) => {
-    // Create a partial travel plan with the start date pre-filled
-    setEditingTravel({
-      id: '',
-      title: '',
-      startDate: startDate,
-      endDate: startDate,
-    } as TravelPlan)
+    // Pre-fill dates without setting editingTravel (so it's treated as new)
+    setEditingTravel(null)
+    setPrefilledDates({ startDate, endDate: startDate })
     setSelectedDay(null) // Close the day modal
     setShowTravelModal(true)
   }
@@ -217,6 +262,7 @@ export function YearView({
   const handleCloseTravelModal = () => {
     setShowTravelModal(false)
     setEditingTravel(null)
+    setPrefilledDates(null)
   }
 
   const removeTravelForDay = async (iso: string, travelId: string) => {
@@ -238,7 +284,9 @@ export function YearView({
           (details.travelPlans || []).some((t) => t.id === travelId),
         )
         .map(([iso, details]) => {
-          const filtered = (details.travelPlans || []).filter((t) => t.id !== travelId)
+          const filtered = (details.travelPlans || []).filter(
+            (t) => t.id !== travelId,
+          )
           return onUpdateDay(iso, { travelPlans: filtered })
         })
       await Promise.all(updates)
@@ -298,7 +346,8 @@ export function YearView({
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="px-3 py-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm text-white/70">
-              Travel days: <span className="text-white">{travelEntries.length}</span>
+              Travel days:{' '}
+              <span className="text-white">{travelEntries.length}</span>
             </div>
             <div className="px-3 py-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm text-white/70">
               Weekdays: <span className="text-white">{weekdayTravelCount}</span>
@@ -334,7 +383,9 @@ export function YearView({
                 className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-semibold text-white/90">{monthLabel}</div>
+                  <div className="text-sm font-semibold text-white/90">
+                    {monthLabel}
+                  </div>
                   <div className="text-xs text-white/50">
                     {monthTravel} travel day{monthTravel === 1 ? '' : 's'}
                   </div>
@@ -353,88 +404,93 @@ export function YearView({
 
                 <div className="grid grid-cols-7 gap-1">
                   {Array.from({ length: offset }).map((_, index) => (
-                    <div key={`empty-${month.month}-${index}`} className="h-7" />
+                    <div
+                      key={`empty-${month.month}-${index}`}
+                      className="h-7"
+                    />
                   ))}
                   {month.days.map((day) => {
                     const travels = dayDetails[day.iso]?.travelPlans || []
-                    const plannedCount = dayDetails[day.iso]?.plannedItems?.length || 0
-                    const prevTravels = dayDetails[getIsoWithOffset(day.iso, -1)]?.travelPlans || []
-                    const nextTravels = dayDetails[getIsoWithOffset(day.iso, 1)]?.travelPlans || []
+                    const plannedCount =
+                      dayDetails[day.iso]?.plannedItems?.length || 0
                     const isToday = day.iso === todayISO
-                    const primaryTravel = travels[0]
-                    const travelColor = primaryTravel?.color || 'rgba(14,165,233,0.25)'
-
-                    const connectLeft =
-                      travels.length === 1 &&
-                      prevTravels.length === 1 &&
-                      prevTravels[0].id === primaryTravel?.id
-                    const connectRight =
-                      travels.length === 1 &&
-                      nextTravels.length === 1 &&
-                      nextTravels[0].id === primaryTravel?.id
+                    const hasTravel = travels.length > 0
+                    const hasMultipleTravels = travels.length > 1
 
                     return (
                       <button
                         key={day.iso}
                         onClick={() => setSelectedDay(day.iso)}
                         className={`
-                          h-7 rounded-lg text-[11px]
-                          border border-white/[0.07]
-                          relative flex items-center justify-center
+                          h-8 rounded-lg text-[11px] font-medium
+                          border relative flex flex-col items-center justify-center gap-0.5 py-1
                           transition-all duration-150
                           ${
-                            travels.length
-                              ? 'text-white shadow-[0_0_12px_rgba(14,165,233,0.25)]'
-                              : 'text-white/70 hover:border-white/[0.12]'
+                            hasTravel
+                              ? 'border-white/[0.15] bg-white/[0.08] text-white shadow-[0_0_8px_rgba(255,255,255,0.1)]'
+                              : 'border-white/[0.07] bg-transparent text-white/70 hover:border-white/[0.12] hover:bg-white/[0.04]'
                           }
-                          ${isToday ? 'ring-1 ring-[#007AFF]' : ''}
-                          ${connectLeft ? 'rounded-l-none border-l-0' : ''}
-                          ${connectRight ? 'rounded-r-none border-r-0' : ''}
+                          ${
+                            isToday
+                              ? 'ring-2 ring-[#007AFF] ring-offset-1 ring-offset-[#1a1a2e]'
+                              : ''
+                          }
+                          ${
+                            hasMultipleTravels
+                              ? 'ring-1 ring-yellow-500/40'
+                              : ''
+                          }
                         `}
-                        style={
-                          travels.length
-                            ? {
-                                backgroundColor: travelColor,
-                                borderColor: travelColor,
-                              }
-                            : undefined
-                        }
                         title={
                           travels.length
-                            ? travels.map((t) => t.title).join(', ')
+                            ? travels.map((t) => t.title).join(' • ')
                             : undefined
                         }
                       >
-                        {day.dayOfMonth}
+                        <span>{day.dayOfMonth}</span>
+
+                        {/* Travel dots below the number */}
                         {travels.length > 0 && (
-                          <span className="absolute -top-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                          <div className="flex gap-0.5 items-center">
                             {travels.slice(0, 3).map((t) => (
                               <span
                                 key={t.id}
-                                className="h-1.5 w-1.5 rounded-full"
+                                className="h-1 w-1 rounded-full ring-1 ring-black/20"
                                 style={{
-                                  backgroundColor: t.color || 'rgba(14,165,233,0.7)',
+                                  backgroundColor:
+                                    t.color || 'rgba(14,165,233,0.9)',
                                 }}
+                                title={t.title}
                               />
                             ))}
                             {travels.length > 3 && (
-                              <span className="text-[9px] text-white/60 leading-none">+</span>
+                              <span className="text-[7px] font-bold text-white/80 leading-none ml-0.5">
+                                +{travels.length - 3}
+                              </span>
                             )}
-                          </span>
+                          </div>
                         )}
-                        {plannedCount > 0 && (
+
+                        {/* Planned items indicator at the bottom */}
+                        {plannedCount > 0 && !hasTravel && (
                           <span
-                            className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5"
-                            title={`${plannedCount} planned item${plannedCount === 1 ? '' : 's'}`}
+                            className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5"
+                            title={`${plannedCount} planned item${
+                              plannedCount === 1 ? '' : 's'
+                            }`}
                           >
-                            {Array.from({ length: Math.min(plannedCount, 3) }).map((_, idx) => (
+                            {Array.from({
+                              length: Math.min(plannedCount, 3),
+                            }).map((_, idx) => (
                               <span
                                 key={idx}
-                                className="h-1.5 w-1.5 rounded-full bg-white/70"
+                                className="h-1 w-1 rounded-full bg-white/60"
                               />
                             ))}
                             {plannedCount > 3 && (
-                              <span className="text-[9px] text-white/60 leading-none">+</span>
+                              <span className="text-[7px] text-white/50 leading-none">
+                                +
+                              </span>
                             )}
                           </span>
                         )}
@@ -450,7 +506,9 @@ export function YearView({
         {/* Travel Plans Section - Now shown AFTER calendar */}
         {travelPlans.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-white/70 mb-3">Travel Plans</h3>
+            <h3 className="text-sm font-semibold text-white/70 mb-3">
+              Travel Plans
+            </h3>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {travelPlans.map((plan) => (
                 <TravelCard
@@ -479,22 +537,30 @@ export function YearView({
                     className="rounded-xl border border-white/10 bg-white/5 p-3"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold text-white">{travel.title}</div>
+                      <div className="text-sm font-semibold text-white">
+                        {travel.title}
+                      </div>
                       <span
                         className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/15 text-sm"
                         style={{
-                          backgroundColor: travel.color || 'rgba(14,165,233,0.25)',
+                          backgroundColor:
+                            travel.color || 'rgba(14,165,233,0.25)',
                         }}
                       >
                         ✈️
                       </span>
                     </div>
                     <div className="mt-1 text-xs text-white/60">
-                      {travel.destination && <span>{travel.destination} • </span>}
-                      {formatShortDate(travel.startDate)} → {formatShortDate(travel.endDate)}
+                      {travel.destination && (
+                        <span>{travel.destination} • </span>
+                      )}
+                      {formatShortDate(travel.startDate)} →{' '}
+                      {formatShortDate(travel.endDate)}
                     </div>
                     {travel.note && (
-                      <div className="mt-2 text-xs text-white/60">{travel.note}</div>
+                      <div className="mt-2 text-xs text-white/60">
+                        {travel.note}
+                      </div>
                     )}
                     <div className="mt-3 flex flex-wrap gap-2 text-xs">
                       <button
@@ -510,7 +576,9 @@ export function YearView({
                         Edit travel
                       </button>
                       <button
-                        onClick={() => removeTravelForDay(selectedDay, travel.id)}
+                        onClick={() =>
+                          removeTravelForDay(selectedDay, travel.id)
+                        }
                         disabled={isUpdating}
                         className="
                           px-3 py-1.5 rounded-lg border border-white/10
@@ -539,7 +607,9 @@ export function YearView({
             )}
 
             <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <div className="text-sm font-semibold text-white mb-2">Planned items</div>
+              <div className="text-sm font-semibold text-white mb-2">
+                Planned items
+              </div>
               {dayDetails[selectedDay]?.plannedItems?.length ? (
                 <ul className="space-y-1 text-xs text-white/80">
                   {dayDetails[selectedDay]?.plannedItems?.map((item) => (
@@ -549,7 +619,9 @@ export function YearView({
                     >
                       <span className="h-2 w-2 rounded-full bg-white/70" />
                       <div className="flex-1">
-                        <div className="font-medium text-white">{item.title}</div>
+                        <div className="font-medium text-white">
+                          {item.title}
+                        </div>
                         {(item.startTime || item.endTime || item.note) && (
                           <div className="text-[11px] text-white/60">
                             {item.startTime && item.endTime
@@ -574,7 +646,9 @@ export function YearView({
                   ))}
                 </ul>
               ) : (
-                <div className="text-xs text-white/60">No plans for this day.</div>
+                <div className="text-xs text-white/60">
+                  No plans for this day.
+                </div>
               )}
             </div>
 
@@ -615,7 +689,16 @@ export function YearView({
         onClose={handleCloseTravelModal}
       >
         <TravelForm
-          initialData={editingTravel || undefined}
+          initialData={
+            editingTravel
+              ? editingTravel
+              : prefilledDates
+              ? {
+                  startDate: prefilledDates.startDate,
+                  endDate: prefilledDates.endDate,
+                }
+              : undefined
+          }
           onSubmit={handleSaveTravel}
           onCancel={handleCloseTravelModal}
           isSubmitting={isSavingTravel}
@@ -624,4 +707,3 @@ export function YearView({
     </>
   )
 }
-

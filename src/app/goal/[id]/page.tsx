@@ -203,7 +203,9 @@ export default function GoalPage() {
 
       // Show progress
       pushStatus({
-        text: `Saving travel to ${dates.length} day${dates.length === 1 ? '' : 's'}...`,
+        text: `Saving travel to ${dates.length} day${
+          dates.length === 1 ? '' : 's'
+        }...`,
         tone: 'progress',
       })
 
@@ -219,15 +221,21 @@ export default function GoalPage() {
             data: updatedPlans,
           })
 
-          return updateDayDetails(iso, { travelPlans: updatedPlans })
+          try {
+            await updateDayDetails(iso, { travelPlans: updatedPlans })
+            return { success: true, iso }
+          } catch (error) {
+            console.error(`❌ Failed to save to ${iso}:`, error)
+            return { success: false, iso, error }
+          }
         }),
       )
 
-      const successCount = results.filter(Boolean).length
+      const successCount = results.filter((r) => r.success).length
       const failCount = results.length - successCount
 
       setSelectedDate(plan.startDate)
-      
+
       if (failCount > 0) {
         pushStatus({
           text: `⚠️ Travel saved to ${successCount}/${dates.length} days (${failCount} failed)`,
@@ -235,7 +243,9 @@ export default function GoalPage() {
         })
       } else {
         pushStatus({
-          text: `✅ Travel saved to ${dates.length} day${dates.length === 1 ? '' : 's'} • Firebase synced`,
+          text: `✅ Travel saved to ${dates.length} day${
+            dates.length === 1 ? '' : 's'
+          } • Firebase synced`,
           tone: 'success',
         })
       }
