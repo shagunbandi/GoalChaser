@@ -474,12 +474,12 @@ export function AgendaManager({
   }
 
   return (
-    <div className="space-y-3" data-test-id="agenda-manager">
+    <div className="space-y-3" data-testid="agenda-manager">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-white/70">Agenda</label>
         <div className="flex items-center gap-2">
           {agendaItems.length > 0 && (
-            <span className="text-xs text-white/40" data-test-id="agenda-count">
+            <span className="text-xs text-white/40" data-testid="agenda-count">
               {agendaItems.length} item{agendaItems.length === 1 ? '' : 's'}
             </span>
           )}
@@ -488,7 +488,7 @@ export function AgendaManager({
               resetAgendaForm()
               setShowAgendaModal(true)
             }}
-            data-test-id="button-add-agenda"
+            data-testid="button-add-agenda"
             className="
               px-3 py-1.5 rounded-lg text-xs font-medium
               bg-white/[0.06] text-white

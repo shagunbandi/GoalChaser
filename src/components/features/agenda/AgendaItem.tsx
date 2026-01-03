@@ -23,7 +23,7 @@ export function AgendaItem({
 }: AgendaItemProps) {
   return (
     <div
-      data-test-id={`agenda-item-${item.id}`}
+      data-testid={`agenda-item-${item.id}`}
       className="
         flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between
         rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2
@@ -33,14 +33,14 @@ export function AgendaItem({
         <div className="flex items-center gap-2">
           <span
             className="text-sm font-medium text-white"
-            data-test-id="agenda-item-title"
+            data-testid="agenda-item-title"
           >
             {item.title}
           </span>
           {item.repeat && item.repeat.type !== 'none' && (
             <span
               className="text-xs text-[#AF52DE] bg-[#AF52DE]/10 px-2 py-1 rounded-lg"
-              data-test-id="agenda-item-repeat-badge"
+              data-testid="agenda-item-repeat-badge"
             >
               {item.repeat.type === 'daily'
                 ? 'Daily'
@@ -52,13 +52,13 @@ export function AgendaItem({
           {item.subjects && item.subjects.length > 0 && (
             <div
               className="flex flex-wrap gap-1"
-              data-test-id="agenda-item-subjects"
+              data-testid="agenda-item-subjects"
             >
               {item.subjects.map((s) => (
                 <span
                   key={s}
                   className="text-[11px] text-[#30D158] bg-[#30D158]/15 px-2 py-0.5 rounded-lg"
-                  data-test-id={`agenda-item-subject-${s}`}
+                  data-testid={`agenda-item-subject-${s}`}
                 >
                   {s}
                 </span>
@@ -67,7 +67,7 @@ export function AgendaItem({
           )}
         </div>
         {item.note && (
-          <p className="text-xs text-white/50" data-test-id="agenda-item-note">
+          <p className="text-xs text-white/50" data-testid="agenda-item-note">
             {item.note}
           </p>
         )}
@@ -75,7 +75,7 @@ export function AgendaItem({
       <div className="flex items-center gap-2">
         <button
           onClick={() => onEdit(item)}
-          data-test-id="button-edit-agenda"
+          data-testid="button-edit-agenda"
           className="
             text-base text-white/50 hover:text-white
             p-2 rounded-lg hover:bg-white/10 transition-all duration-150
@@ -89,7 +89,7 @@ export function AgendaItem({
             onClick={() =>
               onToggleCompletion(selectedDate, item.id, !item.completed)
             }
-            data-test-id={
+            data-testid={
               item.completed ? 'button-mark-incomplete' : 'button-mark-complete'
             }
             className={`
@@ -108,7 +108,7 @@ export function AgendaItem({
         {item.recurrenceId && (
           <button
             onClick={() => onDeleteSeries(item.recurrenceId!)}
-            data-test-id="button-delete-series"
+            data-testid="button-delete-series"
             className="
               text-sm px-2 py-1 rounded-lg
               bg-red-500/10 hover:bg-red-500/20
@@ -123,7 +123,7 @@ export function AgendaItem({
         )}
         <button
           onClick={() => onDeleteSingle(selectedDate, item.id)}
-          data-test-id="button-delete-single"
+          data-testid="button-delete-single"
           className="
             text-sm px-2 py-1 rounded-lg
             bg-white/5 hover:bg-white/10

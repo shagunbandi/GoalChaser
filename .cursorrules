@@ -25,11 +25,14 @@ src/
 └── constants/              # App-wide constants
 ```
 
-### 3. Component Guidelines
-- Keep components under 150 lines when possible
-- If a component exceeds 200 lines, consider splitting it
+### 3. File Size and Component Guidelines
+- **General Rule**: Keep files focused and under 200 lines when possible
+- **Components**: Aim for under 150 lines; if exceeding 200 lines, consider splitting
+- **Utils/Helpers**: Each function/utility should have its own file if it's substantial (>50 lines)
+- **Test Files**: Keep test files focused on one feature/component; split into multiple files if testing different aspects
 - Extract repeated JSX patterns into reusable components
 - Use composition over large monolithic components
+- If a file serves multiple purposes, split it into separate files with single responsibilities
 
 ### 4. Naming Conventions
 - **Components**: PascalCase (`Calendar.tsx`, `DetailView.tsx`)
@@ -72,9 +75,95 @@ import { LocalComponent } from './LocalComponent'
 - ❌ Don't write helper functions inside components if they can be pure utilities
 
 ### 8. Testing Guidelines
+
+#### Test Structure
 - **No Test Documentation**: Do NOT create README.md, documentation, or guide files in `__tests__/` folders
 - **Keep Tests Simple**: Write minimal, focused tests - avoid unnecessary complexity
 - **No Over-Engineering**: Only add helpers/fixtures that are actually needed for the tests
 - **Fixed Credentials**: Use fixed test credentials instead of generating them dynamically
 - **Direct Setup**: Use database helpers to set up test data, avoid UI interactions for setup
+
+#### Test Organization
+Tests are organized into three categories:
+
+**1. Seeds** (`__tests__/seeds/`)
+- Database operations that create data directly (bypassing UI)
+- Naming: Prefix all functions with `seed` (e.g., `seedUser()`, `seedGoal()`)
+- Purpose: Fast test data setup without UI interactions
+- Examples:
+  ```typescript
+  await seedUser({ email, password })
+  await seedGoal({ userId, name })
+  await seedDayDetails({ userId, goalId, date, status })
+  ```
+
+**2. Fixtures** (`__tests__/fixtures/`)
+- UI interactions via Playwright (clicks, fills, navigation)
+- Naming: No prefix needed - the action name is sufficient (e.g., `signIn()`, `clickDay()`)
+- Purpose: Reusable UI interaction helpers
+- Examples:
+  ```typescript
+  await signIn(page, credentials)
+  await navigateToGoal(page, goalId)
+  await clickDay(page, 15)
+  ```
+
+**3. Validators** (`__tests__/fixtures/validators.fixture.ts`)
+- Reusable page and element assertions
+- Naming: Prefix all functions with `expect` (e.g., `expectHomePage()`, `expectVisible()`)
+- Purpose: Consistent, maintainable assertions across tests
+- Always use `data-testid` for selectors (not text or CSS classes)
+- Examples:
+  ```typescript
+  await expectHomePage(page)
+  await expectGoalPage(page)
+  await expectDaySelected(page, 15)
+  ```
+
+#### Test ID Convention
+- **Always use `data-testid`** (not `data-test-id` with hyphen)
+- Add `data-testid` attributes to all testable UI elements
+- Use semantic, descriptive IDs: `create-goal-button`, `calendar-day-15`, `dashboard-greeting`
+- Access in tests via: `page.getByTestId('element-id')`
+- Never use text-based selectors (`text=Click here`) or CSS classes for assertions
+
+#### Example Test Pattern
+```typescript
+test('should complete user flow', async ({ page }) => {
+  // 1. Seed data (database)
+  const { user, credentials } = await seedUser()
+  const goal = await seedGoal({ userId: user.uid })
+  
+  // 2. UI interactions (fixtures)
+  await signIn(page, credentials)
+  await navigateToGoal(page, goal.id)
+  await clickDay(page, 15)
+  
+  // 3. Assertions (validators)
+  await expectGoalPage(page)
+  await expectDaySelected(page, 15)
+})
+```
+
+#### When to Create New Helpers
+
+**Create a new seed** when:
+- You need to create data in the database
+- The operation doesn't require UI interaction
+- It can be reused across multiple tests
+
+**Create a new fixture** when:
+- You need to interact with the UI (click, fill, navigate)
+- The action is reusable across tests
+- It's a common user flow
+
+**Create a new validator** when:
+- You're checking the same thing in multiple tests
+- It involves complex assertions or multiple checks
+- It validates page state or element visibility
+
+**Don't create helpers** for:
+- One-off assertions specific to a single test
+- Operations that are already covered by existing helpers
+- Trivial checks that are clearer inline
 

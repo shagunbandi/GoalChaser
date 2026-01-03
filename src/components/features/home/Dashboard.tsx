@@ -64,7 +64,7 @@ export function Dashboard({
         {/* Main Content */}
         <main className="max-w-2xl mx-auto px-5 py-8">
           {/* Greeting */}
-          <div className="mb-8">
+          <div className="mb-8" data-testid="dashboard-greeting">
             <h2 className="text-2xl font-semibold text-white/90 mb-1">
               {getGreeting()}, {firstName}
             </h2>
@@ -79,7 +79,10 @@ export function Dashboard({
 
           {/* Create Goal Section */}
           {showCreateForm ? (
-            <div className="mb-8 bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.08] p-6 animate-fade-in">
+            <div
+              className="mb-8 bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-white/[0.08] p-6 animate-fade-in"
+              data-testid="create-goal-form"
+            >
               <h3 className="text-lg font-semibold text-white/90 mb-4">
                 Create New Goal
               </h3>
@@ -90,6 +93,7 @@ export function Dashboard({
             </div>
           ) : (
             <button
+              data-testid="create-goal-button"
               onClick={() => setShowCreateForm(true)}
               className="
                 w-full mb-8 p-4
@@ -122,7 +126,7 @@ export function Dashboard({
 
           {/* Goals List */}
           {goals.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-3" data-testid="goals-list">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">
                   Your Goals

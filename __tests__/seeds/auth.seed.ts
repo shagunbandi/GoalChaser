@@ -5,7 +5,7 @@ import {
   updateProfile,
   type Auth
 } from 'firebase/auth'
-import { getTestFirebase } from '../helpers/firebase-test-helpers'
+import { getTestFirebase } from '../helpers/firebase-setup'
 
 export interface SeedUserOptions {
   email?: string

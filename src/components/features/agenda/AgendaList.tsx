@@ -27,7 +27,7 @@ export function AgendaList({
   }
 
   return (
-    <div className="space-y-2" data-test-id="agenda-list">
+    <div className="space-y-2" data-testid="agenda-list">
       {items.map((item) => (
         <AgendaItem
           key={item.id}

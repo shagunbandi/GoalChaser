@@ -1,8 +1,6 @@
-import { test, expect } from '@playwright/test'
-import { signUp, signIn } from '../fixtures'
+import { test } from '@playwright/test'
+import { signUp, signIn, expectHomePage } from '../fixtures'
 import { seedUser } from '../seeds'
-
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
 
 test.describe('Authentication Flow', () => {
   test('should successfully sign up a new user', async ({ page }) => {
@@ -12,11 +10,7 @@ test.describe('Authentication Flow', () => {
     const name = `Signup Test ${timestamp}`
 
     await signUp(page, { email, password, name })
-
-    await expect(page).toHaveURL(BASE_URL)
-    await expect(
-      page.locator('text=Create Goal').or(page.locator('[data-testid="user-avatar"]'))
-    ).toBeVisible({ timeout: 10000 })
+    await expectHomePage(page)
   })
 
   test('should successfully sign in with existing user', async ({ page }) => {
@@ -29,9 +23,6 @@ test.describe('Authentication Flow', () => {
     
     // Sign in via UI
     await signIn(page, credentials)
-    
-    await expect(
-      page.locator('text=Create Goal').or(page.locator('[data-testid="user-avatar"]'))
-    ).toBeVisible({ timeout: 10000 })
+    await expectHomePage(page)
   })
 })

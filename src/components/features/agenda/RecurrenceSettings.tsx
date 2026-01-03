@@ -32,7 +32,7 @@ export function RecurrenceSettings({
           <select
             value={repeatType}
             onChange={(e) => onRepeatTypeChange(e.target.value as RepeatType)}
-            data-test-id="select-repeat-type"
+            data-testid="select-repeat-type"
             className="
               flex-1 px-3 py-2 rounded-xl
               bg-white/[0.04] border border-white/[0.08]
@@ -49,12 +49,12 @@ export function RecurrenceSettings({
       </div>
 
       {(repeatType === 'weekly' || repeatType === 'custom') && (
-        <div className="flex flex-wrap gap-2" data-test-id="weekday-selector">
+        <div className="flex flex-wrap gap-2" data-testid="weekday-selector">
           {WEEKDAY_CODES.map((code) => (
             <button
               key={code}
               onClick={() => onToggleRepeatDay(code)}
-              data-test-id={`button-weekday-${code}`}
+              data-testid={`button-weekday-${code}`}
               className={`
                 px-3 py-1.5 rounded-lg text-xs font-medium
                 transition-all duration-200
@@ -78,7 +78,7 @@ export function RecurrenceSettings({
             type="date"
             value={recurrenceStart}
             onChange={(e) => onRecurrenceStartChange(e.target.value)}
-            data-test-id="input-recurrence-start"
+            data-testid="input-recurrence-start"
             className="
               flex-1 px-3 py-2 rounded-xl
               bg-white/[0.04] border border-white/[0.08]
@@ -93,7 +93,7 @@ export function RecurrenceSettings({
             type="date"
             value={endDateOverride || ''}
             onChange={(e) => onEndDateChange(e.target.value)}
-            data-test-id="input-recurrence-end"
+            data-testid="input-recurrence-end"
             className="
               flex-1 px-3 py-2 rounded-xl
               bg-white/[0.04] border border-white/[0.08]

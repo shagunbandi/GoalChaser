@@ -132,8 +132,9 @@ export function Calendar({
   const content = (
     <>
       {/* Month Navigation Header */}
-      <div className="relative flex items-center justify-between pb-5 mb-5 gap-2">
+      <div className="relative flex items-center justify-between pb-5 mb-5 gap-2" data-testid="calendar-header">
         <button
+          data-testid="calendar-prev-month"
           onClick={onPrevMonth}
           className="
             px-3 py-2
@@ -149,11 +150,12 @@ export function Calendar({
         </button>
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-lg sm:text-xl opacity-80">📅</span>
-          <h2 className="text-base sm:text-lg font-semibold text-white/90 tracking-wide truncate">
+          <h2 className="text-base sm:text-lg font-semibold text-white/90 tracking-wide truncate" data-testid="calendar-month-year">
             {MONTH_NAMES[currentMonth - 1]} {currentYear}
           </h2>
         </div>
         <button
+          data-testid="calendar-next-month"
           onClick={onNextMonth}
           className="
             px-3 py-2
@@ -173,7 +175,7 @@ export function Calendar({
       </div>
 
       {/* Weekday Labels */}
-      <div className="grid grid-cols-7 gap-2 mb-3">
+      <div className="grid grid-cols-7 gap-2 mb-3" data-testid="calendar-weekdays">
         {WEEKDAY_LABELS.map((label) => (
           <div
             key={label}
@@ -185,7 +187,7 @@ export function Calendar({
       </div>
 
       {/* Days Grid */}
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-2" data-testid="calendar-days-grid">
         {emptyCells.map((_, index) => (
           <div key={`empty-${index}`} className="aspect-square" />
         ))}
@@ -198,6 +200,9 @@ export function Calendar({
           return (
             <div
               key={day.iso}
+              data-testid={`calendar-day-${day.dayOfMonth}`}
+              data-selected={isSelected}
+              data-today={isToday}
               onClick={() => isInRange && onDayClick(day.iso)}
               className={getDayClasses(status, isToday, isSelected, isInRange)}
               style={isInRange ? getDayStyle(day.iso) : undefined}

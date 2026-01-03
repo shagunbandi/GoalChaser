@@ -1,2 +1,2 @@
-export { getTestFirebase } from './firebase-test-helpers'
+export { getTestFirebase, getTestFirestore } from './firebase-setup'
 

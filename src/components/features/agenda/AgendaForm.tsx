@@ -62,12 +62,12 @@ export function AgendaForm({
       open={isOpen}
       title={isEditing ? 'Edit agenda' : 'Add agenda'}
       onClose={onClose}
-      data-test-id="modal-agenda-form"
+      data-testid="modal-agenda-form"
       footer={
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
-            data-test-id="button-cancel-agenda"
+            data-testid="button-cancel-agenda"
             className="
               px-4 py-2 rounded-xl text-sm font-medium
               bg-white/[0.05] text-white/70 hover:bg-white/[0.1]
@@ -78,7 +78,7 @@ export function AgendaForm({
           <button
             onClick={onSubmit}
             disabled={!title.trim()}
-            data-test-id="button-submit-agenda"
+            data-testid="button-submit-agenda"
             className="
               px-4 py-2 rounded-xl text-sm font-medium
               bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
@@ -99,7 +99,7 @@ export function AgendaForm({
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
             placeholder="Add an agenda item..."
-            data-test-id="input-agenda-title"
+            data-testid="input-agenda-title"
             className="
               w-full px-3 py-2 rounded-xl
               bg-white/[0.04] border border-white/[0.08]
@@ -111,7 +111,7 @@ export function AgendaForm({
             {repeatType !== 'none' && (
               <span
                 className="text-[#AF52DE]"
-                data-test-id="agenda-repeat-info"
+                data-testid="agenda-repeat-info"
               >
                 {repeatType === 'daily'
                   ? 'Daily'
@@ -123,7 +123,7 @@ export function AgendaForm({
             {editingInfo && (
               <span
                 className="text-white/40"
-                data-test-id="agenda-editing-info"
+                data-testid="agenda-editing-info"
               >
                 {editingInfo}
               </span>
@@ -138,7 +138,7 @@ export function AgendaForm({
               type="time"
               value={startTime}
               onChange={(e) => onStartTimeChange(e.target.value)}
-              data-test-id="input-start-time"
+              data-testid="input-start-time"
               className="
                 flex-1 px-3 py-2 rounded-xl
                 bg-white/[0.04] border border-white/[0.08]
@@ -153,7 +153,7 @@ export function AgendaForm({
               type="time"
               value={endTime}
               onChange={(e) => onEndTimeChange(e.target.value)}
-              data-test-id="input-end-time"
+              data-testid="input-end-time"
               className="
                 flex-1 px-3 py-2 rounded-xl
                 bg-white/[0.04] border border-white/[0.08]
@@ -177,12 +177,12 @@ export function AgendaForm({
 
         <div className="space-y-2">
           <label className="text-xs text-white/50">Attach subjects</label>
-          <div className="flex flex-wrap gap-2" data-test-id="subject-selector">
+          <div className="flex flex-wrap gap-2" data-testid="subject-selector">
             {availableSubjects.map((subject) => (
               <button
                 key={subject}
                 onClick={() => onToggleSubject(subject)}
-                data-test-id={`button-subject-${subject}`}
+                data-testid={`button-subject-${subject}`}
                 className={`
                   px-3 py-1.5 rounded-xl text-xs font-medium
                   transition-all duration-150 border
@@ -209,7 +209,7 @@ export function AgendaForm({
             onChange={(e) => onNoteChange(e.target.value)}
             rows={2}
             placeholder="Add a note (optional)"
-            data-test-id="input-agenda-note"
+            data-testid="input-agenda-note"
             className="
               w-full px-3 py-2 rounded-xl
               bg-white/[0.04] border border-white/[0.08]
