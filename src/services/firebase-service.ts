@@ -17,8 +17,7 @@ export async function initFirebase() {
     const { getAuth, connectAuthEmulator } = await import('firebase/auth')
 
     const useEmulator = process.env.NEXT_PUBLIC_USE_EMULATOR === 'true' || 
-                        process.env.USE_EMULATOR === 'true' ||
-                        typeof window !== 'undefined' && window.location.hostname === 'localhost'
+                        process.env.USE_EMULATOR === 'true'
 
     const firebaseConfig = useEmulator ? {
       apiKey: 'demo-api-key',
