@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import type { RepeatType } from '@/types'
+import { waitForAgendaItemInDb } from './firestore-interceptor.fixture'
 
 /**
  * Selects a productivity score (1-10) for the currently selected day
@@ -171,38 +172,36 @@ export async function submitAgendaForm(page: Page) {
 /**
  * Adds a complete agenda item with one action.
  * Returns the agenda ID for use in subsequent operations.
+ * 
+ * Note: Requires userId, goalId, and date to query Firestore for the created agenda ID
  */
-export async function addAgendaItem(page: Page, options: {
-  title: string
-  startTime?: string
-  endTime?: string
-  note?: string
-  repeatType?: RepeatType
-  repeatDays?: string[]
-  startDate?: string
-  endDate?: string
-}): Promise<string> {
+export async function addAgendaItem(
+  page: Page, 
+  userId: string,
+  goalId: string,
+  date: string,
+  options: {
+    title: string
+    startTime?: string
+    endTime?: string
+    note?: string
+    repeatType?: RepeatType
+    repeatDays?: string[]
+    startDate?: string
+    endDate?: string
+  }
+): Promise<string> {
   await openAddAgendaModal(page)
   await fillAgendaForm(page, options)
   await submitAgendaForm(page)
   
-  // Wait for the agenda item to appear and extract its ID
-  await page.waitForTimeout(1000)
-  // Find all agenda item containers (not child elements like title, note, etc.)
-  const allAgendaItems = await page.locator('[data-testid^="agenda-item-"]:not([data-testid$="-title"]):not([data-testid$="-note"]):not([data-testid$="-subjects"]):not([data-testid$="-badge"])').all()
+  // Query Firestore directly to get the agenda ID by title
+  const agendaId = await waitForAgendaItemInDb(userId, goalId, date, options.title)
   
-  if (allAgendaItems.length === 0) {
-    throw new Error('No agenda items found after creation')
-  }
+  console.log(`Created agenda item "${options.title}" with ID: ${agendaId}`)
   
-  // Get the last one (most recently created)
-  const agendaItem = allAgendaItems[allAgendaItems.length - 1]
-  const testId = await agendaItem.getAttribute('data-testid')
-  if (!testId) {
-    throw new Error('Failed to get agenda item testid')
-  }
-  const agendaId = testId.replace('agenda-item-', '')
-  console.log(`Created agenda item with ID: ${agendaId}`)
+  // Wait a bit for UI to update
+  await page.waitForTimeout(500)
   
   return agendaId
 }

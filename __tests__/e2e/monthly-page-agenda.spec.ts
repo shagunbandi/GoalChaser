@@ -61,7 +61,7 @@ test.describe('Monthly Page - Agenda Management', () => {
     await clickCalendarDay(page, 15)
 
     // Add daily recurring agenda for 7 days
-    const agendaId = await addAgendaItem(page, {
+    const agendaId = await addAgendaItem(page, user.uid, goal.id, FIXED_DATE, {
       title: 'Morning Exercise',
       startTime: '06:00',
       endTime: '07:00',
@@ -103,7 +103,7 @@ test.describe('Monthly Page - Agenda Management', () => {
 
     // Add weekly recurring agenda for Mon, Wed, Fri
     // Fixture will automatically handle which days are already selected
-    const agendaId = await addAgendaItem(page, {
+    const agendaId = await addAgendaItem(page, user.uid, goal.id, FIXED_DATE, {
       title: 'Team Meeting',
       startTime: '10:00',
       endTime: '11:00',
@@ -159,7 +159,7 @@ test.describe('Monthly Page - Agenda Management', () => {
     await clickCalendarDay(page, 15)
 
     // Add daily recurring agenda
-    const agendaId = await addAgendaItem(page, {
+    const agendaId = await addAgendaItem(page, user.uid, goal.id, FIXED_DATE, {
       title: 'Daily Standup',
       repeatType: 'daily',
       startDate: FIXED_DATE,
@@ -201,7 +201,7 @@ test.describe('Monthly Page - Agenda Management', () => {
     await clickCalendarDay(page, 15)
 
     // Add daily recurring agenda
-    const agendaId = await addAgendaItem(page, {
+    const agendaId = await addAgendaItem(page, user.uid, goal.id, FIXED_DATE, {
       title: 'Code Review',
       repeatType: 'daily',
       startDate: FIXED_DATE,
@@ -244,7 +244,7 @@ test.describe('Monthly Page - Agenda Management', () => {
     await expectDaySelected(page, 15)
 
     // Add first agenda item - daily (start date auto-filled as today)
-    const agendaId1 = await addAgendaItem(page, {
+    const agendaId1 = await addAgendaItem(page, user.uid, goal.id, FIXED_DATE, {
       title: 'Morning Meditation',
       repeatType: 'daily',
       endDate: '2025-01-17', // 3 days
@@ -254,7 +254,7 @@ test.describe('Monthly Page - Agenda Management', () => {
 
     // Add second agenda item - weekly on Mon, Wed, Fri
     // Fixture will automatically handle which days are already selected
-    const agendaId2 = await addAgendaItem(page, {
+    const agendaId2 = await addAgendaItem(page, user.uid, goal.id, FIXED_DATE, {
       title: 'Gym Session',
       repeatType: 'weekly',
       repeatDays: ['mon', 'wed', 'fri'],

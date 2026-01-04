@@ -45,4 +45,10 @@ export {
   deleteAgendaSeries,
   waitForGoalPageLoad,
 } from './monthly-page.fixture'
+export {
+  getAgendaIdByTitle,
+  waitForAgendaItemInDb,
+  waitForFirestoreCommit,
+  extractGoalIdFromFirestore,
+} from './firestore-interceptor.fixture'
 
