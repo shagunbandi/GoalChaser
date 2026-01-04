@@ -148,12 +148,13 @@ export function SubjectEntries({
             return (
               <div
                 key={entry.subject}
+                data-testid={`subject-entry-${entry.subject}`}
                 className={`
                   backdrop-blur-sm rounded-xl overflow-hidden
                   ${
                     hasTopics
                       ? 'bg-white/[0.03] border border-white/[0.08]'
-                      : 'bg-[#30D158]/20 border border-[#30D158]/30'
+                      : 'bg-[#30D158]/20 border-[#30D158]/30'
                   }
                 `}
               >
@@ -220,6 +221,8 @@ export function SubjectEntries({
                         {getTopicsForSubject(entry.subject).map((topic) => (
                           <button
                             key={topic}
+                            data-testid={`topic-${entry.subject}-${topic}`}
+                            data-selected={entry.topics.includes(topic)}
                             onClick={() => handleToggleTopic(index, topic)}
                             className={`
                               px-3 py-1.5 rounded-lg text-xs font-medium 
@@ -307,6 +310,7 @@ export function SubjectEntries({
                         </button>
                         <input
                           type="number"
+                          data-testid={`hours-input-${entry.subject}`}
                           value={entry.hours || ''}
                           onChange={(e) =>
                             handleUpdateHours(
@@ -356,6 +360,7 @@ export function SubjectEntries({
           {availableToAdd.map((subject) => (
             <button
               key={subject}
+              data-testid={`add-subject-${subject}`}
               onClick={() => handleAddSubjectEntry(subject)}
               className="
                 px-3 py-2 rounded-xl text-sm font-medium

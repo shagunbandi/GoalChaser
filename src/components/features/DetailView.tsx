@@ -179,6 +179,7 @@ export function DetailView({
             📝 Daily Notes
           </label>
           <textarea
+            data-testid="notes-input"
             value={currentNote}
             onChange={(e) => {
               onUpdateDetails(selectedDate, { note: e.target.value })

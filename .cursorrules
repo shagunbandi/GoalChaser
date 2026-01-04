@@ -73,8 +73,55 @@ import { LocalComponent } from './LocalComponent'
 - ❌ Don't inline large constant arrays in components
 - ❌ Don't duplicate types across files
 - ❌ Don't write helper functions inside components if they can be pure utilities
+- ❌ **Don't duplicate components with CSS visibility toggling** (see Responsive Design section below)
 
-### 8. Testing Guidelines
+### 8. Responsive Design Guidelines
+
+**NEVER duplicate components for responsive layouts!** Instead, use responsive Tailwind classes on a single instance.
+
+#### ❌ BAD - Component Duplication:
+```tsx
+{/* Mobile View */}
+<div className="md:hidden">
+  <Calendar {...props} />
+  <DetailView {...props} />
+</div>
+
+{/* Desktop View */}
+<div className="hidden md:block">
+  <Calendar {...props} />
+  <DetailView {...props} />
+</div>
+```
+
+**Problems:**
+- Doubles DOM size (performance impact)
+- Creates duplicate `data-testid` elements (breaks tests)
+- Harder to maintain (changes needed in two places)
+- Wastes memory and processing
+
+#### ✅ GOOD - Single Component with Responsive Layout:
+```tsx
+<div className="
+  flex flex-col              /* Mobile: stack vertically */
+  md:grid md:grid-cols-2     /* Desktop: side-by-side */
+  divide-y md:divide-y-0     /* Mobile: horizontal divider */
+  md:divide-x                /* Desktop: vertical divider */
+">
+  <Calendar {...props} />
+  <DetailView {...props} />
+</div>
+```
+
+**Benefits:**
+- Single instance in DOM
+- Better performance
+- Tests work reliably (no `.first()` or `.last()` needed)
+- Easier to maintain
+
+**Key Principle:** Use responsive **layout** classes (`flex`, `grid`, `divide-*`) to change arrangement, not visibility classes (`hidden`, `md:hidden`) to duplicate.
+
+### 9. Testing Guidelines
 
 #### Test Structure
 - **No Test Documentation**: Do NOT create README.md, documentation, or guide files in `__tests__/` folders

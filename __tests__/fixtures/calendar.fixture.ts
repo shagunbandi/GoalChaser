@@ -6,8 +6,9 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
  * Navigates to a goal's page
  */
 export async function navigateToGoal(page: Page, goalId: string) {
-  await page.goto(`${BASE_URL}/goal/${goalId}`)
-  await page.waitForLoadState('networkidle')
+  await page.goto(`${BASE_URL}/goal/${goalId}`, { waitUntil: 'domcontentloaded' })
+  // Wait for page to be ready - check for calendar month-year element
+  await page.getByTestId('calendar-month-year').waitFor({ state: 'attached', timeout: 10000 })
 }
 
 /**

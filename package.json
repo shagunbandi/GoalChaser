@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:test": "dotenv -e .env.test -- next dev",
+    "dev:test": "npx dotenv -e .env.test -- next dev",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",

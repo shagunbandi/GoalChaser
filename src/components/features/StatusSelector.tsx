@@ -88,6 +88,8 @@ export function StatusSelector({ value, onChange }: StatusSelectorProps) {
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
           <button
             key={score}
+            data-testid={`productivity-score-${score}`}
+            data-selected={value === score}
             onClick={() => onChange(value === score ? null : score)}
             className={`
               aspect-square rounded-xl border-2 

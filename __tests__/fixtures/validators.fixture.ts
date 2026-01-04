@@ -88,3 +88,75 @@ export async function expectCreateGoalForm(page: Page) {
   await expect(page.getByTestId('create-goal-form')).toBeVisible()
 }
 
+/**
+ * Validates that a productivity score is selected
+ */
+export async function expectProductivityScoreSelected(page: Page, score: number) {
+  const scoreButton = page.getByTestId(`productivity-score-${score}`)
+  await expect(scoreButton).toHaveAttribute('data-selected', 'true')
+}
+
+/**
+ * Validates that a subject entry is visible on the page
+ */
+export async function expectSubjectVisible(page: Page, subjectName: string) {
+  await expect(page.getByTestId(`subject-entry-${subjectName}`)).toBeVisible()
+}
+
+/**
+ * Validates that a topic is selected for a subject
+ */
+export async function expectTopicSelected(page: Page, subjectName: string, topicName: string) {
+  const topicButton = page.getByTestId(`topic-${subjectName}-${topicName}`)
+  await expect(topicButton).toHaveAttribute('data-selected', 'true')
+}
+
+/**
+ * Validates that notes contain specific text
+ */
+export async function expectNotesContain(page: Page, text: string) {
+  const notesInput = page.getByTestId('notes-input')
+  await expect(notesInput).toHaveValue(text)
+}
+
+/**
+ * Validates that an agenda item is visible by its ID.
+ */
+export async function expectAgendaItemVisible(page: Page, agendaId: string) {
+  await expect(page.getByTestId(`agenda-item-${agendaId}`)).toBeVisible()
+}
+
+/**
+ * Validates that an agenda item is NOT visible by its ID
+ */
+export async function expectAgendaItemNotVisible(page: Page, agendaId: string) {
+  await expect(page.getByTestId(`agenda-item-${agendaId}`)).not.toBeVisible()
+}
+
+/**
+ * Validates that an agenda item has a repeat badge by its ID.
+ */
+export async function expectAgendaItemHasRepeat(page: Page, agendaId: string, repeatType: string) {
+  const agendaItem = page.getByTestId(`agenda-item-${agendaId}`)
+  await expect(agendaItem.getByText(repeatType, { exact: true })).toBeVisible()
+}
+
+/**
+ * Validates that subject hours are set correctly
+ */
+export async function expectSubjectHours(page: Page, subjectName: string, hours: number) {
+  const hoursInput = page.getByTestId(`hours-input-${subjectName}`)
+  await expect(hoursInput).toHaveValue(hours.toString())
+}
+
+/**
+ * Validates agenda count.
+ */
+export async function expectAgendaCount(page: Page, count: number) {
+  if (count === 0) {
+    await expect(page.getByTestId('agenda-count')).not.toBeVisible()
+  } else {
+    await expect(page.getByTestId('agenda-count')).toContainText(`${count} item${count === 1 ? '' : 's'}`)
+  }
+}
+

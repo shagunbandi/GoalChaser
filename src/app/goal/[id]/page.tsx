@@ -396,120 +396,63 @@ export default function GoalPage() {
           </div>
 
           {viewMode === 'month' ? (
-            <>
-              {/* Mobile View - Stacked layout with divider */}
-              <div className="md:hidden">
-                <Card className="p-0 overflow-hidden">
-                  <div className="divide-y divide-white/[0.06]">
-                    {/* Calendar on top */}
-                    <Calendar
-                      currentYear={currentYear}
-                      currentMonth={currentMonth}
-                      monthInfo={currentMonthInfo}
-                      dayStatuses={dayStatuses}
-                      dayDetails={dayDetails}
-                      selectedDate={selectedDate}
-                      todayISO={todayISO}
-                      onPrevMonth={() => {
-                        pushStatus({ text: 'Previous month', tone: 'progress' })
-                        goToPreviousMonth()
-                        pushStatus({ text: 'Month changed', tone: 'success' })
-                      }}
-                      onNextMonth={() => {
-                        pushStatus({ text: 'Next month', tone: 'progress' })
-                        goToNextMonth()
-                        pushStatus({ text: 'Month changed', tone: 'success' })
-                      }}
-                      onDayClick={handleDayClick}
-                      goalStartDate={goal?.startDate}
-                      goalEndDate={goal?.endDate}
-                      successCriterion={goal?.successCriterion}
-                      noCard
-                    />
+            <Card className="p-0 overflow-hidden">
+              <div
+                className="
+                flex flex-col
+                md:grid md:grid-cols-2
+                divide-y md:divide-y-0
+                md:divide-x
+                divide-white/[0.06]
+              "
+              >
+                {/* Calendar - Top on mobile, Left on desktop */}
+                <Calendar
+                  currentYear={currentYear}
+                  currentMonth={currentMonth}
+                  monthInfo={currentMonthInfo}
+                  dayStatuses={dayStatuses}
+                  dayDetails={dayDetails}
+                  selectedDate={selectedDate}
+                  todayISO={todayISO}
+                  onPrevMonth={() => {
+                    pushStatus({ text: 'Previous month', tone: 'progress' })
+                    goToPreviousMonth()
+                    pushStatus({ text: 'Month changed', tone: 'success' })
+                  }}
+                  onNextMonth={() => {
+                    pushStatus({ text: 'Next month', tone: 'progress' })
+                    goToNextMonth()
+                    pushStatus({ text: 'Month changed', tone: 'success' })
+                  }}
+                  onDayClick={handleDayClick}
+                  goalStartDate={goal?.startDate}
+                  goalEndDate={goal?.endDate}
+                  successCriterion={goal?.successCriterion}
+                  noCard
+                />
 
-                    {/* Day Details below */}
-                    <DetailView
-                      selectedDate={selectedDate}
-                      todayISO={todayISO}
-                      dayDetails={dayDetails}
-                      subjectConfigs={subjectConfigs}
-                      onUpdateDetails={handleUpdateDetails}
-                      onAddSubject={handleAddSubject}
-                      onRemoveSubject={handleRemoveSubject}
-                      onUpdateSubject={handleUpdateSubject}
-                      onToggleHasTopics={handleToggleHasTopics}
-                      onAddTopic={handleAddTopic}
-                      onRemoveTopic={handleRemoveTopic}
-                      onUpdateTopic={handleUpdateTopic}
-                      isTopicInUse={isTopicInUse}
-                      successCriterion={goal?.successCriterion}
-                      noCard
-                      onStatus={pushStatus}
-                    />
-                  </div>
-                </Card>
+                {/* Day Details - Bottom on mobile, Right on desktop */}
+                <DetailView
+                  selectedDate={selectedDate}
+                  todayISO={todayISO}
+                  dayDetails={dayDetails}
+                  subjectConfigs={subjectConfigs}
+                  onUpdateDetails={handleUpdateDetails}
+                  onAddSubject={handleAddSubject}
+                  onRemoveSubject={handleRemoveSubject}
+                  onUpdateSubject={handleUpdateSubject}
+                  onToggleHasTopics={handleToggleHasTopics}
+                  onAddTopic={handleAddTopic}
+                  onRemoveTopic={handleRemoveTopic}
+                  onUpdateTopic={handleUpdateTopic}
+                  isTopicInUse={isTopicInUse}
+                  successCriterion={goal?.successCriterion}
+                  noCard
+                  onStatus={pushStatus}
+                />
               </div>
-
-              {/* Desktop View - Combined card with side-by-side layout */}
-              <div className="hidden md:block">
-                <Card className="p-0 overflow-hidden">
-                  <div className="grid grid-cols-2 divide-x divide-white/[0.06]">
-                    {/* Left Side - Calendar */}
-                    <Calendar
-                      currentYear={currentYear}
-                      currentMonth={currentMonth}
-                      monthInfo={currentMonthInfo}
-                      dayStatuses={dayStatuses}
-                      dayDetails={dayDetails}
-                      selectedDate={selectedDate}
-                      todayISO={todayISO}
-                      onPrevMonth={() => {
-                        pushStatus({ text: 'Previous month', tone: 'progress' })
-                        goToPreviousMonth()
-                        pushStatus({ text: 'Month changed', tone: 'success' })
-                      }}
-                      onNextMonth={() => {
-                        pushStatus({ text: 'Next month', tone: 'progress' })
-                        goToNextMonth()
-                        pushStatus({ text: 'Month changed', tone: 'success' })
-                      }}
-                      onDayClick={(iso) => {
-                        pushStatus({
-                          text: 'Selecting date…',
-                          tone: 'progress',
-                        })
-                        setSelectedDate(iso)
-                        pushStatus({ text: 'Date selected', tone: 'success' })
-                      }}
-                      goalStartDate={goal?.startDate}
-                      goalEndDate={goal?.endDate}
-                      successCriterion={goal?.successCriterion}
-                      noCard
-                    />
-
-                    {/* Right Side - Day Details */}
-                    <DetailView
-                      selectedDate={selectedDate}
-                      todayISO={todayISO}
-                      dayDetails={dayDetails}
-                      subjectConfigs={subjectConfigs}
-                      onUpdateDetails={handleUpdateDetails}
-                      onAddSubject={handleAddSubject}
-                      onRemoveSubject={handleRemoveSubject}
-                      onUpdateSubject={handleUpdateSubject}
-                      onToggleHasTopics={handleToggleHasTopics}
-                      onAddTopic={handleAddTopic}
-                      onRemoveTopic={handleRemoveTopic}
-                      onUpdateTopic={handleUpdateTopic}
-                      isTopicInUse={isTopicInUse}
-                      successCriterion={goal?.successCriterion}
-                      noCard
-                      onStatus={pushStatus}
-                    />
-                  </div>
-                </Card>
-              </div>
-            </>
+            </Card>
           ) : (
             <YearView
               year={currentYear}

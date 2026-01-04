@@ -19,7 +19,30 @@ export {
   expectDayIsToday,
   expectCalendarMonth,
   expectGoalsList,
-  expectCreateGoalForm
+  expectCreateGoalForm,
+  expectProductivityScoreSelected,
+  expectSubjectVisible,
+  expectTopicSelected,
+  expectNotesContain,
+  expectAgendaItemVisible,
+  expectAgendaItemNotVisible,
+  expectAgendaItemHasRepeat,
+  expectSubjectHours,
+  expectAgendaCount,
 } from './validators.fixture'
-
+export {
+  selectProductivityScore,
+  addSubject,
+  selectTopic,
+  setSubjectHours,
+  enterNotes,
+  clickCalendarDay,
+  openAddAgendaModal,
+  fillAgendaForm,
+  submitAgendaForm,
+  addAgendaItem,
+  deleteAgendaSingleDay,
+  deleteAgendaSeries,
+  waitForGoalPageLoad,
+} from './monthly-page.fixture'
 
