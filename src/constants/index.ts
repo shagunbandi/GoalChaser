@@ -29,3 +29,7 @@ export const STORAGE_KEYS = {
 
 export const DEFAULT_USER_ID = 'default_user'
 
+// ============ UI Timing Constants ============
+
+// Debounce duration for saving notes while typing (ms)
+export const NOTES_DEBOUNCE_MS = 600

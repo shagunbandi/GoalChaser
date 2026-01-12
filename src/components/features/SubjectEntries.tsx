@@ -3,6 +3,13 @@
 import { useState } from 'react'
 import type { SubjectEntry, SubjectConfig } from '@/types'
 
+const hoursToParts = (value: number) => {
+  const totalMinutes = Math.round(Math.max(0, value) * 60)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return { hours, minutes }
+}
+
 interface SubjectEntriesProps {
   currentSubjects: SubjectEntry[]
   subjectConfigs: SubjectConfig[]
@@ -27,9 +34,9 @@ export function SubjectEntries({
 }: SubjectEntriesProps) {
   const [showAddSubject, setShowAddSubject] = useState(false)
   const [newSubjectInput, setNewSubjectInput] = useState('')
-  const [expandedSubjectIndex, setExpandedSubjectIndex] = useState<
-    number | null
-  >(null)
+  const [expandedSubjectIndex, setExpandedSubjectIndex] = useState<number | null>(
+    null,
+  )
   const [showAddTopicForSubject, setShowAddTopicForSubject] = useState<
     string | null
   >(null)
@@ -98,6 +105,17 @@ export function SubjectEntries({
     onUpdateSubjects(newSubjects)
   }
 
+  const handleSetHoursParts = (
+    subjectIndex: number,
+    hoursPart: number,
+    minutesPart: number,
+  ) => {
+    const safeHours = Math.max(0, Math.floor(hoursPart))
+    const safeMinutes = Math.min(59, Math.max(0, Math.floor(minutesPart)))
+    const totalMinutes = safeHours * 60 + safeMinutes
+    handleUpdateHours(subjectIndex, totalMinutes / 60)
+  }
+
   // Add new subject to config and add entry
   const handleAddNewSubject = () => {
     if (newSubjectInput.trim()) {
@@ -144,6 +162,9 @@ export function SubjectEntries({
           {currentSubjects.map((entry, index) => {
             const hasTopics = subjectHasTopics(entry.subject)
             const isExpanded = expandedSubjectIndex === index
+            const { hours: hoursPart, minutes: minutesPart } = hoursToParts(
+              entry.hours,
+            )
 
             return (
               <div
@@ -189,9 +210,9 @@ export function SubjectEntries({
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    {entry.hours > 0 && (
+                    {(hoursPart > 0 || minutesPart > 0) && (
                       <span className="text-xs text-[#30D158] font-medium">
-                        {entry.hours}h
+                        {hoursPart}h {minutesPart}m
                       </span>
                     )}
                     <button
@@ -294,57 +315,84 @@ export function SubjectEntries({
                         Hours Spent
                       </label>
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() =>
-                            handleUpdateHours(index, entry.hours - 0.5)
-                          }
-                          className="
-                            w-8 h-8 rounded-lg
-                            bg-white/[0.05] hover:bg-white/[0.1]
-                            text-white/60 hover:text-white
-                            transition-all duration-200
-                            flex items-center justify-center
-                          "
-                        >
-                          −
-                        </button>
-                        <input
-                          type="number"
-                          data-testid={`hours-input-${entry.subject}`}
-                          value={entry.hours || ''}
-                          onChange={(e) =>
-                            handleUpdateHours(
-                              index,
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          step="0.5"
-                          min="0"
-                          className="
-                            w-16 px-2 py-1.5 text-center
-                            bg-white/[0.05] border border-white/[0.1] rounded-lg
-                            text-white text-sm
-                            focus:outline-none focus:border-[#30D158]/50
-                          "
-                        />
-                        <button
-                          onClick={() =>
-                            handleUpdateHours(index, entry.hours + 0.5)
-                          }
-                          className="
-                            w-8 h-8 rounded-lg
-                            bg-white/[0.05] hover:bg-white/[0.1]
-                            text-white/60 hover:text-white
-                            transition-all duration-200
-                            flex items-center justify-center
-                          "
-                        >
-                          +
-                        </button>
-                        <span className="text-xs text-white/40 ml-1">
-                          hours
-                        </span>
+                      <button
+                        onClick={() =>
+                          handleUpdateHours(index, entry.hours - 0.5)
+                        }
+                        className="
+                          w-8 h-8 rounded-lg
+                          bg-white/[0.05] hover:bg-white/[0.1]
+                          text-white/60 hover:text-white
+                          transition-all duration-200
+                          flex items-center justify-center
+                        "
+                      >
+                        −
+                      </button>
+                      <div className="flex items-center rounded-2xl border border-white/[0.1] bg-black/20 px-3 py-1 text-sm gap-3">
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="0"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            aria-label="Hours spent"
+                            data-testid={`hours-input-${entry.subject}`}
+                            value={hoursPart}
+                            onChange={(e) =>
+                              handleSetHoursParts(
+                                index,
+                                parseInt(e.target.value, 10) || 0,
+                                minutesPart,
+                              )
+                            }
+                            className="
+                              w-16 min-w-[3.5rem] rounded-xl border border-white/[0.1] bg-white/5 px-3 py-1 text-center text-white text-xs
+                              focus:border-[#30D158]/50 focus:outline-none
+                            "
+                          />
+                          <span className="text-xs text-white/40">h</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="0"
+                            max="59"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            aria-label="Minutes spent"
+                            value={minutesPart}
+                            onChange={(e) =>
+                              handleSetHoursParts(
+                                index,
+                                hoursPart,
+                                parseInt(e.target.value, 10) || 0,
+                              )
+                            }
+                            className="
+                              w-16 min-w-[3.5rem] rounded-xl border border-white/[0.1] bg-white/5 px-3 py-1 text-center text-white text-xs
+                              focus:border-[#30D158]/50 focus:outline-none
+                            "
+                          />
+                          <span className="text-xs text-white/40">m</span>
+                        </div>
                       </div>
+                      <button
+                        onClick={() =>
+                          handleUpdateHours(index, entry.hours + 0.5)
+                        }
+                        className="
+                          w-8 h-8 rounded-lg
+                          bg-white/[0.05] hover:bg-white/[0.1]
+                          text-white/60 hover:text-white
+                          transition-all duration-200
+                          flex items-center justify-center
+                        "
+                      >
+                        +
+                      </button>
+                      <span className="text-xs text-white/40 ml-1">hours</span>
+                    </div>
                     </div>
                   </div>
                 )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   DayDetails,
   SubjectConfig,
@@ -8,6 +8,7 @@ import type {
   SuccessCriterion,
 } from '@/types'
 import { Card, CardHeader } from '@/components/ui'
+import { NOTES_DEBOUNCE_MS } from '@/constants'
 import { StatusSelector } from './StatusSelector'
 import { HoursSummary } from './HoursSummary'
 import { SubjectManager } from './SubjectManager'
@@ -57,16 +58,58 @@ export function DetailView({
 }: DetailViewProps) {
   const isHoursBasedGoal = successCriterion?.type === 'hours'
   const [showSubjectManager, setShowSubjectManager] = useState(false)
-  const typingTimer = useRef<NodeJS.Timeout | null>(null)
+  const noteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingNoteSave = useRef<{ date: string; note: string } | null>(null)
+  const noteDraftRef = useRef<string>('')
+  const isNoteDirtyRef = useRef(false)
+  const prevSelectedDateRef = useRef(selectedDate)
 
   const details = dayDetails[selectedDate]
   const currentStatus = details?.status || null
   const currentNote = details?.note || ''
+  const [noteDraft, setNoteDraft] = useState(currentNote)
   const currentSubjects: SubjectEntry[] = details?.subjects || []
   // Support both old (plannedItems) and new (agendaItems) field names for backward compatibility
   const agendaItems = useMemo(
     () => details?.agendaItems || details?.plannedItems || [],
     [details?.agendaItems, details?.plannedItems],
+  )
+
+  const flushPendingNoteSave = useCallback(async () => {
+    if (noteSaveTimer.current) {
+      clearTimeout(noteSaveTimer.current)
+      noteSaveTimer.current = null
+    }
+
+    const pending = pendingNoteSave.current
+    if (!pending) return
+
+    pendingNoteSave.current = null
+    await onUpdateDetails(pending.date, { note: pending.note })
+
+    // If the user has typed more since this save was queued, don't mark as "saved"
+    if (
+      pending.date === selectedDate &&
+      noteDraftRef.current === pending.note
+    ) {
+      isNoteDirtyRef.current = false
+      onStatus?.({ text: 'Saved', tone: 'success' })
+    }
+  }, [onStatus, onUpdateDetails, selectedDate])
+
+  const scheduleNoteSave = useCallback(
+    (date: string, note: string) => {
+      pendingNoteSave.current = { date, note }
+
+      if (noteSaveTimer.current) {
+        clearTimeout(noteSaveTimer.current)
+      }
+
+      noteSaveTimer.current = setTimeout(() => {
+        void flushPendingNoteSave()
+      }, NOTES_DEBOUNCE_MS)
+    },
+    [flushPendingNoteSave],
   )
 
   // Calculate hours from subjects
@@ -90,13 +133,33 @@ export function DetailView({
 
   const notifyTyping = (text: string) => {
     onStatus?.({ text, tone: 'progress' })
-    if (typingTimer.current) {
-      clearTimeout(typingTimer.current)
-    }
-    typingTimer.current = setTimeout(() => {
-      onStatus?.({ text: 'Typing saved', tone: 'success' })
-    }, 900)
   }
+
+  // Switching days: flush any pending save for the prior day, then reset local draft.
+  useEffect(() => {
+    const prevSelectedDate = prevSelectedDateRef.current
+    if (prevSelectedDate === selectedDate) return
+    prevSelectedDateRef.current = selectedDate
+
+    isNoteDirtyRef.current = false
+    noteDraftRef.current = currentNote
+    setNoteDraft(currentNote)
+    void flushPendingNoteSave()
+  }, [selectedDate, currentNote, flushPendingNoteSave])
+
+  // If notes are updated externally (e.g. initial load), sync draft as long as the user isn't actively typing.
+  useEffect(() => {
+    if (isNoteDirtyRef.current) return
+    noteDraftRef.current = currentNote
+    setNoteDraft(currentNote)
+  }, [currentNote])
+
+  // On unmount, try to flush any pending save (best-effort).
+  useEffect(() => {
+    return () => {
+      void flushPendingNoteSave()
+    }
+  }, [flushPendingNoteSave])
 
   // Get available subjects
   const availableSubjects = subjectConfigs.map((s) => s.name)
@@ -179,10 +242,18 @@ export function DetailView({
           </label>
           <textarea
             data-testid="notes-input"
-            value={currentNote}
+            value={noteDraft}
             onChange={(e) => {
-              onUpdateDetails(selectedDate, { note: e.target.value })
+              const next = e.target.value
+              isNoteDirtyRef.current = true
+              noteDraftRef.current = next
+              setNoteDraft(next)
+
+              scheduleNoteSave(selectedDate, next)
               notifyTyping('Typing…')
+            }}
+            onBlur={() => {
+              void flushPendingNoteSave()
             }}
             placeholder="Write something about your day..."
             rows={3}
