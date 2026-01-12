@@ -109,22 +109,12 @@ export function AgendaForm({
           />
           <div className="flex flex-wrap items-center gap-2 text-xs text-white/50">
             {repeatType !== 'none' && (
-              <span
-                className="text-[#AF52DE]"
-                data-testid="agenda-repeat-info"
-              >
-                {repeatType === 'daily'
-                  ? 'Daily'
-                  : repeatType === 'weekly'
-                  ? 'Weekly'
-                  : `Custom ${repeatDays.join(', ')}`}
+              <span className="text-[#AF52DE]" data-testid="agenda-repeat-info">
+                {repeatType === 'daily' ? 'Daily' : 'Weekly'}
               </span>
             )}
             {editingInfo && (
-              <span
-                className="text-white/40"
-                data-testid="agenda-editing-info"
-              >
+              <span className="text-white/40" data-testid="agenda-editing-info">
                 {editingInfo}
               </span>
             )}

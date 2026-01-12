@@ -42,11 +42,7 @@ export function AgendaItem({
               className="text-xs text-[#AF52DE] bg-[#AF52DE]/10 px-2 py-1 rounded-lg"
               data-testid="agenda-item-repeat-badge"
             >
-              {item.repeat.type === 'daily'
-                ? 'Daily'
-                : item.repeat.type === 'weekly'
-                ? 'Weekly'
-                : `Custom ${item.repeat.days?.join(', ')}`}
+              {item.repeat.type === 'daily' ? 'Daily' : 'Weekly'}
             </span>
           )}
           {item.subjects && item.subjects.length > 0 && (

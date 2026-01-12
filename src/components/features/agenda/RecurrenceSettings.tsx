@@ -43,12 +43,11 @@ export function RecurrenceSettings({
             <option value="none">None</option>
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
-            <option value="custom">Custom days</option>
           </select>
         </div>
       </div>
 
-      {(repeatType === 'weekly' || repeatType === 'custom') && (
+      {repeatType === 'weekly' && (
         <div className="flex flex-wrap gap-2" data-testid="weekday-selector">
           {WEEKDAY_CODES.map((code) => (
             <button

@@ -71,7 +71,7 @@ export function AgendaManager({
     const priority = (item: AgendaItem) => {
       const type = item.repeat?.type || 'none'
       if (type === 'weekly') return 0
-      if (type === 'daily' || type === 'custom') return 1
+      if (type === 'daily') return 1
       return 2
     }
     return [...agendaItems].sort((a, b) => {
@@ -83,12 +83,9 @@ export function AgendaManager({
     })
   }, [agendaItems])
 
-  // Initialize repeat days when changing to weekly/custom mode
+  // Initialize repeat days when changing to weekly mode
   useEffect(() => {
-    if (
-      (repeatType === 'weekly' || repeatType === 'custom') &&
-      repeatDays.length === 0
-    ) {
+    if (repeatType === 'weekly' && repeatDays.length === 0) {
       // Use queueMicrotask to avoid synchronous state update warning
       queueMicrotask(() => setRepeatDays([selectedWeekdayCode]))
     }
@@ -746,7 +743,6 @@ export function AgendaManager({
                     <option value="none">None</option>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
-                    <option value="custom">Custom days</option>
                   </select>
                 </div>
               </div>
@@ -756,9 +752,7 @@ export function AgendaManager({
                   <button
                     key={code}
                     onClick={() => toggleRepeatDay(code)}
-                    disabled={
-                      repeatType !== 'weekly' && repeatType !== 'custom'
-                    }
+                    disabled={repeatType !== 'weekly'}
                     className={`
                       px-3 py-1.5 rounded-lg text-xs font-medium
                       transition-all duration-200
@@ -768,7 +762,7 @@ export function AgendaManager({
                           : 'bg-white/[0.05] text-white/50 hover:bg-white/[0.1]'
                       }
                       ${
-                        repeatType !== 'weekly' && repeatType !== 'custom'
+                        repeatType !== 'weekly'
                           ? 'opacity-40 cursor-not-allowed'
                           : ''
                       }

@@ -48,7 +48,5 @@ export {
 export {
   getAgendaIdByTitle,
   waitForAgendaItemInDb,
-  waitForFirestoreCommit,
-  extractGoalIdFromFirestore,
 } from './firestore-interceptor.fixture'
 

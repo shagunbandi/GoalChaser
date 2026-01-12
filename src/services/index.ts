@@ -1,5 +1,7 @@
-export * from './firebase-service'
 export * from './storage-service'
-export * from './day-details-service'
-export * from './subject-config-service'
+
+// Re-export API layer (backed by '@/lib/firebase-service')
+export * from '@/lib/api/firebase-client'
+export * from '@/lib/api/day-details-api'
+export * from '@/lib/api/subject-configs-api'
 

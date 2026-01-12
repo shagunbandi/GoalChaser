@@ -10,7 +10,7 @@ export interface SubjectEntry {
   hours: number
 }
 
-export type RepeatType = 'none' | 'daily' | 'weekly' | 'custom'
+export type RepeatType = 'none' | 'daily' | 'weekly'
 
 export interface RepeatRule {
   type: RepeatType

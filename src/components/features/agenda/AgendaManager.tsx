@@ -71,7 +71,7 @@ export function AgendaManager({
     const priority = (item: AgendaItem) => {
       const type = item.repeat?.type || 'none'
       if (type === 'weekly') return 0
-      if (type === 'daily' || type === 'custom') return 1
+      if (type === 'daily') return 1
       return 2
     }
     return [...agendaItems].sort((a, b) => {
@@ -84,10 +84,7 @@ export function AgendaManager({
   }, [agendaItems])
 
   useEffect(() => {
-    if (
-      (repeatType === 'weekly' || repeatType === 'custom') &&
-      repeatDays.length === 0
-    ) {
+    if (repeatType === 'weekly' && repeatDays.length === 0) {
       queueMicrotask(() => setRepeatDays([selectedWeekdayCode]))
     }
   }, [repeatType, repeatDays.length, selectedWeekdayCode])

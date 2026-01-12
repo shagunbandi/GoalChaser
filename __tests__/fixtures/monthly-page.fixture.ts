@@ -126,7 +126,7 @@ export async function fillAgendaForm(page: Page, options: {
   if (options.repeatType) {
     await page.getByTestId('select-repeat-type').selectOption(options.repeatType)
     // Wait for weekday selector to appear if needed
-    if (options.repeatType === 'weekly' || options.repeatType === 'custom') {
+    if (options.repeatType === 'weekly') {
       await page.waitForTimeout(200)
     }
   }
@@ -149,8 +149,7 @@ export async function fillAgendaForm(page: Page, options: {
     }
   }
   
-  // Set date range LAST
-  // Note: startDate is usually auto-filled with the selected day, so only override if explicitly provided
+  // Set date range last (start date is usually auto-filled from the selected day)
   if (options.startDate) {
     await page.getByTestId('input-recurrence-start').fill(options.startDate)
   }
@@ -171,9 +170,7 @@ export async function submitAgendaForm(page: Page) {
 
 /**
  * Adds a complete agenda item with one action.
- * Returns the agenda ID for use in subsequent operations.
- * 
- * Note: Requires userId, goalId, and date to query Firestore for the created agenda ID
+ * Returns the created agenda ID.
  */
 export async function addAgendaItem(
   page: Page, 
@@ -197,8 +194,6 @@ export async function addAgendaItem(
   
   // Query Firestore directly to get the agenda ID by title
   const agendaId = await waitForAgendaItemInDb(userId, goalId, date, options.title)
-  
-  console.log(`Created agenda item "${options.title}" with ID: ${agendaId}`)
   
   // Wait a bit for UI to update
   await page.waitForTimeout(500)
