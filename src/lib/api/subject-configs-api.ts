@@ -46,10 +46,10 @@ export async function saveSubjectConfigsToFirebase(
   goalId: string,
   configs: SubjectConfig[],
 ): Promise<boolean> {
-  logger.progress('Saving...')
+  logger.progress('Saving subjects...')
   
   if (!isFirebaseAvailable() || !getFirebaseDb()) {
-    logger.error('Save failed - Firebase unavailable')
+    logger.error('Save failed')
     return false
   }
 
@@ -57,7 +57,7 @@ export async function saveSubjectConfigsToFirebase(
     const { doc, setDoc } = await import('firebase/firestore')
     const db = getFirebaseDb()
     if (!db) {
-      logger.error('Save failed - Firebase unavailable')
+      logger.error('Save failed')
       return false
     }
 
@@ -74,7 +74,7 @@ export async function saveSubjectConfigsToFirebase(
       configs,
       updatedAt: new Date().toISOString(),
     })
-    logger.success('Saved')
+    logger.success('Subjects saved')
     return true
   } catch (error) {
     logger.error('Save failed', error)

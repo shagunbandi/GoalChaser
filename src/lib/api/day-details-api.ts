@@ -108,11 +108,22 @@ export async function saveDayDetailsToFirebase(
   goalId: string,
   date: string,
   details: DayDetails,
+  updates?: Partial<DayDetails>,
 ): Promise<boolean> {
-  logger.progress('Saving...')
+  // Determine what's being saved from updates
+  let action = 'Saving...'
+  if (updates) {
+    if ('status' in updates) action = 'Saving status...'
+    else if ('note' in updates) action = 'Saving note...'
+    else if ('subjects' in updates) action = 'Saving productivity...'
+    else if ('directHours' in updates) action = 'Saving hours...'
+    else if ('agendaItems' in updates) action = 'Saving agenda...'
+    else if ('travelPlans' in updates) action = 'Saving travel...'
+  }
+  logger.progress(action)
   
   if (!isFirebaseAvailable() || !getFirebaseDb()) {
-    logger.error('Save failed - Firebase unavailable')
+    logger.error('Save failed')
     return false
   }
 
@@ -120,7 +131,7 @@ export async function saveDayDetailsToFirebase(
     const { doc, setDoc } = await import('firebase/firestore')
     const db = getFirebaseDb()
     if (!db) {
-      logger.error('Save failed - Firebase unavailable')
+      logger.error('Save failed')
       return false
     }
     
@@ -132,7 +143,19 @@ export async function saveDayDetailsToFirebase(
     })
     
     await setDoc(docRef, cleanedDetails)
-    logger.success('Saved')
+    
+    // Match the saved message to what was being saved
+    if (updates) {
+      if ('status' in updates) logger.success('Status saved')
+      else if ('note' in updates) logger.success('Note saved')
+      else if ('subjects' in updates) logger.success('Productivity saved')
+      else if ('directHours' in updates) logger.success('Hours saved')
+      else if ('agendaItems' in updates) logger.success('Agenda saved')
+      else if ('travelPlans' in updates) logger.success('Travel saved')
+      else logger.success('Saved')
+    } else {
+      logger.success('Saved')
+    }
     
     return true
   } catch (error) {

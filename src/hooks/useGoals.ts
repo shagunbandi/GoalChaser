@@ -78,7 +78,7 @@ async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
 
 async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> {
   try {
-    logger.progress('Saving...')
+    logger.progress('Saving goal...')
     
     const db = getFirebaseDb()
     const { doc, setDoc } = await import('firebase/firestore')
@@ -94,7 +94,7 @@ async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> 
       successCriterion: goal.successCriterion || null,
       updatedAt: new Date().toISOString(),
     })
-    logger.success('Saved')
+    logger.success('Goal saved')
     return true
   } catch (error) {
     logger.error('Save failed', error)
@@ -104,14 +104,14 @@ async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> 
 
 async function deleteGoalFromFirebase(userId: string, goalId: string): Promise<boolean> {
   try {
-    logger.progress('Deleting...')
+    logger.progress('Deleting goal...')
     
     const db = getFirebaseDb()
     const { doc, deleteDoc } = await import('firebase/firestore')
     
     const goalRef = doc(db, 'users', userId, 'goals', goalId)
     await deleteDoc(goalRef)
-    logger.success('Deleted')
+    logger.success('Goal deleted')
     return true
   } catch (error) {
     logger.error('Delete failed', error)

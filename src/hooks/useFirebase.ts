@@ -191,9 +191,9 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
 
       // Save to Firebase (runs after state update)
       if (isUsingFirebase && user && savedDetails) {
-        const success = await saveDayDetailsToFirebase(user.uid, goalId, date, savedDetails)
+        const success = await saveDayDetailsToFirebase(user.uid, goalId, date, savedDetails, updates)
         if (!success) {
-          logger.error(`Failed to save ${date} to Firebase`)
+          logger.error('Save failed')
         }
       }
     },
