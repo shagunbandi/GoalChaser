@@ -49,6 +49,61 @@ export interface TravelPlan {
   destination?: string
 }
 
+// ============ SIP Types ============
+
+export type SIPFrequency = 'daily' | 'weekly' | 'monthly'
+
+export interface SIPPlan {
+  id: string
+  name: string
+  amount: number
+  frequency: SIPFrequency
+  startDate: string // ISO date
+  endDate: string // ISO date
+  expectedReturn?: number // Annual return percentage
+  note?: string
+  color?: string
+  // Track completed investments
+  completedDates?: string[] // Array of ISO dates where investment was marked as done
+}
+
+// ============ Budget Types ============
+
+export interface BudgetCategory {
+  id: string
+  name: string
+  allocatedAmount: number // Budgeted/planned amount
+  isFixed: boolean // Fixed expense (rent) vs variable budget (food, entertainment)
+  color?: string
+}
+
+export interface BudgetPlan {
+  id: string
+  name: string
+  income: number // Monthly income/salary
+  categories: BudgetCategory[] // Budget categories with allocations
+  startDate: string // ISO date
+  endDate: string // ISO date
+  note?: string
+  
+  // Recurring budget fields
+  isRecurring?: boolean
+  frequency?: 'monthly' | 'weekly'
+  startDay?: number // 1-31 for monthly, 0-6 for weekly (0=Sunday)
+  parentBudgetId?: string // Links recurring instances
+  periodIndex?: number // Which period (0 = first, 1 = second, etc.)
+}
+
+export interface Expense {
+  id: string
+  categoryId: string // Links to BudgetCategory
+  categoryName: string // Stored for display even if category deleted
+  amount: number
+  description: string
+  date: string // ISO date
+  budgetId?: string // Optional link to budget plan
+}
+
 export interface DayDetails {
   status: DayStatus
   // Legacy single subject/topic (for backward compatibility)
@@ -66,6 +121,12 @@ export interface DayDetails {
   plannedItems?: AgendaItem[]
   // Travel plans (multiple allowed)
   travelPlans?: TravelPlan[]
+  // SIP plans (multiple allowed)
+  sipPlans?: SIPPlan[]
+  // Budget plans (multiple allowed) - defines budget period
+  budgetPlans?: BudgetPlan[]
+  // Daily expenses tracked against budgets
+  expenses?: Expense[]
 }
 
 export interface DayInfo {

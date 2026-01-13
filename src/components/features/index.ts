@@ -2,6 +2,7 @@
 export { Calendar } from './Calendar'
 export { DetailView } from './DetailView'
 export { YearView } from './YearView'
+export { BudgetingView } from './BudgetingView'
 export { StatusSelector } from './StatusSelector'
 export { SubjectManager } from './SubjectManager'
 export { HoursSummary } from './HoursSummary'

@@ -9,7 +9,7 @@ import { useGoals } from '@/hooks/useGoals'
 import { useAuth } from '@/hooks/useAuth'
 
 import { Card, Navbar } from '@/components/ui'
-import { Calendar, DetailView, YearView } from '@/components/features'
+import { Calendar, DetailView, YearView, BudgetingView } from '@/components/features'
 
 import {
   toISODateString,
@@ -56,7 +56,7 @@ export default function GoalPage() {
   const [selectedDate, setSelectedDate] = useState(() =>
     toISODateString(new Date()),
   )
-  const [viewMode, setViewMode] = useState<'month' | 'year'>('month')
+  const [viewMode, setViewMode] = useState<'month' | 'travel' | 'budgeting'>('month')
 
   // Status bar message
   const [statusText, setStatusText] = useState('Ready')
@@ -345,13 +345,13 @@ export default function GoalPage() {
 
         <div className="max-w-7xl mx-auto space-y-4">
           <div className="flex justify-between items-center">
-            {/* Left side - Back to year view button (only shown in month view) */}
+            {/* Left side - Back to travelling view button (only shown in month view) */}
             <div>
               {viewMode === 'month' && (
                 <button
                   onClick={() => {
-                    setViewMode('year')
-                    pushStatus({ text: 'Year view', tone: 'info' })
+                    setViewMode('travel')
+                    pushStatus({ text: 'Travelling Year', tone: 'info' })
                   }}
                   className="
                     inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium
@@ -377,20 +377,33 @@ export default function GoalPage() {
                   }
                 `}
               >
-                Month view
+                📅 Month
               </button>
               <button
-                onClick={() => setViewMode('year')}
+                onClick={() => setViewMode('travel')}
                 className={`
                   px-4 py-2 text-sm font-medium rounded-xl transition-all duration-150
                   ${
-                    viewMode === 'year'
+                    viewMode === 'travel'
                       ? 'bg-white/90 text-black shadow-[0_0_16px_rgba(255,255,255,0.25)]'
                       : 'text-white/70 hover:bg-white/10'
                   }
                 `}
               >
-                Year view
+                ✈️ Travel
+              </button>
+              <button
+                onClick={() => setViewMode('budgeting')}
+                className={`
+                  px-4 py-2 text-sm font-medium rounded-xl transition-all duration-150
+                  ${
+                    viewMode === 'budgeting'
+                      ? 'bg-white/90 text-black shadow-[0_0_16px_rgba(255,255,255,0.25)]'
+                      : 'text-white/70 hover:bg-white/10'
+                  }
+                `}
+              >
+                💰 Budget
               </button>
             </div>
           </div>
@@ -453,7 +466,7 @@ export default function GoalPage() {
                 />
               </div>
             </Card>
-          ) : (
+          ) : viewMode === 'travel' ? (
             <YearView
               year={currentYear}
               todayISO={todayISO}
@@ -471,6 +484,24 @@ export default function GoalPage() {
                 pushStatus({ text: 'Year changed', tone: 'success' })
               }}
               onAddTravel={handleAddTravel}
+            />
+          ) : (
+            <BudgetingView
+              year={currentYear}
+              todayISO={todayISO}
+              dayDetails={dayDetails}
+              onUpdateDay={handleUpdateDetails}
+              onJumpToDay={handleJumpToDay}
+              onPrevYear={() => {
+                pushStatus({ text: 'Previous year', tone: 'progress' })
+                goToPreviousYear()
+                pushStatus({ text: 'Year changed', tone: 'success' })
+              }}
+              onNextYear={() => {
+                pushStatus({ text: 'Next year', tone: 'progress' })
+                goToNextYear()
+                pushStatus({ text: 'Year changed', tone: 'success' })
+              }}
             />
           )}
         </div>

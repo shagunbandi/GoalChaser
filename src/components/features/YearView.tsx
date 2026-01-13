@@ -272,9 +272,9 @@ export function YearView({
               ←
             </button>
             <div className="flex items-center gap-2">
-              <span className="text-xl">🗓️</span>
+              <span className="text-xl">✈️</span>
               <h2 className="text-xl font-semibold text-white/90">
-                Year view: {year}
+                Travelling Year: {year}
               </h2>
             </div>
             <button
