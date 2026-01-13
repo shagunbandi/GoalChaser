@@ -7,7 +7,9 @@ const statusSubscribers = new Set<(message: string, level: LogLevel) => void>()
 
 export function subscribeToStatus(callback: (message: string, level: LogLevel) => void) {
   statusSubscribers.add(callback)
-  return () => statusSubscribers.delete(callback)
+  return () => {
+    statusSubscribers.delete(callback)
+  }
 }
 
 function notifyStatusSubscribers(message: string, level: LogLevel) {
