@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './useAuth'
 import type { DayDetails, SubjectConfig } from '@/types'
-import { logger } from '@/utils/logger'
+import { logger } from '@/lib/logger'
 import {
   initFirebase,
   loadDayDetailsFromFirebase,
@@ -93,19 +93,14 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
   // Load initial data
   useEffect(() => {
     async function loadData() {
-      logger.info(`Loading data for goal ${goalId}`)
-      
       if (!goalId || authLoading) {
         if (!authLoading && !goalId) {
-          logger.error('No goalId provided')
           setIsLoading(false)
         }
         return
       }
 
-      // If not logged in, don't load any data
       if (!user) {
-        logger.info('User not logged in, clearing data')
         setIsLoading(false)
         setDayDetails({})
         setSubjectConfigs([])
@@ -113,7 +108,6 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
       }
 
       try {
-        logger.progress('Starting data load...')
         setIsLoading(true)
         setError(null)
 
@@ -126,9 +120,7 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
         )
 
         if (loadedDayDetails !== null && loadedSubjectConfigs !== null) {
-          logger.success('Firebase data loaded successfully')
           setIsUsingFirebase(true)
-          // Normalize legacy travel -> travelPlans
           const normalized = normalizeDayDetailsRecord(loadedDayDetails)
           
           setDayDetails(normalized)
@@ -137,14 +129,13 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
           saveToStorage(dayDetailsKey, normalized)
           saveToStorage(subjectConfigsKey, loadedSubjectConfigs)
         } else {
-          logger.info('Firebase unavailable, using localStorage')
           setIsUsingFirebase(false)
           const localData = normalizeDayDetailsRecord(loadFromStorage(dayDetailsKey, {}))
           setDayDetails(localData)
           setSubjectConfigs(loadFromStorage(subjectConfigsKey, []))
         }
       } catch (err) {
-        logger.error('Error loading data', err)
+        logger.error('Load failed', err)
         setError('Using offline mode')
         setIsUsingFirebase(false)
 

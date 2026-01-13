@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './useAuth'
 import { getFirebaseDb, isUsingEmulator } from '@/lib/firebase-service'
 import type { SuccessCriterion } from '@/types'
-import { logger } from '@/utils/logger'
+import { logger } from '@/lib/logger'
 
 // ============ Types ============
 export interface Goal {
@@ -44,7 +44,7 @@ function saveToStorage<T>(key: string, value: T): void {
 // ============ Firebase Helpers ============
 async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
   try {
-    logger.progress('Loading goals from Firebase...')
+    logger.progress('Loading goals...')
     
     const db = getFirebaseDb()
     const { collection, getDocs, query, orderBy } = await import('firebase/firestore')
@@ -68,17 +68,17 @@ async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
       })
     })
 
-    logger.success(`Loaded ${goals.length} goals from Firebase${isUsingEmulator() ? ' (emulator)' : ''}`)
+    logger.success(`Loaded ${goals.length} goals`)
     return goals
   } catch (error) {
-    logger.error('Firebase goals read failed', error)
+    logger.error('Load failed', error)
     return null
   }
 }
 
 async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> {
   try {
-    logger.progress(`Saving goal ${goal.name}`)
+    logger.progress('Saving...')
     
     const db = getFirebaseDb()
     const { doc, setDoc } = await import('firebase/firestore')
@@ -94,27 +94,27 @@ async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> 
       successCriterion: goal.successCriterion || null,
       updatedAt: new Date().toISOString(),
     })
-    logger.success(`Saved goal ${goal.name}${isUsingEmulator() ? ' (emulator)' : ''}`)
+    logger.success('Saved')
     return true
   } catch (error) {
-    logger.error('Firebase goal save failed', error)
+    logger.error('Save failed', error)
     return false
   }
 }
 
 async function deleteGoalFromFirebase(userId: string, goalId: string): Promise<boolean> {
   try {
-    logger.progress(`Deleting goal`)
+    logger.progress('Deleting...')
     
     const db = getFirebaseDb()
     const { doc, deleteDoc } = await import('firebase/firestore')
     
     const goalRef = doc(db, 'users', userId, 'goals', goalId)
     await deleteDoc(goalRef)
-    logger.success(`Deleted goal from Firebase${isUsingEmulator() ? ' (emulator)' : ''}`)
+    logger.success('Deleted')
     return true
   } catch (error) {
-    logger.error('Firebase goal delete failed', error)
+    logger.error('Delete failed', error)
     return false
   }
 }
@@ -152,38 +152,29 @@ export function useGoals(): UseGoalsReturn {
   // Load initial data
   useEffect(() => {
     async function loadData() {
-      logger.info('Loading goals...')
-      
-      // Wait for auth to finish loading
       if (authLoading) return
 
       try {
-        logger.progress('Starting goals load...')
         setIsLoading(true)
         setError(null)
 
-        // If user is logged in, load from Firebase with their user ID
         if (user) {
           const loadedGoals = await loadGoalsFromFirebase(user.uid)
 
           if (loadedGoals !== null) {
-            logger.success('Firebase goals loaded successfully')
             setIsUsingFirebase(true)
             setGoals(loadedGoals)
             saveToStorage(userStorageKey, loadedGoals)
           } else {
-            logger.info('Firebase unavailable, using localStorage')
             setIsUsingFirebase(false)
             setGoals(loadFromStorage(userStorageKey, []))
           }
         } else {
-          // Not logged in, use localStorage with default key
-          logger.info('User not logged in, clearing goals')
           setIsUsingFirebase(false)
           setGoals([])
         }
       } catch (err) {
-        logger.error('Error loading goals', err)
+        logger.error('Load failed', err)
         setError('Failed to load goals')
         setIsUsingFirebase(false)
         setGoals(loadFromStorage(userStorageKey, []))

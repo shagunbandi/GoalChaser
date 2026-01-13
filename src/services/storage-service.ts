@@ -1,4 +1,4 @@
-import { logger } from '@/utils/logger'
+import { logger } from '@/lib/logger'
 
 export function getStorageKey(userId: string, goalId: string, key: string): string {
   return `nitya_${userId}_${goalId}_${key}`

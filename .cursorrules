@@ -74,6 +74,7 @@ import { LocalComponent } from './LocalComponent'
 - ❌ Don't duplicate types across files
 - ❌ Don't write helper functions inside components if they can be pure utilities
 - ❌ **Don't duplicate components with CSS visibility toggling** (see Responsive Design section below)
+- ❌ **Don't create documentation files (*.md)** unless explicitly requested by the user
 
 ### 8. Responsive Design Guidelines
 

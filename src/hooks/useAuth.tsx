@@ -19,7 +19,7 @@ import {
   User,
 } from 'firebase/auth'
 import { getFirebaseAuth } from '@/lib/firebase-service'
-import { logger } from '@/utils/logger'
+import { logger } from '@/lib/logger'
 
 // Lazy provider initialization
 let googleProvider: GoogleAuthProvider | null = null

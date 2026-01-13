@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { subscribeToStatus } from '@/utils/logger'
+import { subscribeToStatus } from '@/lib/logger'
 
 type StatusTone = 'info' | 'success' | 'error' | 'progress'
 

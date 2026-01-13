@@ -34,15 +34,15 @@ export async function loadDayDetailsFromFirebase(
   userId: string,
   goalId: string,
 ): Promise<Record<string, DayDetails> | null> {
-  logger.progress('Loading day details from Firebase...')
+  logger.progress('Loading...')
   
   if (!isFirebaseAvailable()) {
-    logger.error('Cannot load day details - Firebase not available')
+    logger.error('Load failed - Firebase unavailable')
     return null
   }
   
   if (!getFirebaseDb()) {
-    logger.error('Cannot load day details - Firebase DB is null')
+    logger.error('Load failed - Firebase unavailable')
     return null
   }
 
@@ -50,13 +50,13 @@ export async function loadDayDetailsFromFirebase(
     const { collection, getDocs } = await import('firebase/firestore')
     const db = getFirebaseDb()
     if (!db) {
-      logger.error('Cannot load day details - Firebase DB became null')
+      logger.error('Load failed - Firebase unavailable')
       return null
     }
     
     const colRef = collection(db, 'users', userId, 'goals', goalId, 'days')
     const querySnapshot = await getDocs(colRef)
-    logger.success(`Loaded ${querySnapshot.size} day details from Firebase`)
+    logger.success(`Loaded ${querySnapshot.size} days`)
 
     const result: Record<string, DayDetails> = {}
     
@@ -109,10 +109,10 @@ export async function saveDayDetailsToFirebase(
   date: string,
   details: DayDetails,
 ): Promise<boolean> {
-  logger.progress(`Saving day details for ${date}`)
+  logger.progress('Saving...')
   
   if (!isFirebaseAvailable() || !getFirebaseDb()) {
-    logger.error('Cannot save day details - Firebase not available')
+    logger.error('Save failed - Firebase unavailable')
     return false
   }
 
@@ -120,24 +120,23 @@ export async function saveDayDetailsToFirebase(
     const { doc, setDoc } = await import('firebase/firestore')
     const db = getFirebaseDb()
     if (!db) {
-      logger.error('Cannot save day details - Firebase DB became null')
+      logger.error('Save failed - Firebase unavailable')
       return false
     }
     
     const docRef = doc(db, 'users', userId, 'goals', goalId, 'days', date)
     
-    // Clean undefined values before saving (Firebase doesn't support undefined)
     const cleanedDetails = removeUndefinedFields({
       ...details,
       updatedAt: new Date().toISOString(),
     })
     
     await setDoc(docRef, cleanedDetails)
-    logger.success(`Saved day details for ${date}`)
+    logger.success('Saved')
     
     return true
   } catch (error) {
-    logger.error(`Firebase write failed for ${date}`, error)
+    logger.error('Save failed', error)
     return false
   }
 }

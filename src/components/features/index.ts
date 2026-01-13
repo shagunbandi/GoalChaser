@@ -7,6 +7,7 @@ export { SubjectManager } from './SubjectManager'
 export { HoursSummary } from './HoursSummary'
 export { AgendaManager } from './AgendaManager'
 export { SubjectEntries } from './SubjectEntries'
+export { FirebaseHealthCheck } from './FirebaseHealthCheck'
 
 // Analytics components
 export * from './analytics'

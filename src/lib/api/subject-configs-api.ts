@@ -8,10 +8,7 @@ export async function loadSubjectConfigsFromFirebase(
   userId: string,
   goalId: string,
 ): Promise<SubjectConfig[] | null> {
-  logger.progress('Loading subject configs from Firebase...')
-  
   if (!isFirebaseAvailable() || !getFirebaseDb()) {
-    logger.error('Cannot load subject configs - Firebase not available')
     return null
   }
 
@@ -19,7 +16,6 @@ export async function loadSubjectConfigsFromFirebase(
     const { doc, getDoc } = await import('firebase/firestore')
     const db = getFirebaseDb()
     if (!db) {
-      logger.error('Cannot load subject configs - Firebase DB became null')
       return null
     }
 
@@ -36,13 +32,11 @@ export async function loadSubjectConfigsFromFirebase(
 
     if (docSnap.exists()) {
       const data = docSnap.data()
-      logger.success(`Loaded ${(data.configs || []).length} subject configs`)
       return data.configs || []
     }
-    logger.info('No subject configs found, returning empty array')
     return []
   } catch (error) {
-    logger.error('Firebase subject configs read failed', error)
+    logger.error('Load failed', error)
     return null
   }
 }
@@ -52,10 +46,10 @@ export async function saveSubjectConfigsToFirebase(
   goalId: string,
   configs: SubjectConfig[],
 ): Promise<boolean> {
-  logger.progress(`Saving ${configs.length} subject configs`)
+  logger.progress('Saving...')
   
   if (!isFirebaseAvailable() || !getFirebaseDb()) {
-    logger.error('Cannot save subject configs - Firebase not available')
+    logger.error('Save failed - Firebase unavailable')
     return false
   }
 
@@ -63,7 +57,7 @@ export async function saveSubjectConfigsToFirebase(
     const { doc, setDoc } = await import('firebase/firestore')
     const db = getFirebaseDb()
     if (!db) {
-      logger.error('Cannot save subject configs - Firebase DB became null')
+      logger.error('Save failed - Firebase unavailable')
       return false
     }
 
@@ -80,10 +74,10 @@ export async function saveSubjectConfigsToFirebase(
       configs,
       updatedAt: new Date().toISOString(),
     })
-    logger.success('Saved subject configs to Firebase')
+    logger.success('Saved')
     return true
   } catch (error) {
-    logger.error('Firebase subject configs write failed', error)
+    logger.error('Save failed', error)
     return false
   }
 }
