@@ -4,8 +4,8 @@ interface BudgetPeriodConfig {
   name: string
   income: number
   categories: BudgetCategory[]
-  frequency: 'monthly' | 'weekly' | 'one-time'
-  startDay: number // Day of month (1-31) or day of week (0-6 for weekly)
+  frequency: 'monthly' | 'one-time'
+  startDay: number // Day of month (1-31)
   firstPeriodStart: string // ISO date
   duration: { type: 'count' | 'endDate'; value: number | string }
   note?: string
@@ -49,8 +49,6 @@ export function generateBudgetPeriods(config: BudgetPeriodConfig): BudgetPlan[] 
 
   if (frequency === 'monthly') {
     periods.push(...generateMonthlyPeriods(config, parentId))
-  } else if (frequency === 'weekly') {
-    periods.push(...generateWeeklyPeriods(config, parentId))
   }
 
   return periods
@@ -113,59 +111,6 @@ function generateMonthlyPeriods(
       currentMonth = 0
       currentYear++
     }
-    periodIndex++
-  }
-
-  return periods
-}
-
-/**
- * Generate weekly budget periods
- */
-function generateWeeklyPeriods(
-  config: BudgetPeriodConfig,
-  parentId: string
-): BudgetPlan[] {
-  const { name, income, categories, firstPeriodStart, duration, note } = config
-  const periods: BudgetPlan[] = []
-  
-  let currentStart = new Date(firstPeriodStart)
-  let periodIndex = 0
-
-  let endCondition: (startDate: Date, index: number) => boolean
-
-  if (duration.type === 'count') {
-    const numPeriods = duration.value as number
-    endCondition = (startDate, index) => index < numPeriods
-  } else {
-    const endDate = new Date(duration.value as string)
-    endCondition = (startDate) => startDate <= endDate
-  }
-
-  while (endCondition(currentStart, periodIndex)) {
-    const periodEnd = new Date(currentStart)
-    periodEnd.setDate(periodEnd.getDate() + 6) // 7 days total (0-6)
-
-    const startISO = currentStart.toISOString().split('T')[0]
-    const endISO = periodEnd.toISOString().split('T')[0]
-
-    periods.push({
-      id: `${parentId}_period_${periodIndex}`,
-      name: `${name} - Week ${periodIndex + 1}`,
-      income,
-      categories: categories.map(c => ({ ...c })), // Clone categories
-      startDate: startISO,
-      endDate: endISO,
-      note,
-      isRecurring: true,
-      frequency: 'weekly',
-      parentBudgetId: parentId,
-      periodIndex,
-    })
-
-    // Move to next week
-    currentStart = new Date(periodEnd)
-    currentStart.setDate(currentStart.getDate() + 1)
     periodIndex++
   }
 

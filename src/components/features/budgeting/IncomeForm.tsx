@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { BudgetCategory, BudgetPlan } from '@/types'
 
-interface ExpenseFormProps {
+interface IncomeFormProps {
   date: string // ISO date
   categories: BudgetCategory[]
   availableBudgets?: BudgetPlan[] // Budgets that are active for this date
@@ -21,7 +21,7 @@ interface ExpenseFormProps {
   activeBudgetId?: string
 }
 
-export function ExpenseForm({
+export function IncomeForm({
   date,
   categories,
   availableBudgets = [],
@@ -29,7 +29,7 @@ export function ExpenseForm({
   onCancel,
   isSubmitting = false,
   activeBudgetId,
-}: ExpenseFormProps) {
+}: IncomeFormProps) {
   const [categoryId, setCategoryId] = useState(categories[0]?.id || '')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
@@ -60,7 +60,7 @@ export function ExpenseForm({
     }
 
     if (isRecurring && !endDate) {
-      setError('End date is required for recurring expenses')
+      setError('End date is required for recurring income')
       return
     }
 
@@ -116,7 +116,7 @@ export function ExpenseForm({
           ) : (
             categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
-                {cat.name} (₹{cat.allocatedAmount.toLocaleString('en-IN')} budgeted)
+                {cat.name}
               </option>
             ))
           )}
@@ -130,7 +130,7 @@ export function ExpenseForm({
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
-          placeholder="150"
+          placeholder="500"
           required
           min="0.01"
           step="0.01"
@@ -145,7 +145,7 @@ export function ExpenseForm({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
-          placeholder="Lunch at cafe, groceries, etc."
+          placeholder="Freelance payment, refund, bonus, etc."
         />
       </div>
 
@@ -173,9 +173,9 @@ export function ExpenseForm({
             type="checkbox"
             checked={isRecurring}
             onChange={(e) => setIsRecurring(e.target.checked)}
-            className="w-4 h-4 rounded border-white/20 bg-white/10 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+            className="w-4 h-4 rounded border-white/20 bg-white/10 text-green-500 focus:ring-green-500 focus:ring-offset-0"
           />
-          <span className="text-sm text-white/90">Recurring Expense</span>
+          <span className="text-sm text-white/90">Recurring Income</span>
         </label>
 
         {isRecurring && (
@@ -220,10 +220,10 @@ export function ExpenseForm({
         </button>
         <button
           type="submit"
-          className="flex-1 rounded-xl bg-gradient-to-r from-[#007AFF] to-[#AF52DE] px-4 py-2 text-sm font-medium text-white transition-all hover:shadow-[0_0_20px_rgba(0,122,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 px-4 py-2 text-sm font-medium text-white transition-all hover:shadow-[0_0_20px_rgba(34,197,94,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isSubmitting || categories.length === 0}
         >
-          {isSubmitting ? 'Adding...' : 'Add Expense'}
+          {isSubmitting ? 'Adding...' : 'Add Income'}
         </button>
       </div>
     </form>

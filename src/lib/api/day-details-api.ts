@@ -93,6 +93,8 @@ export async function loadDayDetailsFromFirebase(
           completed: item.completed || false,
         })),
         travelPlans,
+        expenses: data.expenses || [],
+        income: data.income || [],
       }
     })
 
@@ -119,6 +121,8 @@ export async function saveDayDetailsToFirebase(
     else if ('directHours' in updates) action = 'Saving hours...'
     else if ('agendaItems' in updates) action = 'Saving agenda...'
     else if ('travelPlans' in updates) action = 'Saving travel...'
+    else if ('expenses' in updates) action = 'Saving expense...'
+    else if ('income' in updates) action = 'Saving income...'
   }
   logger.progress(action)
   
@@ -152,6 +156,8 @@ export async function saveDayDetailsToFirebase(
       else if ('directHours' in updates) logger.success('Hours saved')
       else if ('agendaItems' in updates) logger.success('Agenda saved')
       else if ('travelPlans' in updates) logger.success('Travel saved')
+      else if ('expenses' in updates) logger.success('Expense saved')
+      else if ('income' in updates) logger.success('Income saved')
       else logger.success('Saved')
     } else {
       logger.success('Saved')

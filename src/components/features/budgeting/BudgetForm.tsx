@@ -7,13 +7,9 @@ interface BudgetFormProps {
     name: string
     income: number
     categories: BudgetCategory[]
-    frequency: 'one-time' | 'monthly' | 'weekly'
-    startDate?: string
-    endDate?: string
-    startDay?: number
-    firstPeriodStart?: string
-    durationType?: 'count' | 'endDate'
-    durationValue?: number | string
+    startMonth: number
+    startYear: number
+    repeatCount: number
     note: string
   }) => void | Promise<void>
   onCancel: () => void
@@ -31,8 +27,6 @@ const DEFAULT_CATEGORIES = [
   { name: 'Other', isFixed: false, color: '#6B7280' },
 ]
 
-const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
 export function BudgetForm({
   initialData,
   onSubmit,
@@ -44,23 +38,13 @@ export function BudgetForm({
   const [categories, setCategories] = useState<BudgetCategory[]>(
     initialData?.categories || []
   )
-  const [frequency, setFrequency] = useState<'one-time' | 'monthly' | 'weekly'>(
-    initialData?.isRecurring 
-      ? (initialData?.frequency || 'monthly')
-      : 'one-time'
+  const [startMonth, setStartMonth] = useState<number>(
+    initialData?.startDate ? new Date(initialData.startDate).getMonth() : new Date().getMonth()
   )
-  
-  // One-time budget fields
-  const [startDate, setStartDate] = useState(initialData?.startDate || '')
-  const [endDate, setEndDate] = useState(initialData?.endDate || '')
-  
-  // Recurring budget fields
-  const [startDay, setStartDay] = useState(initialData?.startDay?.toString() || '1')
-  const [firstPeriodStart, setFirstPeriodStart] = useState(initialData?.startDate || '')
-  const [durationType, setDurationType] = useState<'count' | 'endDate'>('count')
-  const [durationCount, setDurationCount] = useState('6')
-  const [durationEndDate, setDurationEndDate] = useState('')
-  
+  const [startYear, setStartYear] = useState<number>(
+    initialData?.startDate ? new Date(initialData.startDate).getFullYear() : new Date().getFullYear()
+  )
+  const [repeatCount, setRepeatCount] = useState(initialData?.isRecurring ? '6' : '1')
   const [note, setNote] = useState(initialData?.note || '')
   const [error, setError] = useState<string | null>(null)
 
@@ -132,33 +116,10 @@ export function BudgetForm({
       return
     }
 
-    // Validate based on frequency
-    if (frequency === 'one-time') {
-      if (!startDate || !endDate) {
-        setError('Start and end dates are required')
-        return
-      }
-      if (startDate > endDate) {
-        setError('End date must be after start date')
-        return
-      }
-    } else {
-      if (!firstPeriodStart) {
-        setError(`First ${frequency === 'monthly' ? 'month' : 'week'} is required`)
-        return
-      }
-      if (durationType === 'count') {
-        const count = parseInt(durationCount)
-        if (isNaN(count) || count < 1) {
-          setError('Duration must be at least 1')
-          return
-        }
-      } else {
-        if (!durationEndDate) {
-          setError('End date is required')
-          return
-        }
-      }
+    const repeatNum = parseInt(repeatCount)
+    if (!repeatNum || repeatNum < 1) {
+      setError('Repeat count must be at least 1')
+      return
     }
 
     setError(null)
@@ -166,15 +127,9 @@ export function BudgetForm({
       name: name.trim(),
       income: incomeNum,
       categories,
-      frequency,
-      startDate: frequency === 'one-time' ? startDate : undefined,
-      endDate: frequency === 'one-time' ? endDate : undefined,
-      startDay: frequency !== 'one-time' ? parseInt(startDay) : undefined,
-      firstPeriodStart: frequency !== 'one-time' ? firstPeriodStart : undefined,
-      durationType: frequency !== 'one-time' ? durationType : undefined,
-      durationValue: frequency !== 'one-time' 
-        ? (durationType === 'count' ? parseInt(durationCount) : durationEndDate)
-        : undefined,
+      startMonth,
+      startYear,
+      repeatCount: repeatNum,
       note: note.trim(),
     })
   }
@@ -203,7 +158,7 @@ export function BudgetForm({
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs text-white/60">Monthly Income (₹) *</label>
+        <label className="text-xs text-white/60">Monthly Budget (₹) *</label>
         <input
           type="number"
           value={income}
@@ -215,174 +170,93 @@ export function BudgetForm({
         />
       </div>
 
-      {/* Frequency Selection */}
-      <div className="space-y-1">
-        <label className="text-xs text-white/60">Frequency *</label>
-        <select
-          value={frequency}
-          onChange={(e) => setFrequency(e.target.value as 'one-time' | 'monthly' | 'weekly')}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
-        >
-          <option value="one-time">One-time</option>
-          <option value="monthly">Monthly</option>
-          <option value="weekly">Weekly</option>
-        </select>
+      {/* Month Selection */}
+      <div className="space-y-2">
+        <label className="text-xs text-white/60">Start Month *</label>
+        <div className="grid grid-cols-6 gap-2">
+          {[
+            { label: 'Jan', value: 0 },
+            { label: 'Feb', value: 1 },
+            { label: 'Mar', value: 2 },
+            { label: 'Apr', value: 3 },
+            { label: 'May', value: 4 },
+            { label: 'Jun', value: 5 },
+            { label: 'Jul', value: 6 },
+            { label: 'Aug', value: 7 },
+            { label: 'Sep', value: 8 },
+            { label: 'Oct', value: 9 },
+            { label: 'Nov', value: 10 },
+            { label: 'Dec', value: 11 },
+          ].map((month) => (
+            <button
+              key={month.value}
+              type="button"
+              onClick={() => setStartMonth(month.value)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                startMonth === month.value
+                  ? 'bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white shadow-lg shadow-blue-500/30'
+                  : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:border-white/20'
+              }`}
+            >
+              {month.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Date inputs based on frequency */}
-      {frequency === 'one-time' ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <label className="text-xs text-white/60">Start Date *</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
-              required
-            />
+      {/* Year Selection */}
+      <div className="space-y-2">
+        <label className="text-xs text-white/60">Start Year *</label>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setStartYear(startYear - 1)}
+            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:border-white/20 transition-all"
+          >
+            ‹
+          </button>
+          <div className="flex-1 grid grid-cols-3 gap-2">
+            {[startYear - 1, startYear, startYear + 1].map((year) => (
+              <button
+                key={year}
+                type="button"
+                onClick={() => setStartYear(year)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  startYear === year
+                    ? 'bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white shadow-lg shadow-blue-500/30'
+                    : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:border-white/20'
+                }`}
+              >
+                {year}
+              </button>
+            ))}
           </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-white/60">End Date *</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
-              required
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => setStartYear(startYear + 1)}
+            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:border-white/20 transition-all"
+          >
+            ›
+          </button>
         </div>
-      ) : frequency === 'monthly' ? (
-        <>
-          <div className="space-y-1">
-            <label className="text-xs text-white/60">Start Date *</label>
-            <input
-              type="date"
-              value={firstPeriodStart}
-              onChange={(e) => {
-                setFirstPeriodStart(e.target.value)
-                // Extract day of month from the selected date
-                if (e.target.value) {
-                  const date = new Date(e.target.value)
-                  setStartDay(date.getDate().toString())
-                }
-              }}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
-              required
-            />
-            <p className="text-xs text-white/40 mt-1">
-              Budget will repeat on day {startDay || '1'} of each month
-            </p>
-          </div>
+      </div>
 
-          <div className="space-y-2">
-            <label className="text-xs text-white/60">Duration *</label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  checked={durationType === 'count'}
-                  onChange={() => setDurationType('count')}
-                  className="text-blue-500"
-                />
-                <span className="text-sm text-white/80">Repeat for</span>
-                <input
-                  type="number"
-                  value={durationCount}
-                  onChange={(e) => setDurationCount(e.target.value)}
-                  disabled={durationType !== 'count'}
-                  className="w-20 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm text-white outline-none disabled:opacity-50"
-                  min="1"
-                />
-                <span className="text-sm text-white/80">months</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  checked={durationType === 'endDate'}
-                  onChange={() => setDurationType('endDate')}
-                  className="text-blue-500"
-                />
-                <span className="text-sm text-white/80">End on</span>
-                <input
-                  type="date"
-                  value={durationEndDate}
-                  onChange={(e) => setDurationEndDate(e.target.value)}
-                  disabled={durationType !== 'endDate'}
-                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm text-white outline-none disabled:opacity-50"
-                />
-              </label>
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="space-y-1">
-            <label className="text-xs text-white/60">Start Date *</label>
-            <input
-              type="date"
-              value={firstPeriodStart}
-              onChange={(e) => {
-                setFirstPeriodStart(e.target.value)
-                // Extract day of week from the selected date
-                if (e.target.value) {
-                  const date = new Date(e.target.value)
-                  setStartDay(date.getDay().toString())
-                }
-              }}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
-              required
-            />
-            <p className="text-xs text-white/40 mt-1">
-              Budget will repeat every {firstPeriodStart ? WEEKDAY_NAMES[new Date(firstPeriodStart).getDay()] : 'week'}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs text-white/60">Duration *</label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  checked={durationType === 'count'}
-                  onChange={() => setDurationType('count')}
-                  className="text-blue-500"
-                />
-                <span className="text-sm text-white/80">Repeat for</span>
-                <input
-                  type="number"
-                  value={durationCount}
-                  onChange={(e) => setDurationCount(e.target.value)}
-                  disabled={durationType !== 'count'}
-                  className="w-20 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm text-white outline-none disabled:opacity-50"
-                  min="1"
-                />
-                <span className="text-sm text-white/80">weeks</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  checked={durationType === 'endDate'}
-                  onChange={() => setDurationType('endDate')}
-                  className="text-blue-500"
-                />
-                <span className="text-sm text-white/80">End on</span>
-                <input
-                  type="date"
-                  value={durationEndDate}
-                  onChange={(e) => setDurationEndDate(e.target.value)}
-                  disabled={durationType !== 'endDate'}
-                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm text-white outline-none disabled:opacity-50"
-                />
-              </label>
-            </div>
-          </div>
-        </>
-      )}
+      {/* Repeat Count */}
+      <div className="space-y-1">
+        <label className="text-xs text-white/60">Repeat for (months) *</label>
+        <input
+          type="number"
+          value={repeatCount}
+          onChange={(e) => setRepeatCount(e.target.value)}
+          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
+          placeholder="1"
+          min="1"
+          required
+        />
+        <p className="text-xs text-white/40 mt-1">
+          Create {repeatCount || '1'} consecutive monthly budget{parseInt(repeatCount) !== 1 ? 's' : ''}
+        </p>
+      </div>
 
       {/* Budget Categories */}
       <div className="space-y-2">

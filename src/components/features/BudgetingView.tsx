@@ -1,21 +1,40 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { DayDetails, SIPPlan, BudgetPlan, SIPFrequency, Expense } from '@/types'
+import type {
+  DayDetails,
+  SIPPlan,
+  BudgetPlan,
+  SIPFrequency,
+  Expense,
+  Income,
+} from '@/types'
 import { Card, Modal } from '@/components/ui'
-import { SIPForm, SIPCard, BudgetForm, BudgetCard, ExpenseForm } from './budgeting'
+import {
+  SIPForm,
+  SIPCard,
+  BudgetForm,
+  BudgetCard,
+  ExpenseForm,
+  IncomeForm,
+} from './budgeting'
 import { MONTH_NAMES, WEEKDAY_LABELS } from '@/constants'
-import { computeMonthInfo, formatDateDisplay, enumerateDateRange } from '@/utils'
+import { computeMonthInfo, formatDateDisplay } from '@/utils'
 import { generateSIPDates } from '@/lib/utils/sip-utils'
-import { generateBudgetPeriods } from '@/lib/utils/budget-utils'
 
 interface BudgetingViewProps {
   year: number
   todayISO: string
   dayDetails: Record<string, DayDetails>
+  budgets: BudgetPlan[]
+  sips: SIPPlan[]
   onPrevYear: () => void
   onNextYear: () => void
   onUpdateDay: (iso: string, updates: Partial<DayDetails>) => Promise<void>
+  onSaveBudget: (budget: BudgetPlan) => Promise<void>
+  onDeleteBudget: (budgetId: string) => Promise<void>
+  onSaveSIP: (sip: SIPPlan) => Promise<void>
+  onDeleteSIP: (sipId: string) => Promise<void>
   onJumpToDay?: (iso: string) => void
 }
 
@@ -23,9 +42,15 @@ export function BudgetingView({
   year,
   todayISO,
   dayDetails,
+  budgets,
+  sips,
   onPrevYear,
   onNextYear,
   onUpdateDay,
+  onSaveBudget,
+  onDeleteBudget,
+  onSaveSIP,
+  onDeleteSIP,
   onJumpToDay,
 }: BudgetingViewProps) {
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
@@ -33,39 +58,12 @@ export function BudgetingView({
   const [showAddBudget, setShowAddBudget] = useState(false)
   const [editingBudget, setEditingBudget] = useState<BudgetPlan | null>(null)
   const [showAddExpense, setShowAddExpense] = useState(false)
+  const [showAddIncome, setShowAddIncome] = useState(false)
 
   const months = useMemo(
     () => Array.from({ length: 12 }, (_, i) => computeMonthInfo(year, i + 1)),
     [year],
   )
-
-  // Get unique SIP plans
-  const sipPlans = useMemo(() => {
-    const plans = new Map<string, SIPPlan & { days: string[] }>()
-    Object.entries(dayDetails).forEach(([iso, details]) => {
-      details.sipPlans?.forEach((plan) => {
-        if (!plans.has(plan.id)) {
-          plans.set(plan.id, { ...plan, days: [] })
-        }
-        plans.get(plan.id)!.days.push(iso)
-      })
-    })
-    return Array.from(plans.values()).sort((a, b) => a.startDate.localeCompare(b.startDate))
-  }, [dayDetails])
-
-  // Get unique budget plans
-  const budgetPlans = useMemo(() => {
-    const plans = new Map<string, BudgetPlan & { days: string[] }>()
-    Object.entries(dayDetails).forEach(([iso, details]) => {
-      details.budgetPlans?.forEach((plan) => {
-        if (!plans.has(plan.id)) {
-          plans.set(plan.id, { ...plan, days: [] })
-        }
-        plans.get(plan.id)!.days.push(iso)
-      })
-    })
-    return Array.from(plans.values()).sort((a, b) => a.startDate.localeCompare(b.startDate))
-  }, [dayDetails])
 
   // Get all expenses
   const allExpenses = useMemo(() => {
@@ -76,18 +74,97 @@ export function BudgetingView({
     return expenses
   }, [dayDetails])
 
+  // Get all income
+  const allIncome = useMemo(() => {
+    const income: Income[] = []
+    Object.values(dayDetails).forEach((details) => {
+      if (details.income) income.push(...details.income)
+    })
+    return income
+  }, [dayDetails])
+
   // Check what's on a day
   const getDayInfo = (iso: string) => {
     const details = dayDetails[iso] || {}
-    const hasSIP = (details.sipPlans?.length || 0) > 0
+    const hasSIP = getSIPsForDate(iso).length > 0
     const hasExpense = (details.expenses?.length || 0) > 0
-    const hasBudget = (details.budgetPlans?.length || 0) > 0
-    return { hasSIP, hasExpense, hasBudget }
+    const hasIncome = (details.income?.length || 0) > 0
+    return { hasSIP, hasExpense, hasIncome }
+  }
+
+  // Get all budgets for a specific month
+  const getMonthBudgets = (year: number, month: number) => {
+    // month is 1-12
+    const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
+    const daysInMonth = new Date(year, month, 0).getDate()
+    const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(
+      daysInMonth,
+    ).padStart(2, '0')}`
+
+    // Find all budgets that overlap with this month
+    return budgets.filter(
+      (b) => b.startDate <= monthEnd && b.endDate >= monthStart,
+    )
   }
 
   // Get active budget for expense form
   const getActiveBudget = (iso: string) => {
-    return budgetPlans.find((b) => iso >= b.startDate && iso <= b.endDate)
+    return budgets.find((b) => iso >= b.startDate && iso <= b.endDate)
+  }
+
+  // Get SIP for a specific date
+  const getSIPsForDate = (iso: string) => {
+    return sips.filter((s) => {
+      const sipDates = generateSIPDates(s.startDate, s.endDate, s.frequency)
+      return sipDates.includes(iso)
+    })
+  }
+
+  // Get all SIPs that have dates in a specific month
+  const getMonthSIPs = (year: number, month: number) => {
+    // month is 1-12
+    const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
+    const daysInMonth = new Date(year, month, 0).getDate()
+    const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(
+      daysInMonth,
+    ).padStart(2, '0')}`
+
+    return sips.filter((s) => {
+      const sipDates = generateSIPDates(s.startDate, s.endDate, s.frequency)
+      // Check if any SIP dates fall within this month
+      return sipDates.some((date) => date >= monthStart && date <= monthEnd)
+    })
+  }
+
+  // Calculate SIP progress for a month
+  const getSIPMonthProgress = (sip: SIPPlan, year: number, month: number) => {
+    const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
+    const daysInMonth = new Date(year, month, 0).getDate()
+    const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(
+      daysInMonth,
+    ).padStart(2, '0')}`
+
+    const sipDates = generateSIPDates(sip.startDate, sip.endDate, sip.frequency)
+    const monthDates = sipDates.filter((date) => date >= monthStart && date <= monthEnd)
+    const completedInMonth = monthDates.filter((date) => sip.completedDates?.includes(date))
+
+    return {
+      totalInMonth: monthDates.length,
+      completed: completedInMonth.length,
+      amount: completedInMonth.length * sip.amount,
+      pending: (monthDates.length - completedInMonth.length) * sip.amount,
+    }
+  }
+
+  // Calculate remaining amount for a budget
+  const getBudgetRemaining = (budget: BudgetPlan) => {
+    const budgetExpenses = allExpenses.filter((e) => e.budgetId === budget.id)
+    const budgetIncome = allIncome.filter((i) => i.budgetId === budget.id)
+
+    const totalSpent = budgetExpenses.reduce((sum, e) => sum + e.amount, 0)
+    const totalEarned = budgetIncome.reduce((sum, i) => sum + i.amount, 0)
+
+    return budget.income + totalEarned - totalSpent
   }
 
   // Add SIP
@@ -107,13 +184,7 @@ export function BudgetingView({
       completedDates: [],
     }
 
-    const dates = generateSIPDates(data.startDate, data.endDate, data.frequency)
-    await Promise.all(
-      dates.map((iso) => {
-        const existing = dayDetails[iso]?.sipPlans || []
-        return onUpdateDay(iso, { sipPlans: [...existing, newPlan] })
-      }),
-    )
+    await onSaveSIP(newPlan)
     setShowAddSIP(false)
   }
 
@@ -122,74 +193,88 @@ export function BudgetingView({
     name: string
     income: number
     categories: BudgetPlan['categories']
-    frequency: 'one-time' | 'monthly' | 'weekly'
-    startDate?: string
-    endDate?: string
-    startDay?: number
-    firstPeriodStart?: string
-    durationType?: 'count' | 'endDate'
-    durationValue?: number | string
+    startMonth: number
+    startYear: number
+    repeatCount: number
     note: string
   }) => {
     if (editingBudget) {
-      // Update existing budget (simplified - just update the one period)
-      const updatedPlan: BudgetPlan = { 
-        ...editingBudget, 
+      // Update existing budget
+      const updatedPlan: BudgetPlan = {
+        ...editingBudget,
         name: data.name,
         income: data.income,
         categories: data.categories,
         note: data.note,
       }
-      
-      // Remove old budget from old days
-      const oldDates = enumerateDateRange(editingBudget.startDate, editingBudget.endDate)
-      await Promise.all(
-        oldDates.map((iso) => {
-          const existing = dayDetails[iso]?.budgetPlans || []
-          return onUpdateDay(iso, {
-            budgetPlans: existing.filter((p) => p.id !== editingBudget.id),
-          })
-        }),
-      )
 
-      // Add updated budget to old days (keep same dates)
-      const newDates = enumerateDateRange(editingBudget.startDate, editingBudget.endDate)
-      await Promise.all(
-        newDates.map((iso) => {
-          const existing = dayDetails[iso]?.budgetPlans || []
-          return onUpdateDay(iso, { budgetPlans: [...existing, updatedPlan] })
-        }),
-      )
-
+      await onSaveBudget(updatedPlan)
       setEditingBudget(null)
     } else {
-      // Create new budget (supports recurring)
-      const budgetPeriods = generateBudgetPeriods({
-        name: data.name,
-        income: data.income,
-        categories: data.categories,
-        frequency: data.frequency,
-        startDay: data.startDay || 1,
-        firstPeriodStart: data.frequency === 'one-time' ? data.startDate! : data.firstPeriodStart!,
-        duration: {
-          type: data.frequency === 'one-time' ? 'endDate' : data.durationType!,
-          value: data.frequency === 'one-time' ? data.endDate! : data.durationValue!,
-        },
-        note: data.note,
-      })
+      // Generate monthly budgets
+      let currentMonth = data.startMonth
+      let currentYear = data.startYear
+      const parentId = `budget_${Date.now()}`
 
-      // Add all budget periods to their respective days
-      for (const period of budgetPeriods) {
-        const dates = enumerateDateRange(period.startDate, period.endDate)
-        await Promise.all(
-          dates.map((iso) => {
-            const existing = dayDetails[iso]?.budgetPlans || []
-            return onUpdateDay(iso, { budgetPlans: [...existing, period] })
-          }),
-        )
+      for (let i = 0; i < data.repeatCount; i++) {
+        // Create ISO dates directly to avoid timezone issues
+        const monthIndex = currentMonth + 1 // Convert 0-indexed to 1-indexed
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+
+        const startDateISO = `${currentYear}-${String(monthIndex).padStart(
+          2,
+          '0',
+        )}-01`
+        const endDateISO = `${currentYear}-${String(monthIndex).padStart(
+          2,
+          '0',
+        )}-${String(daysInMonth).padStart(2, '0')}`
+
+        const monthNames = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ]
+        const budgetName =
+          data.repeatCount > 1
+            ? `${data.name} - ${monthNames[currentMonth]} ${currentYear}`
+            : data.name
+
+        const period: BudgetPlan = {
+          id: `${parentId}_${i}`,
+          name: budgetName,
+          income: data.income,
+          categories: data.categories.map((c) => ({ ...c })),
+          startDate: startDateISO,
+          endDate: endDateISO,
+          note: data.note,
+          isRecurring: data.repeatCount > 1,
+          frequency: 'monthly',
+          startDay: 1,
+          parentBudgetId: data.repeatCount > 1 ? parentId : undefined,
+          periodIndex: i,
+        }
+
+        await onSaveBudget(period)
+
+        // Move to next month
+        currentMonth++
+        if (currentMonth > 11) {
+          currentMonth = 0
+          currentYear++
+        }
       }
     }
-    
+
     setShowAddBudget(false)
   }
 
@@ -201,53 +286,235 @@ export function BudgetingView({
     description: string
     date: string
     budgetId?: string
+    isRecurring?: boolean
+    frequency?: 'daily' | 'weekly' | 'monthly'
+    endDate?: string
   }) => {
-    const newExpense: Expense = { id: `expense_${Date.now()}`, ...data }
-    const existing = dayDetails[data.date]?.expenses || []
-    await onUpdateDay(data.date, { expenses: [...existing, newExpense] })
+    if (data.isRecurring && data.frequency && data.endDate) {
+      // Generate recurring expenses
+      const dates = generateSIPDates(
+        data.date,
+        data.endDate,
+        data.frequency as any,
+      )
+      const parentId = `expense_${Date.now()}`
+
+      for (let i = 0; i < dates.length; i++) {
+        const expenseDate = dates[i]
+        const expense: Expense = {
+          id: `${parentId}_${i}`,
+          categoryId: data.categoryId,
+          categoryName: data.categoryName,
+          amount: data.amount,
+          description: data.description,
+          date: expenseDate,
+          budgetId: data.budgetId,
+          isRecurring: true,
+          frequency: data.frequency,
+          endDate: data.endDate,
+          parentExpenseId: parentId,
+          occurrenceIndex: i,
+        }
+
+        const existing = dayDetails[expenseDate]?.expenses || []
+        await onUpdateDay(expenseDate, { expenses: [...existing, expense] })
+      }
+    } else {
+      // Single expense
+      const newExpense: Expense = {
+        id: `expense_${Date.now()}`,
+        categoryId: data.categoryId,
+        categoryName: data.categoryName,
+        amount: data.amount,
+        description: data.description,
+        date: data.date,
+        budgetId: data.budgetId,
+      }
+      const existing = dayDetails[data.date]?.expenses || []
+      await onUpdateDay(data.date, { expenses: [...existing, newExpense] })
+    }
+
     setShowAddExpense(false)
     setSelectedDay(null)
   }
 
-  // Remove handlers
-  const removeSIP = async (plan: SIPPlan & { days: string[] }) => {
-    if (!confirm(`Remove SIP "${plan.name}"?`)) return
-    await Promise.all(
-      plan.days.map((iso) => {
-        const existing = dayDetails[iso]?.sipPlans || []
-        return onUpdateDay(iso, { sipPlans: existing.filter((p) => p.id !== plan.id) })
-      }),
-    )
+  // Add Income
+  const handleAddIncome = async (data: {
+    categoryId: string
+    categoryName: string
+    amount: number
+    description: string
+    date: string
+    budgetId?: string
+    isRecurring?: boolean
+    frequency?: 'daily' | 'weekly' | 'monthly'
+    endDate?: string
+  }) => {
+    if (data.isRecurring && data.frequency && data.endDate) {
+      // Generate recurring income
+      const dates = generateSIPDates(
+        data.date,
+        data.endDate,
+        data.frequency as any,
+      )
+      const parentId = `income_${Date.now()}`
+
+      for (let i = 0; i < dates.length; i++) {
+        const incomeDate = dates[i]
+        const income: Income = {
+          id: `${parentId}_${i}`,
+          categoryId: data.categoryId,
+          categoryName: data.categoryName,
+          amount: data.amount,
+          description: data.description,
+          date: incomeDate,
+          budgetId: data.budgetId,
+          isRecurring: true,
+          frequency: data.frequency,
+          endDate: data.endDate,
+          parentIncomeId: parentId,
+          occurrenceIndex: i,
+        }
+
+        const existing = dayDetails[incomeDate]?.income || []
+        await onUpdateDay(incomeDate, { income: [...existing, income] })
+      }
+    } else {
+      // Single income
+      const newIncome: Income = {
+        id: `income_${Date.now()}`,
+        categoryId: data.categoryId,
+        categoryName: data.categoryName,
+        amount: data.amount,
+        description: data.description,
+        date: data.date,
+        budgetId: data.budgetId,
+      }
+      const existing = dayDetails[data.date]?.income || []
+      await onUpdateDay(data.date, { income: [...existing, newIncome] })
+    }
+
+    setShowAddIncome(false)
+    setSelectedDay(null)
   }
 
-  const removeBudget = async (plan: BudgetPlan & { days: string[] }) => {
-    if (!confirm(`Remove budget "${plan.name}"?`)) return
-    await Promise.all(
-      plan.days.map((iso) => {
-        const existing = dayDetails[iso]?.budgetPlans || []
-        return onUpdateDay(iso, { budgetPlans: existing.filter((p) => p.id !== plan.id) })
-      }),
-    )
+  // Remove handlers
+  const removeSIP = async (plan: SIPPlan, type: 'single' | 'all' = 'single') => {
+    // For now, SIPs don't have parent tracking, so just delete the single SIP
+    await onDeleteSIP(plan.id)
+  }
+
+  const updateSIPFromNow = async (plan: SIPPlan) => {
+    const today = new Date().toISOString().split('T')[0]
+    
+    // Generate new SIP dates from today for 7 months
+    const endDate = new Date()
+    endDate.setMonth(endDate.getMonth() + 7)
+    const endDateISO = endDate.toISOString().split('T')[0]
+
+    // Create updated SIP with new dates
+    const updatedSIP: SIPPlan = {
+      ...plan,
+      id: `sip_${Date.now()}`, // New ID to track this as separate period
+      startDate: today,
+      endDate: endDateISO,
+      completedDates: [], // Reset completed dates for new period
+    }
+
+    await onSaveSIP(updatedSIP)
+  }
+
+  const removeBudget = async (plan: BudgetPlan, type: 'single' | 'all') => {
+    if (type === 'all' && plan.isRecurring && plan.parentBudgetId) {
+      // Delete all budgets with the same parentBudgetId
+      const allPeriods = budgets.filter(
+        (b) => b.parentBudgetId === plan.parentBudgetId || b.id === plan.parentBudgetId
+      )
+      for (const budget of allPeriods) {
+        await onDeleteBudget(budget.id)
+      }
+    } else {
+      // Delete just this budget
+      await onDeleteBudget(plan.id)
+    }
+  }
+
+  const updateBudgetFromNow = async (plan: BudgetPlan) => {
+    const today = new Date()
+    const currentMonth = today.getMonth() // 0-11
+    const currentYear = today.getFullYear()
+
+    // Generate 7 months from now
+    const monthsToGenerate = 7
+    const parentId = plan.parentBudgetId || plan.id
+
+    for (let i = 0; i < monthsToGenerate; i++) {
+      const targetMonth = (currentMonth + i) % 12
+      const targetYear = currentYear + Math.floor((currentMonth + i) / 12)
+
+      // Create start and end dates
+      const monthIndex = targetMonth + 1
+      const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate()
+      
+      const startDateISO = `${targetYear}-${String(monthIndex).padStart(2, '0')}-01`
+      const endDateISO = `${targetYear}-${String(monthIndex).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
+
+      // Check if budget already exists for this month
+      const existingBudget = budgets.find(
+        (b) => 
+          (b.parentBudgetId === parentId || b.id === parentId) &&
+          b.startDate === startDateISO
+      )
+
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      const budgetName = `${plan.name.split(' - ')[0]} - ${monthNames[targetMonth]} ${targetYear}`
+
+      const budgetData: BudgetPlan = {
+        id: existingBudget?.id || `${parentId}_${Date.now()}_${i}`,
+        name: budgetName,
+        income: plan.income,
+        categories: plan.categories.map((c) => ({ ...c })),
+        startDate: startDateISO,
+        endDate: endDateISO,
+        note: plan.note,
+        isRecurring: true,
+        frequency: 'monthly',
+        startDay: 1,
+        parentBudgetId: parentId,
+        periodIndex: i,
+      }
+
+      await onSaveBudget(budgetData)
+    }
   }
 
   const removeExpense = async (expense: Expense) => {
     const existing = dayDetails[expense.date]?.expenses || []
-    await onUpdateDay(expense.date, { expenses: existing.filter((e) => e.id !== expense.id) })
+    await onUpdateDay(expense.date, {
+      expenses: existing.filter((e) => e.id !== expense.id),
+    })
+  }
+
+  const removeIncome = async (income: Income) => {
+    const existing = dayDetails[income.date]?.income || []
+    await onUpdateDay(income.date, {
+      income: existing.filter((i) => i.id !== income.id),
+    })
   }
 
   const toggleSIPDone = async (planId: string, iso: string) => {
-    const existing = dayDetails[iso]?.sipPlans || []
-    const updated = existing.map((p) => {
-      if (p.id !== planId) return p
-      const completed = p.completedDates || []
-      return {
-        ...p,
-        completedDates: completed.includes(iso)
-          ? completed.filter((d) => d !== iso)
-          : [...completed, iso],
-      }
-    })
-    await onUpdateDay(iso, { sipPlans: updated })
+    const sip = sips.find((s) => s.id === planId)
+    if (!sip) return
+
+    const completed = sip.completedDates || []
+    const updatedSIP: SIPPlan = {
+      ...sip,
+      completedDates: completed.includes(iso)
+        ? completed.filter((d) => d !== iso)
+        : [...completed, iso],
+    }
+
+    await onSaveSIP(updatedSIP)
   }
 
   return (
@@ -257,22 +524,34 @@ export function BudgetingView({
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <button onClick={onPrevYear} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-sm">
+              <button
+                onClick={onPrevYear}
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-sm"
+              >
                 ←
               </button>
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <span>💰</span>
                 <span>Budgeting {year}</span>
               </h2>
-              <button onClick={onNextYear} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-sm">
+              <button
+                onClick={onNextYear}
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-sm"
+              >
                 →
               </button>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowAddSIP(true)} className="px-3 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm border border-blue-500/30">
+              <button
+                onClick={() => setShowAddSIP(true)}
+                className="px-3 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm border border-blue-500/30"
+              >
                 + SIP
               </button>
-              <button onClick={() => setShowAddBudget(true)} className="px-3 py-1.5 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-300 text-sm border border-green-500/30">
+              <button
+                onClick={() => setShowAddBudget(true)}
+                className="px-3 py-1.5 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-300 text-sm border border-green-500/30"
+              >
                 + Budget
               </button>
             </div>
@@ -285,7 +564,7 @@ export function BudgetingView({
             <span className="font-medium">Legend:</span>
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-full bg-green-400" />
-              <span>Budget</span>
+              <span>Income</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-full bg-red-400" />
@@ -300,29 +579,38 @@ export function BudgetingView({
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {months.map((month) => {
               const offset = month.days[0]?.weekdayIndex || 0
+              const monthBudgets = getMonthBudgets(year, month.month)
 
               return (
-                <div key={month.month} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <div
+                  key={month.month}
+                  className="rounded-xl border border-white/10 bg-white/5 p-3 flex flex-col"
+                >
+                  {/* Month Header */}
                   <div className="text-sm font-semibold text-white mb-2">
                     {MONTH_NAMES[month.month - 1]}
                   </div>
 
                   <div className="grid grid-cols-7 gap-1 mb-1">
                     {WEEKDAY_LABELS.map((label) => (
-                      <div key={label} className="text-[10px] text-center text-white/40">
+                      <div
+                        key={label}
+                        className="text-[10px] text-center text-white/40"
+                      >
                         {label}
                       </div>
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-7 gap-1">
+                  <div className="grid grid-cols-7 gap-1 h-[192px]">
                     {Array.from({ length: offset }).map((_, i) => (
                       <div key={`empty-${i}`} className="h-7" />
                     ))}
                     {month.days.map((day) => {
                       const isToday = day.iso === todayISO
                       const info = getDayInfo(day.iso)
-                      const hasAny = info.hasSIP || info.hasExpense || info.hasBudget
+                      const hasAny =
+                        info.hasSIP || info.hasExpense || info.hasIncome
 
                       return (
                         <button
@@ -331,21 +619,156 @@ export function BudgetingView({
                           className={`
                             h-7 rounded text-[11px] border relative
                             ${isToday ? 'ring-1 ring-blue-400' : ''}
-                            ${info.hasExpense ? 'bg-red-500/10 border-red-500/30' : info.hasBudget ? 'bg-green-500/10 border-green-500/30' : 'bg-transparent border-white/10'}
+                            ${
+                              info.hasExpense
+                                ? 'bg-red-500/10 border-red-500/30'
+                                : info.hasIncome
+                                ? 'bg-green-500/10 border-green-500/30'
+                                : 'bg-transparent border-white/10'
+                            }
                             hover:bg-white/10 transition-colors text-white/80
                           `}
                         >
                           {day.dayOfMonth}
                           {hasAny && (
                             <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
-                              {info.hasSIP && <div className="w-1 h-1 rounded-full bg-blue-400" />}
-                              {info.hasBudget && <div className="w-1 h-1 rounded-full bg-green-400" />}
-                              {info.hasExpense && <div className="w-1 h-1 rounded-full bg-red-400" />}
+                              {info.hasSIP && (
+                                <div className="w-1 h-1 rounded-full bg-blue-400" />
+                              )}
+                              {info.hasIncome && (
+                                <div className="w-1 h-1 rounded-full bg-green-400" />
+                              )}
+                              {info.hasExpense && (
+                                <div className="w-1 h-1 rounded-full bg-red-400" />
+                              )}
                             </div>
                           )}
                         </button>
                       )
                     })}
+                  </div>
+
+                  {/* Budget & SIP Info Below Calendar - Fixed position */}
+                  <div className="mt-3 pt-2 border-t border-white/10 min-h-[60px] space-y-3">
+                    {/* Budgets Section */}
+                    <div>
+                      {monthBudgets.length > 0 && (
+                        <div className="text-[10px] text-white/50 mb-1.5 font-medium uppercase tracking-wide">
+                          💵 Budgets
+                        </div>
+                      )}
+                      {monthBudgets.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {monthBudgets.map((budget) => {
+                            const remaining = getBudgetRemaining(budget)
+                            const isOverBudget = remaining < 0
+
+                            return (
+                              <div
+                                key={budget.id}
+                                className="flex items-center gap-2 text-[11px]"
+                              >
+                                <div className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-white/80 truncate">
+                                    {budget.name}
+                                  </div>
+                                  <div className="text-[10px] text-white/60">
+                                    ₹{budget.income.toLocaleString('en-IN')} •
+                                    <span
+                                      className={
+                                        isOverBudget
+                                          ? 'text-red-400 font-medium'
+                                          : 'text-green-400'
+                                      }
+                                    >
+                                      {' '}
+                                      ₹
+                                      {Math.abs(remaining).toLocaleString(
+                                        'en-IN',
+                                      )}{' '}
+                                      {isOverBudget ? 'over' : 'left'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setEditingBudget(budget)
+                                    setShowAddBudget(true)
+                                  }}
+                                  className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white/90 transition-colors"
+                                  title="Edit budget"
+                                >
+                                  <svg
+                                    className="w-3.5 h-3.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* SIPs Section */}
+                    <div>
+                      {(() => {
+                        const monthSIPs = getMonthSIPs(year, month.month)
+                        if (monthSIPs.length === 0) return null
+
+                        return (
+                          <>
+                            <div className="text-[10px] text-white/50 mb-1.5 font-medium uppercase tracking-wide">
+                              📈 SIPs
+                            </div>
+                            <div className="space-y-1.5">
+                              {monthSIPs.map((sip) => {
+                                const progress = getSIPMonthProgress(sip, year, month.month)
+
+                                return (
+                                  <div
+                                    key={sip.id}
+                                    className="flex items-center gap-2 text-[11px]"
+                                  >
+                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-white/80 truncate">
+                                        {sip.name}
+                                      </div>
+                                      <div className="text-[10px] text-white/60">
+                                        ₹{progress.amount.toLocaleString('en-IN')} / ₹
+                                        {(progress.amount + progress.pending).toLocaleString('en-IN')} • 
+                                        <span className="text-blue-400">
+                                          {' '}{progress.completed}/{progress.totalInMonth} done
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </>
+                        )
+                      })()}
+                    </div>
+
+                    {/* No data message */}
+                    {monthBudgets.length === 0 && getMonthSIPs(year, month.month).length === 0 && (
+                      <div className="text-[11px] text-white/40">
+                        No budgets or SIPs
+                      </div>
+                    )}
                   </div>
                 </div>
               )
@@ -356,30 +779,40 @@ export function BudgetingView({
         {/* Lists */}
         <div className="grid md:grid-cols-2 gap-4">
           <Card className="p-4">
-            <h3 className="text-sm font-semibold text-white mb-3">📈 SIPs ({sipPlans.length})</h3>
-            {sipPlans.length === 0 ? (
+            <h3 className="text-sm font-semibold text-white mb-3">
+              📈 SIPs ({sips.length})
+            </h3>
+            {sips.length === 0 ? (
               <p className="text-xs text-white/40">No SIPs scheduled</p>
             ) : (
               <div className="space-y-2">
-                {sipPlans.map((p) => (
-                  <SIPCard key={p.id} sip={p} onRemove={() => removeSIP(p)} />
+                {sips.map((p) => (
+                  <SIPCard 
+                    key={p.id} 
+                    sip={p} 
+                    onRemove={() => removeSIP(p)} 
+                    onUpdateFromNow={() => updateSIPFromNow(p)}
+                  />
                 ))}
               </div>
             )}
           </Card>
 
           <Card className="p-4">
-            <h3 className="text-sm font-semibold text-white mb-3">💵 Budgets ({budgetPlans.length})</h3>
-            {budgetPlans.length === 0 ? (
+            <h3 className="text-sm font-semibold text-white mb-3">
+              💵 Budgets ({budgets.length})
+            </h3>
+            {budgets.length === 0 ? (
               <p className="text-xs text-white/40">No budgets created</p>
             ) : (
               <div className="space-y-2">
-                {budgetPlans.map((p) => (
+                {budgets.map((p) => (
                   <BudgetCard
                     key={p.id}
                     budget={p}
                     expenses={allExpenses.filter((e) => e.budgetId === p.id)}
-                    onRemove={() => removeBudget(p)}
+                    onRemove={(type) => removeBudget(p, type)}
+                    onUpdateFromNow={p.isRecurring ? () => updateBudgetFromNow(p) : undefined}
                   />
                 ))}
               </div>
@@ -390,21 +823,37 @@ export function BudgetingView({
 
       {/* Day Modal */}
       {selectedDay && (
-        <Modal open={true} onClose={() => setSelectedDay(null)} title={formatDateDisplay(selectedDay)}>
+        <Modal
+          open={true}
+          onClose={() => setSelectedDay(null)}
+          title={formatDateDisplay(selectedDay)}
+        >
           <div className="space-y-3">
             {(() => {
               const details = dayDetails[selectedDay] || {}
-              const sips = details.sipPlans || []
+              const daySips = getSIPsForDate(selectedDay)
               const expenses = details.expenses || []
-              const budgets = details.budgetPlans || []
+              const income = details.income || []
               const activeBudget = getActiveBudget(selectedDay)
 
-              // Calculate total spent for active budget
-              const budgetExpenses = activeBudget 
-                ? allExpenses.filter(e => e.budgetId === activeBudget.id)
+              // Calculate total spent and earned for active budget
+              const budgetExpenses = activeBudget
+                ? allExpenses.filter((e) => e.budgetId === activeBudget.id)
                 : []
-              const totalSpent = budgetExpenses.reduce((sum, e) => sum + e.amount, 0)
-              const remaining = activeBudget ? activeBudget.income - totalSpent : 0
+              const budgetIncome = activeBudget
+                ? allIncome.filter((i) => i.budgetId === activeBudget.id)
+                : []
+              const totalSpent = budgetExpenses.reduce(
+                (sum, e) => sum + e.amount,
+                0,
+              )
+              const totalEarned = budgetIncome.reduce(
+                (sum, i) => sum + i.amount,
+                0,
+              )
+              const remaining = activeBudget
+                ? activeBudget.income + totalEarned - totalSpent
+                : 0
 
               return (
                 <>
@@ -418,19 +867,33 @@ export function BudgetingView({
                             <span>{activeBudget.name}</span>
                           </div>
                           <div className="text-xs text-white/60 mt-1">
-                            {new Date(activeBudget.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} → {new Date(activeBudget.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {new Date(
+                              activeBudget.startDate,
+                            ).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                            })}{' '}
+                            →{' '}
+                            {new Date(activeBudget.endDate).toLocaleDateString(
+                              'en-US',
+                              { month: 'short', day: 'numeric' },
+                            )}
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-white/70">Total Spent:</span>
-                          <span className="text-white font-medium">₹{totalSpent.toLocaleString('en-IN')}</span>
+                          <span className="text-white font-medium">
+                            ₹{totalSpent.toLocaleString('en-IN')}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-white/70">Remaining:</span>
-                          <span className="text-green-400 font-semibold">₹{remaining.toLocaleString('en-IN')}</span>
+                          <span className="text-green-400 font-semibold">
+                            ₹{remaining.toLocaleString('en-IN')}
+                          </span>
                         </div>
                       </div>
 
@@ -447,21 +910,37 @@ export function BudgetingView({
                   )}
 
                   {/* SIPs */}
-                  {sips.length > 0 && (
+                  {daySips.length > 0 && (
                     <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">SIP Investments</h4>
-                      {sips.map((sip) => {
+                      <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
+                        SIP Investments
+                      </h4>
+                      {daySips.map((sip) => {
                         const done = sip.completedDates?.includes(selectedDay)
                         return (
-                          <div key={sip.id} className="rounded-lg border border-white/10 bg-white/5 p-3">
+                          <div
+                            key={sip.id}
+                            className="rounded-lg border border-white/10 bg-white/5 p-3"
+                          >
                             <div className="flex justify-between items-center">
                               <div>
-                                <div className="text-sm text-white">{sip.name}</div>
-                                <div className="text-xs text-white/60">₹{sip.amount.toLocaleString('en-IN')} • {sip.frequency}</div>
+                                <div className="text-sm text-white">
+                                  {sip.name}
+                                </div>
+                                <div className="text-xs text-white/60">
+                                  ₹{sip.amount.toLocaleString('en-IN')} •{' '}
+                                  {sip.frequency}
+                                </div>
                               </div>
                               <button
-                                onClick={() => toggleSIPDone(sip.id, selectedDay)}
-                                className={`px-3 py-1 rounded text-xs font-medium ${done ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/10 text-white/70 border border-white/20'}`}
+                                onClick={() =>
+                                  toggleSIPDone(sip.id, selectedDay)
+                                }
+                                className={`px-3 py-1 rounded text-xs font-medium ${
+                                  done
+                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                    : 'bg-white/10 text-white/70 border border-white/20'
+                                }`}
                               >
                                 {done ? '✓ Done' : 'Mark'}
                               </button>
@@ -475,20 +954,85 @@ export function BudgetingView({
                   {/* Expenses for This Day */}
                   {activeBudget && (
                     <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">Expenses Today</h4>
+                      <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
+                        Expenses Today
+                      </h4>
                       {expenses.length === 0 ? (
-                        <p className="text-xs text-white/40 py-2">No expenses recorded</p>
+                        <p className="text-xs text-white/40 py-2">
+                          No expenses recorded
+                        </p>
                       ) : (
                         expenses.map((e) => (
-                          <div key={e.id} className="rounded-lg border border-white/10 bg-white/5 p-3">
+                          <div
+                            key={e.id}
+                            className="rounded-lg border border-white/10 bg-white/5 p-3"
+                          >
                             <div className="flex justify-between items-start gap-2">
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm text-white font-medium">{e.categoryName}</div>
-                                {e.description && <div className="text-xs text-white/60 mt-0.5 truncate">{e.description}</div>}
+                                <div className="text-sm text-white font-medium">
+                                  {e.categoryName}
+                                </div>
+                                {e.description && (
+                                  <div className="text-xs text-white/60 mt-0.5 truncate">
+                                    {e.description}
+                                  </div>
+                                )}
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-sm text-red-400 font-semibold">-₹{e.amount.toLocaleString('en-IN')}</span>
-                                <button onClick={() => removeExpense(e)} className="text-white/40 hover:text-red-400 transition-colors">✕</button>
+                                <span className="text-sm text-red-400 font-semibold">
+                                  -₹{e.amount.toLocaleString('en-IN')}
+                                </span>
+                                <button
+                                  onClick={() => removeExpense(e)}
+                                  className="text-white/40 hover:text-red-400 transition-colors"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* Income for This Day */}
+                  {activeBudget && (
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
+                        Income Today
+                      </h4>
+                      {income.length === 0 ? (
+                        <p className="text-xs text-white/40 py-2">
+                          No income recorded
+                        </p>
+                      ) : (
+                        income.map((i) => (
+                          <div
+                            key={i.id}
+                            className="rounded-lg border border-green-500/30 bg-green-500/5 p-3"
+                          >
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm text-white font-medium">
+                                  {i.categoryName}
+                                </div>
+                                {i.description && (
+                                  <div className="text-xs text-white/60 mt-0.5 truncate">
+                                    {i.description}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-green-400 font-semibold">
+                                  +₹{i.amount.toLocaleString('en-IN')}
+                                </span>
+                                <button
+                                  onClick={() => removeIncome(i)}
+                                  className="text-white/40 hover:text-red-400 transition-colors"
+                                >
+                                  ✕
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -499,28 +1043,39 @@ export function BudgetingView({
 
                   {/* Action Buttons */}
                   {activeBudget && (
-                    <button
-                      onClick={() => setShowAddExpense(true)}
-                      className="w-full px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-orange-500 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] text-white text-sm font-medium transition-all"
-                    >
-                      + Add Expense
-                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setShowAddExpense(true)}
+                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-orange-500 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] text-white text-sm font-medium transition-all"
+                      >
+                        + Expense
+                      </button>
+                      <button
+                        onClick={() => setShowAddIncome(true)}
+                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-[0_0_20px_rgba(34,197,94,0.3)] text-white text-sm font-medium transition-all"
+                      >
+                        + Income
+                      </button>
+                    </div>
                   )}
 
                   {onJumpToDay && (
-                    <button 
-                      onClick={() => onJumpToDay(selectedDay)} 
+                    <button
+                      onClick={() => onJumpToDay(selectedDay)}
                       className="w-full px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 border border-white/15 text-white text-sm transition-all"
                     >
                       Open Day View
                     </button>
                   )}
 
-                  {!activeBudget && sips.length === 0 && expenses.length === 0 && (
-                    <p className="text-sm text-white/40 text-center py-4">
-                      No financial activity for this day
-                    </p>
-                  )}
+                  {!activeBudget &&
+                    daySips.length === 0 &&
+                    expenses.length === 0 &&
+                    income.length === 0 && (
+                      <p className="text-sm text-white/40 text-center py-4">
+                        No financial activity for this day
+                      </p>
+                    )}
                 </>
               )
             })()}
@@ -529,36 +1084,69 @@ export function BudgetingView({
       )}
 
       {/* Forms */}
-      <Modal open={showAddSIP} onClose={() => setShowAddSIP(false)} title="Schedule SIP">
-        <SIPForm onSubmit={handleAddSIP} onCancel={() => setShowAddSIP(false)} />
+      <Modal
+        open={showAddSIP}
+        onClose={() => setShowAddSIP(false)}
+        title="Schedule SIP"
+      >
+        <SIPForm
+          onSubmit={handleAddSIP}
+          onCancel={() => setShowAddSIP(false)}
+        />
       </Modal>
 
-      <Modal 
-        open={showAddBudget} 
+      <Modal
+        open={showAddBudget}
         onClose={() => {
           setShowAddBudget(false)
           setEditingBudget(null)
-        }} 
+        }}
         title={editingBudget ? 'Edit Budget' : 'Create Budget'}
       >
-        <BudgetForm 
+        <BudgetForm
           initialData={editingBudget || undefined}
-          onSubmit={handleSaveBudget} 
+          onSubmit={handleSaveBudget}
           onCancel={() => {
             setShowAddBudget(false)
             setEditingBudget(null)
-          }} 
+          }}
         />
       </Modal>
 
       {selectedDay && showAddExpense && (
-        <Modal open={true} onClose={() => setShowAddExpense(false)} title="Add Expense">
+        <Modal
+          open={true}
+          onClose={() => setShowAddExpense(false)}
+          title="Add Expense"
+        >
           <ExpenseForm
             date={selectedDay}
             categories={getActiveBudget(selectedDay)?.categories || []}
+            availableBudgets={budgets.filter(
+              (b) => selectedDay >= b.startDate && selectedDay <= b.endDate,
+            )}
             activeBudgetId={getActiveBudget(selectedDay)?.id}
             onSubmit={handleAddExpense}
             onCancel={() => setShowAddExpense(false)}
+          />
+        </Modal>
+      )}
+
+      {selectedDay && showAddIncome && (
+        <Modal
+          open={true}
+          onClose={() => setShowAddIncome(false)}
+          title="Add Income"
+        >
+          <IncomeForm
+            date={selectedDay}
+            categories={getActiveBudget(selectedDay)?.categories || []}
+            availableBudgets={budgets.filter(
+              (b) => selectedDay >= b.startDate && selectedDay <= b.endDate,
+            )}
+            activeBudgetId={getActiveBudget(selectedDay)?.id}
+            onSubmit={handleAddIncome}
+            onCancel={() => setShowAddIncome(false)}
           />
         </Modal>
       )}

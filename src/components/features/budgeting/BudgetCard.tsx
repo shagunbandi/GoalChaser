@@ -4,10 +4,11 @@ import { formatShortDate } from '@/utils'
 interface BudgetCardProps {
   budget: BudgetPlan & { days?: string[] }
   expenses: Expense[] // All expenses for this budget
-  onRemove?: () => void
+  onRemove?: (type: 'single' | 'all') => void
+  onUpdateFromNow?: () => void
 }
 
-export function BudgetCard({ budget, expenses, onRemove }: BudgetCardProps) {
+export function BudgetCard({ budget, expenses, onRemove, onUpdateFromNow }: BudgetCardProps) {
   // Calculate total spent
   const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0)
   const totalBudgeted = budget.categories.reduce(
@@ -174,17 +175,63 @@ export function BudgetCard({ budget, expenses, onRemove }: BudgetCardProps) {
       )}
 
       {/* Action Buttons */}
-      {onRemove && (
-        <div className="mt-3 pt-3 border-t border-white/10 flex justify-end">
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onRemove()
-            }}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all"
-          >
-            Remove Budget
-          </button>
+      {(onRemove || onUpdateFromNow) && (
+        <div className="mt-3 pt-3 border-t border-white/10">
+          {budget.isRecurring ? (
+            <div className="space-y-2">
+              {onUpdateFromNow && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onUpdateFromNow()
+                  }}
+                  className="w-full px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/30 transition-all"
+                >
+                  Update from Now (7 months)
+                </button>
+              )}
+              {onRemove && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (confirm(`Delete ${budget.name}?`)) {
+                        onRemove('single')
+                      }
+                    }}
+                    className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all"
+                  >
+                    Delete This Month
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (confirm(`Delete all recurring periods of ${budget.name}?`)) {
+                        onRemove('all')
+                      }
+                    }}
+                    className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600/10 text-red-300 border border-red-600/20 hover:bg-red-600/20 hover:border-red-600/30 transition-all"
+                  >
+                    Delete All
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            onRemove && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (confirm(`Delete ${budget.name}?`)) {
+                    onRemove('single')
+                  }
+                }}
+                className="w-full px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all"
+              >
+                Delete Budget
+              </button>
+            )
+          )}
         </div>
       )}
     </div>

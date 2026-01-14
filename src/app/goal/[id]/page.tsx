@@ -20,7 +20,18 @@ import {
   enumerateDateRange,
 } from '@/utils'
 
-import type { DayStatus, DayDetails, TravelPlan } from '@/types'
+import type { DayStatus, DayDetails, TravelPlan, BudgetPlan, SIPPlan } from '@/types'
+import {
+  setFirebaseDb,
+  loadBudgetsFromFirebase,
+  saveBudgetToFirebase,
+  deleteBudgetFromFirebase,
+  loadSIPsFromFirebase,
+  saveSIPToFirebase,
+  deleteSIPFromFirebase,
+} from '@/lib/api/budget-api'
+import { getFirestore } from 'firebase/firestore'
+import { getFirebaseApp } from '@/lib/firebase-service'
 
 export default function GoalPage() {
   const params = useParams()
@@ -57,6 +68,11 @@ export default function GoalPage() {
     toISODateString(new Date()),
   )
   const [viewMode, setViewMode] = useState<'month' | 'travel' | 'budgeting'>('month')
+  
+  // Budgeting data
+  const [budgets, setBudgets] = useState<BudgetPlan[]>([])
+  const [sips, setSips] = useState<SIPPlan[]>([])
+  const [budgetingLoading, setBudgetingLoading] = useState(true)
 
   // Status bar message
   const [statusText, setStatusText] = useState('Ready')
@@ -84,6 +100,35 @@ export default function GoalPage() {
     const timeoutId = scheduleUpdate()
     return () => clearTimeout(timeoutId)
   }, [])
+  
+  // Load budgets and SIPs from Firebase
+  useEffect(() => {
+    if (!user) return
+    
+    const loadBudgetingData = async () => {
+      try {
+        const app = getFirebaseApp()
+        if (!app) return
+        
+        const db = getFirestore(app)
+        setFirebaseDb(db)
+        
+        const [loadedBudgets, loadedSIPs] = await Promise.all([
+          loadBudgetsFromFirebase(user.uid, goalId),
+          loadSIPsFromFirebase(user.uid, goalId),
+        ])
+        
+        setBudgets(loadedBudgets)
+        setSips(loadedSIPs)
+      } catch (error) {
+        console.error('Failed to load budgeting data:', error)
+      } finally {
+        setBudgetingLoading(false)
+      }
+    }
+    
+    loadBudgetingData()
+  }, [user, goalId])
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -248,6 +293,60 @@ export default function GoalPage() {
     setSelectedDate(iso)
     setViewMode('month')
     pushStatus({ text: 'Day selected', tone: 'success' })
+  }
+  
+  // Budget handlers
+  const handleSaveBudget = async (budget: BudgetPlan) => {
+    if (!user) return
+    
+    const success = await saveBudgetToFirebase(user.uid, goalId, budget)
+    if (success) {
+      setBudgets((prev) => {
+        const existing = prev.findIndex((b) => b.id === budget.id)
+        if (existing >= 0) {
+          const updated = [...prev]
+          updated[existing] = budget
+          return updated
+        }
+        return [...prev, budget]
+      })
+    }
+  }
+  
+  const handleDeleteBudget = async (budgetId: string) => {
+    if (!user) return
+    
+    const success = await deleteBudgetFromFirebase(user.uid, goalId, budgetId)
+    if (success) {
+      setBudgets((prev) => prev.filter((b) => b.id !== budgetId))
+    }
+  }
+  
+  // SIP handlers
+  const handleSaveSIP = async (sip: SIPPlan) => {
+    if (!user) return
+    
+    const success = await saveSIPToFirebase(user.uid, goalId, sip)
+    if (success) {
+      setSips((prev) => {
+        const existing = prev.findIndex((s) => s.id === sip.id)
+        if (existing >= 0) {
+          const updated = [...prev]
+          updated[existing] = sip
+          return updated
+        }
+        return [...prev, sip]
+      })
+    }
+  }
+  
+  const handleDeleteSIP = async (sipId: string) => {
+    if (!user) return
+    
+    const success = await deleteSIPFromFirebase(user.uid, goalId, sipId)
+    if (success) {
+      setSips((prev) => prev.filter((s) => s.id !== sipId))
+    }
   }
 
   // Loading state (including auth check)
@@ -490,7 +589,13 @@ export default function GoalPage() {
               year={currentYear}
               todayISO={todayISO}
               dayDetails={dayDetails}
+              budgets={budgets}
+              sips={sips}
               onUpdateDay={handleUpdateDetails}
+              onSaveBudget={handleSaveBudget}
+              onDeleteBudget={handleDeleteBudget}
+              onSaveSIP={handleSaveSIP}
+              onDeleteSIP={handleDeleteSIP}
               onJumpToDay={handleJumpToDay}
               onPrevYear={() => {
                 pushStatus({ text: 'Previous year', tone: 'progress' })

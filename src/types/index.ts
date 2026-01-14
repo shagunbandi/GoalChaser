@@ -88,8 +88,8 @@ export interface BudgetPlan {
   
   // Recurring budget fields
   isRecurring?: boolean
-  frequency?: 'monthly' | 'weekly'
-  startDay?: number // 1-31 for monthly, 0-6 for weekly (0=Sunday)
+  frequency?: 'monthly'
+  startDay?: number // 1-31 for monthly
   parentBudgetId?: string // Links recurring instances
   periodIndex?: number // Which period (0 = first, 1 = second, etc.)
 }
@@ -102,6 +102,30 @@ export interface Expense {
   description: string
   date: string // ISO date
   budgetId?: string // Optional link to budget plan
+  
+  // Recurring expense fields
+  isRecurring?: boolean
+  frequency?: 'daily' | 'weekly' | 'monthly'
+  endDate?: string // ISO date - when to stop recurring
+  parentExpenseId?: string // Links recurring instances
+  occurrenceIndex?: number // Which occurrence (0 = first, 1 = second, etc.)
+}
+
+export interface Income {
+  id: string
+  categoryId: string // Links to BudgetCategory
+  categoryName: string // Stored for display (e.g., "Freelance", "Bonus", "Refund")
+  amount: number
+  description: string
+  date: string // ISO date
+  budgetId?: string // Optional link to budget plan
+  
+  // Recurring income fields
+  isRecurring?: boolean
+  frequency?: 'daily' | 'weekly' | 'monthly'
+  endDate?: string // ISO date - when to stop recurring
+  parentIncomeId?: string // Links recurring instances
+  occurrenceIndex?: number // Which occurrence (0 = first, 1 = second, etc.)
 }
 
 export interface DayDetails {
@@ -121,12 +145,10 @@ export interface DayDetails {
   plannedItems?: AgendaItem[]
   // Travel plans (multiple allowed)
   travelPlans?: TravelPlan[]
-  // SIP plans (multiple allowed)
-  sipPlans?: SIPPlan[]
-  // Budget plans (multiple allowed) - defines budget period
-  budgetPlans?: BudgetPlan[]
   // Daily expenses tracked against budgets
   expenses?: Expense[]
+  // Daily income/credits (opposite of expenses)
+  income?: Income[]
 }
 
 export interface DayInfo {
