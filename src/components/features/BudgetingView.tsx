@@ -15,6 +15,7 @@ import {
   SIPCard,
   BudgetForm,
   BudgetCard,
+  BudgetViewModal,
   ExpenseForm,
   IncomeForm,
 } from './budgeting'
@@ -57,6 +58,7 @@ export function BudgetingView({
   const [showAddSIP, setShowAddSIP] = useState(false)
   const [showAddBudget, setShowAddBudget] = useState(false)
   const [editingBudget, setEditingBudget] = useState<BudgetPlan | null>(null)
+  const [viewingBudget, setViewingBudget] = useState<BudgetPlan | null>(null)
   const [showAddExpense, setShowAddExpense] = useState(false)
   const [showAddIncome, setShowAddIncome] = useState(false)
 
@@ -694,25 +696,12 @@ export function BudgetingView({
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    setEditingBudget(budget)
-                                    setShowAddBudget(true)
+                                    setViewingBudget(budget)
                                   }}
                                   className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white/90 transition-colors"
-                                  title="Edit budget"
+                                  title="View Budget"
                                 >
-                                  <svg
-                                    className="w-3.5 h-3.5"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    />
-                                  </svg>
+                                  👁️
                                 </button>
                               </div>
                             )
@@ -897,10 +886,113 @@ export function BudgetingView({
                         </div>
                       </div>
 
+                      {/* Category Breakdown */}
+                      <div className="mt-3 pt-3 border-t border-white/20 space-y-3">
+                        <div className="text-xs text-white/70 font-semibold uppercase tracking-wide">
+                          By Category
+                        </div>
+                        {(() => {
+                          const categoriesWithExpenses = activeBudget.categories
+                            .map((cat) => {
+                              const categoryExpenses = budgetExpenses.filter(
+                                (e) => e.categoryId === cat.id
+                              )
+                              const spent = categoryExpenses.reduce(
+                                (sum, e) => sum + e.amount,
+                                0
+                              )
+                              return { ...cat, spent, categoryExpenses }
+                            })
+                            .filter((cat) => cat.spent > 0)
+
+                          if (categoriesWithExpenses.length === 0) {
+                            return (
+                              <div className="text-xs text-white/40 py-2">
+                                No spending in any category yet
+                              </div>
+                            )
+                          }
+
+                          return categoriesWithExpenses.map((cat) => {
+                            const categoryRemaining =
+                              cat.allocatedAmount - cat.spent
+                            const isOver = cat.spent > cat.allocatedAmount
+                            const percentage =
+                              cat.allocatedAmount > 0
+                                ? Math.min(
+                                    (cat.spent / cat.allocatedAmount) * 100,
+                                    100
+                                  )
+                                : 0
+
+                            return (
+                              <div key={cat.id} className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <span
+                                      className="w-2 h-2 rounded-full shrink-0"
+                                      style={{ backgroundColor: cat.color }}
+                                    />
+                                    <span className="text-xs text-white/80 font-medium truncate">
+                                      {cat.name}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs whitespace-nowrap ml-2">
+                                    <span
+                                      className={`font-semibold ${
+                                        isOver ? 'text-red-400' : 'text-white'
+                                      }`}
+                                    >
+                                      ₹{cat.spent.toLocaleString('en-IN')}
+                                    </span>
+                                    <span className="text-white/40"> / </span>
+                                    <span className="text-white/60">
+                                      ₹{cat.allocatedAmount.toLocaleString('en-IN')}
+                                    </span>
+                                  </span>
+                                </div>
+
+                                {/* Progress Bar */}
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full transition-all duration-300 rounded-full ${
+                                        isOver
+                                          ? 'bg-gradient-to-r from-red-500 to-red-600'
+                                          : 'bg-gradient-to-r from-green-500 to-emerald-500'
+                                      }`}
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                  <span
+                                    className={`text-[10px] font-medium min-w-[35px] text-right ${
+                                      isOver ? 'text-red-400' : 'text-white/60'
+                                    }`}
+                                  >
+                                    {percentage.toFixed(0)}%
+                                  </span>
+                                </div>
+
+                                {isOver && (
+                                  <div className="text-[10px] text-red-400 flex items-center gap-1">
+                                    <span>⚠️</span>
+                                    <span>
+                                      Over by ₹
+                                      {Math.abs(categoryRemaining).toLocaleString(
+                                        'en-IN'
+                                      )}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })
+                        })()}
+                      </div>
+
                       <button
                         onClick={() => {
-                          setEditingBudget(activeBudget)
-                          setShowAddBudget(true)
+                          setViewingBudget(activeBudget)
                         }}
                         className="w-full mt-3 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs border border-white/20"
                       >
@@ -952,62 +1044,108 @@ export function BudgetingView({
                   )}
 
                   {/* Expenses for This Day */}
-                  {activeBudget && (
+                  {activeBudget && expenses.length > 0 && (
                     <div className="space-y-2">
                       <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
                         Expenses Today
                       </h4>
-                      {expenses.length === 0 ? (
-                        <p className="text-xs text-white/40 py-2">
-                          No expenses recorded
-                        </p>
-                      ) : (
-                        expenses.map((e) => (
-                          <div
-                            key={e.id}
-                            className="rounded-lg border border-white/10 bg-white/5 p-3"
-                          >
-                            <div className="flex justify-between items-start gap-2">
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm text-white font-medium">
-                                  {e.categoryName}
-                                </div>
-                                {e.description && (
-                                  <div className="text-xs text-white/60 mt-0.5 truncate">
-                                    {e.description}
+                      {expenses.map((e) => {
+                          // Find the category in the budget
+                          const category = activeBudget.categories.find(
+                            (c) => c.id === e.categoryId
+                          )
+
+                          // Calculate total spent in this category (all expenses in budget period)
+                          const categoryExpenses = budgetExpenses.filter(
+                            (ex) => ex.categoryId === e.categoryId
+                          )
+                          const totalSpentInCategory = categoryExpenses.reduce(
+                            (sum, ex) => sum + ex.amount,
+                            0
+                          )
+
+                          // Calculate remaining budget for this category
+                          const categoryRemaining = category
+                            ? category.allocatedAmount - totalSpentInCategory
+                            : 0
+                          const isOver = categoryRemaining < 0
+
+                          return (
+                            <div
+                              key={e.id}
+                              className={`rounded-lg border p-3 transition-colors ${
+                                isOver
+                                  ? 'border-red-500/30 bg-red-500/10'
+                                  : 'border-white/10 bg-white/5'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm text-white font-medium">
+                                    {e.categoryName}
                                   </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-red-400 font-semibold">
-                                  -₹{e.amount.toLocaleString('en-IN')}
-                                </span>
-                                <button
-                                  onClick={() => removeExpense(e)}
-                                  className="text-white/40 hover:text-red-400 transition-colors"
-                                >
-                                  ✕
-                                </button>
+                                  {e.description && (
+                                    <div className="text-xs text-white/60 mt-0.5 truncate">
+                                      {e.description}
+                                    </div>
+                                  )}
+                                  {/* Budget Context */}
+                                  {category && (
+                                    <div
+                                      className={`text-[10px] mt-1.5 font-medium ${
+                                        isOver
+                                          ? 'text-red-400'
+                                          : 'text-green-400'
+                                      }`}
+                                    >
+                                      {isOver ? (
+                                        <>
+                                          ⚠️ Over by ₹
+                                          {Math.abs(categoryRemaining).toLocaleString(
+                                            'en-IN'
+                                          )}
+                                        </>
+                                      ) : (
+                                        <>
+                                          ✓ ₹
+                                          {categoryRemaining.toLocaleString(
+                                            'en-IN'
+                                          )}{' '}
+                                          left in budget
+                                        </>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`text-sm font-semibold ${
+                                      isOver ? 'text-red-400' : 'text-red-400'
+                                    }`}
+                                  >
+                                    -₹{e.amount.toLocaleString('en-IN')}
+                                  </span>
+                                  <button
+                                    onClick={() => removeExpense(e)}
+                                    className="text-white/40 hover:text-red-400 transition-colors"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))
-                      )}
+                          )
+                        })}
                     </div>
                   )}
 
                   {/* Income for This Day */}
-                  {activeBudget && (
+                  {activeBudget && income.length > 0 && (
                     <div className="space-y-2">
                       <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
                         Income Today
                       </h4>
-                      {income.length === 0 ? (
-                        <p className="text-xs text-white/40 py-2">
-                          No income recorded
-                        </p>
-                      ) : (
-                        income.map((i) => (
+                      {income.map((i) => (
                           <div
                             key={i.id}
                             className="rounded-lg border border-green-500/30 bg-green-500/5 p-3"
@@ -1036,8 +1174,7 @@ export function BudgetingView({
                               </div>
                             </div>
                           </div>
-                        ))
-                      )}
+                        ))}
                     </div>
                   )}
 
@@ -1110,8 +1247,71 @@ export function BudgetingView({
             setShowAddBudget(false)
             setEditingBudget(null)
           }}
+          onView={
+            editingBudget
+              ? () => {
+                  setViewingBudget(editingBudget)
+                  setShowAddBudget(false)
+                  setEditingBudget(null)
+                }
+              : undefined
+          }
         />
       </Modal>
+
+      {viewingBudget && (
+        <Modal
+          open={true}
+          onClose={() => setViewingBudget(null)}
+          title="Budget Details"
+        >
+          <BudgetViewModal
+            budget={viewingBudget}
+            expenses={(() => {
+              // Get all expenses for this budget period
+              const allExpenses: Expense[] = []
+              const startDate = new Date(viewingBudget.startDate)
+              const endDate = new Date(viewingBudget.endDate)
+              const currentDate = new Date(startDate)
+
+              while (currentDate <= endDate) {
+                const isoDate = currentDate.toISOString().split('T')[0]
+                const dayData = dayDetails[isoDate]
+                if (dayData?.expenses) {
+                  allExpenses.push(...dayData.expenses)
+                }
+                currentDate.setDate(currentDate.getDate() + 1)
+              }
+
+              return allExpenses
+            })()}
+            income={(() => {
+              // Get all income for this budget period
+              const allIncome: Income[] = []
+              const startDate = new Date(viewingBudget.startDate)
+              const endDate = new Date(viewingBudget.endDate)
+              const currentDate = new Date(startDate)
+
+              while (currentDate <= endDate) {
+                const isoDate = currentDate.toISOString().split('T')[0]
+                const dayData = dayDetails[isoDate]
+                if (dayData?.income) {
+                  allIncome.push(...dayData.income)
+                }
+                currentDate.setDate(currentDate.getDate() + 1)
+              }
+
+              return allIncome
+            })()}
+            onEdit={() => {
+              setEditingBudget(viewingBudget)
+              setViewingBudget(null)
+              setShowAddBudget(true)
+            }}
+            onClose={() => setViewingBudget(null)}
+          />
+        </Modal>
+      )}
 
       {selectedDay && showAddExpense && (
         <Modal

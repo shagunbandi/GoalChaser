@@ -13,6 +13,7 @@ interface BudgetFormProps {
     note: string
   }) => void | Promise<void>
   onCancel: () => void
+  onView?: () => void
   isSubmitting?: boolean
 }
 
@@ -31,6 +32,7 @@ export function BudgetForm({
   initialData,
   onSubmit,
   onCancel,
+  onView,
   isSubmitting = false,
 }: BudgetFormProps) {
   const [name, setName] = useState(initialData?.name || '')
@@ -396,6 +398,16 @@ export function BudgetForm({
         >
           Cancel
         </button>
+        {initialData?.id && onView && (
+          <button
+            type="button"
+            onClick={onView}
+            className="flex-1 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-400 transition-colors hover:bg-blue-500/20"
+            disabled={isSubmitting}
+          >
+            View Budget
+          </button>
+        )}
         <button
           type="submit"
           className="flex-1 rounded-xl bg-gradient-to-r from-[#007AFF] to-[#AF52DE] px-4 py-2 text-sm font-medium text-white transition-all hover:shadow-[0_0_20px_rgba(0,122,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
