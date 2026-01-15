@@ -49,10 +49,18 @@ export type ModalSection = {
   content: ReactNode | (() => ReactNode)
 }
 
+// Legend configuration
+export type LegendItem = {
+  label: string
+  color: string
+  icon?: string
+}
+
 // Header configuration
 export type HeaderConfig = {
   icon: string
   title: string
+  legends?: LegendItem[]
   stats?: Array<{
     label: string
     value: string | number

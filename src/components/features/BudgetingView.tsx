@@ -528,6 +528,11 @@ export function BudgetingView({
       header: {
         icon: '💰',
         title: 'Budgeting',
+        legends: [
+          { label: 'Income', color: 'rgb(74, 222, 128)' },
+          { label: 'Expense', color: 'rgb(248, 113, 113)' },
+          { label: 'SIP', color: 'rgb(96, 165, 250)' },
+        ],
         actions: [
           {
             id: 'add-sip',
@@ -1041,25 +1046,6 @@ export function BudgetingView({
   return (
     <>
       <div className="space-y-4">
-        {/* Legend */}
-        <Card className="p-4">
-          <div className="flex flex-wrap gap-3 text-xs text-white/60">
-            <span className="font-medium">Legend:</span>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-green-400" />
-              <span>Income</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-red-400" />
-              <span>Expense</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-blue-400" />
-              <span>SIP</span>
-            </div>
-          </div>
-        </Card>
-
         <GenericYearView config={config} />
 
         {/* Lists */}

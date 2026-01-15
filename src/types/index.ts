@@ -232,6 +232,7 @@ export type {
   DayConfig,
   MonthFooterItem,
   ModalSection,
+  LegendItem,
   HeaderConfig,
   MonthConfig,
   YearViewConfig,

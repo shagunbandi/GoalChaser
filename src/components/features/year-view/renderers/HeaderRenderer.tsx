@@ -65,6 +65,26 @@ export function HeaderRenderer({
           )}
         </div>
 
+        {/* Legends Row (if provided) */}
+        {config.legends && config.legends.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 text-xs text-white/60">
+            <span className="font-medium">Legend:</span>
+            {config.legends.map((legend, index) => (
+              <div key={index} className="flex items-center gap-1.5">
+                {legend.icon ? (
+                  <span>{legend.icon}</span>
+                ) : (
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: legend.color }}
+                  />
+                )}
+                <span>{legend.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Stats Row */}
         {config.stats && config.stats.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
