@@ -90,4 +90,5 @@ export type YearViewConfig = {
   }
   onPrevYear: () => void
   onNextYear: () => void
+  onDaySelect?: (date: string | null) => void
 }

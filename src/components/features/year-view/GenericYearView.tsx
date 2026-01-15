@@ -16,6 +16,11 @@ interface GenericYearViewProps {
 export function GenericYearView({ config }: GenericYearViewProps) {
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
 
+  const handleDaySelect = (date: string | null) => {
+    setSelectedDay(date)
+    config.onDaySelect?.(date)
+  }
+
   const modalSections = selectedDay ? config.modal.getSections(selectedDay) : []
   const modalActions = selectedDay ? config.modal.getActions(selectedDay) : []
 
@@ -74,7 +79,7 @@ export function GenericYearView({ config }: GenericYearViewProps) {
                       key={dayConfig.iso}
                       config={{
                         ...dayConfig,
-                        onClick: () => setSelectedDay(dayConfig.iso),
+                        onClick: () => handleDaySelect(dayConfig.iso),
                       }}
                       isToday={dayConfig.iso === config.todayISO}
                     />
@@ -94,7 +99,7 @@ export function GenericYearView({ config }: GenericYearViewProps) {
       {/* Day Details Modal */}
       <ModalRenderer
         open={!!selectedDay}
-        onClose={() => setSelectedDay(null)}
+        onClose={() => handleDaySelect(null)}
         date={selectedDay}
         sections={modalSections}
         actions={modalActions}
