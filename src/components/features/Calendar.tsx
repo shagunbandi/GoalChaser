@@ -104,27 +104,62 @@ export function Calendar({
     return getStatusColorStyle(successCriterion, null, totalHours)
   }
 
-  const getPlannedItemsPreview = (iso: string) => {
-    // Support both agendaItems and plannedItems for backward compatibility
-    const items = dayDetails[iso]?.agendaItems || dayDetails[iso]?.plannedItems || []
-    if (items.length === 0) return null
+  const getActivityIcons = (iso: string) => {
+    const details = dayDetails?.[iso]
+    const agendaItems = details?.agendaItems || details?.plannedItems || []
+    const expenses = details?.expenses || []
+    const income = details?.income || []
+    const travelPlans = details?.travelPlans || []
+
+    const icons = []
     
-    // Create tooltip content with all items
-    const tooltipContent = items.map(item => item.title).join('\n')
+    // Agenda
+    if (agendaItems.length > 0) {
+      icons.push({
+        emoji: '📝',
+        tooltip: `${agendaItems.length} agenda item${agendaItems.length > 1 ? 's' : ''}: ${agendaItems.map(i => i.title).join(', ')}`
+      })
+    }
     
+    // Expenses
+    if (expenses.length > 0) {
+      const total = expenses.reduce((sum, e) => sum + e.amount, 0)
+      icons.push({
+        emoji: '💸',
+        tooltip: `${expenses.length} expense${expenses.length > 1 ? 's' : ''}: ₹${total.toLocaleString('en-IN')}`
+      })
+    }
+    
+    // Income
+    if (income.length > 0) {
+      const total = income.reduce((sum, i) => sum + i.amount, 0)
+      icons.push({
+        emoji: '💰',
+        tooltip: `${income.length} income: ₹${total.toLocaleString('en-IN')}`
+      })
+    }
+    
+    // Travel
+    if (travelPlans.length > 0) {
+      icons.push({
+        emoji: '✈️',
+        tooltip: travelPlans.map(t => t.title).join(', ')
+      })
+    }
+
+    if (icons.length === 0) return null
+
     return (
-      <div className="mt-auto w-full flex justify-center" title={tooltipContent}>
-        <div className="flex items-center gap-1">
-          {items.slice(0, 3).map((_, idx) => (
-            <div
-              key={idx}
-              className="w-1.5 h-1.5 rounded-full bg-[#AF52DE] shadow-[0_0_6px_rgba(175,82,222,0.6)]"
-            />
-          ))}
-          {items.length > 3 && (
-            <span className="text-[9px] text-white/60 ml-0.5">+{items.length - 3}</span>
-          )}
-        </div>
+      <div className="mt-auto w-full flex justify-center gap-0.5">
+        {icons.map((icon, idx) => (
+          <span
+            key={idx}
+            className="text-[11px] opacity-80"
+            title={icon.tooltip}
+          >
+            {icon.emoji}
+          </span>
+        ))}
       </div>
     )
   }
@@ -196,7 +231,7 @@ export function Calendar({
           const isToday = day.iso === todayISO
           const isSelected = day.iso === selectedDate
           const isInRange = isDateInRange(day.iso)
-          const plannedPreview = getPlannedItemsPreview(day.iso)
+          const activityIcons = getActivityIcons(day.iso)
           return (
             <div
               key={day.iso}
@@ -208,10 +243,30 @@ export function Calendar({
               style={isInRange ? getDayStyle(day.iso) : undefined}
             >
               <span className="text-sm font-medium">{day.dayOfMonth}</span>
-              {plannedPreview}
+              {activityIcons}
             </div>
           )
         })}
+      </div>
+
+      {/* Activity Legend */}
+      <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap gap-4 text-[11px] text-white/60">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm">📝</span>
+          <span>Agenda</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm">💸</span>
+          <span>Expense</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm">💰</span>
+          <span>Income</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm">✈️</span>
+          <span>Travel</span>
+        </div>
       </div>
     </>
   )
