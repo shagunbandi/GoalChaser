@@ -9,6 +9,7 @@ export { HoursSummary } from './HoursSummary'
 export { AgendaManager } from './AgendaManager'
 export { SubjectEntries } from './SubjectEntries'
 export { FirebaseHealthCheck } from './FirebaseHealthCheck'
+export { ActivityCard } from './ActivityCard'
 
 // Generic Year View Components
 export { GenericYearView } from './year-view/GenericYearView'

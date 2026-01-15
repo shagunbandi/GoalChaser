@@ -562,6 +562,14 @@ export default function GoalPage() {
                   successCriterion={goal?.successCriterion}
                   noCard
                   onStatus={pushStatus}
+                  onNavigateToBudget={(date) => {
+                    setSelectedDate(date)
+                    setViewMode('budget')
+                  }}
+                  onNavigateToTravel={(date) => {
+                    setSelectedDate(date)
+                    setViewMode('travel')
+                  }}
                 />
               </div>
             </Card>

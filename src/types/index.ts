@@ -237,3 +237,11 @@ export type {
   MonthConfig,
   YearViewConfig,
 } from './year-view-config'
+
+// ============ Activity Card Types ============
+
+export type {
+  ActivityCardType,
+  ActivityItem,
+  ActivityCardConfig,
+} from './activity-card-config'
