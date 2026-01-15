@@ -8,6 +8,7 @@ import type {
   SIPFrequency,
   Expense,
   Income,
+  ButtonConfig,
 } from '@/types'
 import type { YearViewConfig } from '@/types/year-view-config'
 import { Card, Modal } from '@/components/ui'
@@ -38,6 +39,7 @@ interface BudgetingViewProps {
   onSaveSIP: (sip: SIPPlan) => Promise<void>
   onDeleteSIP: (sipId: string) => Promise<void>
   onJumpToDay?: (iso: string) => void
+  initialSelectedDay?: string | null
 }
 
 export function BudgetingView({
@@ -54,8 +56,11 @@ export function BudgetingView({
   onSaveSIP,
   onDeleteSIP,
   onJumpToDay,
+  initialSelectedDay,
 }: BudgetingViewProps) {
-  const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  const [selectedDay, setSelectedDay] = useState<string | null>(
+    initialSelectedDay || null,
+  )
   const [showAddSIP, setShowAddSIP] = useState(false)
   const [showAddBudget, setShowAddBudget] = useState(false)
   const [editingBudget, setEditingBudget] = useState<BudgetPlan | null>(null)
@@ -66,12 +71,16 @@ export function BudgetingView({
   // Reset expense/income modals when day changes
   const handleDaySelect = useCallback((date: string | null) => {
     setSelectedDay(date)
+    if (date && onJumpToDay) {
+      // Update URL with selected date
+      onJumpToDay(date)
+    }
     if (!date) {
       // Close expense/income modals when day modal closes
       setShowAddExpense(false)
       setShowAddIncome(false)
     }
-  }, [])
+  }, [onJumpToDay])
 
   const months = useMemo(
     () => Array.from({ length: 12 }, (_, i) => computeMonthInfo(year, i + 1)),
@@ -573,7 +582,7 @@ export function BudgetingView({
       onDaySelect: handleDaySelect,
       header: {
         icon: '💰',
-        title: 'Budgeting',
+        title: 'Finance',
         legends: [
           { label: 'Income', color: 'rgb(74, 222, 128)' },
           { label: 'Expense', color: 'rgb(248, 113, 113)' },
@@ -588,7 +597,7 @@ export function BudgetingView({
           },
           {
             id: 'add-budget',
-            label: '+ Budget',
+            label: '+ Budget Plan',
             onClick: () => setShowAddBudget(true),
             color: 'success' as const,
           },
@@ -710,7 +719,7 @@ export function BudgetingView({
                       }}
                       className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-medium border border-white/20 transition-all duration-150 whitespace-nowrap"
                     >
-                      Show Budget
+                      View Budget
                     </button>
                   </div>
                 </div>
@@ -917,7 +926,7 @@ export function BudgetingView({
         },
         getActions: (date: string) => {
           const activeBudget = getActiveBudget(date)
-          const actions = []
+          const actions: ButtonConfig[] = []
 
           if (activeBudget) {
             actions.push({
@@ -926,7 +935,7 @@ export function BudgetingView({
               onClick: () => {
                 setShowAddExpense(true)
               },
-              color: 'danger' as const,
+              color: 'danger',
             })
             actions.push({
               id: 'add-income',
@@ -934,7 +943,7 @@ export function BudgetingView({
               onClick: () => {
                 setShowAddIncome(true)
               },
-              color: 'success' as const,
+              color: 'success',
             })
           }
 
@@ -945,7 +954,7 @@ export function BudgetingView({
               onClick: () => {
                 onJumpToDay(date)
               },
-              color: 'secondary' as const,
+              color: 'secondary',
             })
           }
 
@@ -974,7 +983,10 @@ export function BudgetingView({
   return (
     <>
       <div className="space-y-4">
-        <GenericYearView config={config} />
+        <GenericYearView
+          config={config}
+          initialSelectedDay={initialSelectedDay}
+        />
 
         {/* Lists */}
         <div className="grid md:grid-cols-2 gap-4">

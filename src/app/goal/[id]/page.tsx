@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 import { useFirebase } from '@/hooks/useFirebase'
@@ -9,7 +9,8 @@ import { useGoals } from '@/hooks/useGoals'
 import { useAuth } from '@/hooks/useAuth'
 
 import { Card, Navbar } from '@/components/ui'
-import { Calendar, DetailView, YearView, BudgetingView } from '@/components/features'
+import { Calendar, DetailView, GroupedTabBar, AddonsManagerModal } from '@/components/features'
+import { useAddonsConfig } from '@/hooks/useAddonsConfig'
 
 import {
   toISODateString,
@@ -20,22 +21,12 @@ import {
   enumerateDateRange,
 } from '@/utils'
 
-import type { DayStatus, DayDetails, TravelPlan, BudgetPlan, SIPPlan } from '@/types'
-import {
-  setFirebaseDb,
-  loadBudgetsFromFirebase,
-  saveBudgetToFirebase,
-  deleteBudgetFromFirebase,
-  loadSIPsFromFirebase,
-  saveSIPToFirebase,
-  deleteSIPFromFirebase,
-} from '@/lib/api/budget-api'
-import { getFirestore } from 'firebase/firestore'
-import { getFirebaseApp } from '@/lib/firebase-service'
+import type { DayStatus, DayDetails } from '@/types'
 
 export default function GoalPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const goalId = params.id as string
 
   // Auth hook
@@ -64,15 +55,15 @@ export default function GoalPage() {
 
   // Initialize todayISO and selectedDate together so selectedDate defaults to today
   const [todayISO, setTodayISO] = useState(() => toISODateString(new Date()))
-  const [selectedDate, setSelectedDate] = useState(() =>
-    toISODateString(new Date()),
-  )
-  const [viewMode, setViewMode] = useState<'month' | 'travel' | 'budgeting'>('month')
-  
-  // Budgeting data
-  const [budgets, setBudgets] = useState<BudgetPlan[]>([])
-  const [sips, setSips] = useState<SIPPlan[]>([])
-  const [budgetingLoading, setBudgetingLoading] = useState(true)
+  const [selectedDate, setSelectedDate] = useState(() => {
+    // Check if date is in URL params
+    const dateFromUrl = searchParams.get('date')
+    return dateFromUrl || toISODateString(new Date())
+  })
+
+  // Add-ons management
+  const { enabledAddons, saveAddons } = useAddonsConfig(user?.uid, goalId)
+  const [showAddonsManager, setShowAddonsManager] = useState(false)
 
   // Status bar message
   const [statusText, setStatusText] = useState('Ready')
@@ -100,35 +91,6 @@ export default function GoalPage() {
     const timeoutId = scheduleUpdate()
     return () => clearTimeout(timeoutId)
   }, [])
-  
-  // Load budgets and SIPs from Firebase
-  useEffect(() => {
-    if (!user) return
-    
-    const loadBudgetingData = async () => {
-      try {
-        const app = getFirebaseApp()
-        if (!app) return
-        
-        const db = getFirestore(app)
-        setFirebaseDb(db)
-        
-        const [loadedBudgets, loadedSIPs] = await Promise.all([
-          loadBudgetsFromFirebase(user.uid, goalId),
-          loadSIPsFromFirebase(user.uid, goalId),
-        ])
-        
-        setBudgets(loadedBudgets)
-        setSips(loadedSIPs)
-      } catch (error) {
-        console.error('Failed to load budgeting data:', error)
-      } finally {
-        setBudgetingLoading(false)
-      }
-    }
-    
-    loadBudgetingData()
-  }, [user, goalId])
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -136,6 +98,19 @@ export default function GoalPage() {
       router.push('/')
     }
   }, [authLoading, user, router])
+
+  // Sync selected date when URL changes
+  useEffect(() => {
+    const dateFromUrl = searchParams.get('date')
+    if (dateFromUrl && dateFromUrl !== selectedDate) {
+      setSelectedDate(dateFromUrl)
+      
+      // Update month view to show the selected date's month
+      const date = new Date(dateFromUrl)
+      setCurrentYear(date.getFullYear())
+      setCurrentMonth(date.getMonth() + 1)
+    }
+  }, [searchParams, selectedDate])
 
   // Calendar month state
   const initialDate = useMemo(() => new Date(), [])
@@ -185,6 +160,12 @@ export default function GoalPage() {
   const handleDayClick = (iso: string) => {
     pushStatus({ text: 'Selecting date…', tone: 'progress' })
     setSelectedDate(iso)
+    
+    // Update URL with selected date seamlessly
+    const url = new URL(window.location.href)
+    url.searchParams.set('date', iso)
+    router.replace(url.pathname + url.search, { scroll: false })
+    
     pushStatus({ text: 'Date selected', tone: 'success' })
   }
 
@@ -225,128 +206,6 @@ export default function GoalPage() {
     newTopic: string,
   ) => {
     updateTopicInSubject(subjectId, oldTopic, newTopic)
-  }
-
-  const handleAddTravel = async (travel: Omit<TravelPlan, 'id'>) => {
-    pushStatus({ text: 'Saving travel…', tone: 'progress' })
-
-    try {
-      const plan: TravelPlan = {
-        ...travel,
-        id: `travel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      }
-
-      const dates = enumerateDateRange(plan.startDate, plan.endDate)
-
-      // Show progress
-      pushStatus({
-        text: `Saving travel to ${dates.length} day${
-          dates.length === 1 ? '' : 's'
-        }...`,
-        tone: 'progress',
-      })
-
-      const results = await Promise.all(
-        dates.map(async (iso) => {
-          const existing = dayDetails[iso]?.travelPlans || []
-          const filtered = existing.filter((t) => t.id !== plan.id)
-          const updatedPlans = [...filtered, plan]
-
-          try {
-            await updateDayDetails(iso, { travelPlans: updatedPlans })
-            return { success: true, iso }
-          } catch (error) {
-            console.error(`❌ Failed to save to ${iso}:`, error)
-            return { success: false, iso, error }
-          }
-        }),
-      )
-
-      const successCount = results.filter((r) => r.success).length
-      const failCount = results.length - successCount
-
-      setSelectedDate(plan.startDate)
-
-      if (failCount > 0) {
-        pushStatus({
-          text: `⚠️ Travel saved to ${successCount}/${dates.length} days (${failCount} failed)`,
-          tone: 'error',
-        })
-      } else {
-        pushStatus({
-          text: `✅ Travel saved to ${dates.length} day${
-            dates.length === 1 ? '' : 's'
-          } • Firebase synced`,
-          tone: 'success',
-        })
-      }
-    } catch (err) {
-      console.error('❌ Failed to save travel:', err)
-      pushStatus({ text: 'Failed to save travel', tone: 'error' })
-    }
-  }
-
-  const handleJumpToDay = (iso: string) => {
-    const date = new Date(`${iso}T00:00:00`)
-    setCurrentYear(date.getFullYear())
-    setCurrentMonth(date.getMonth() + 1)
-    setSelectedDate(iso)
-    setViewMode('month')
-    pushStatus({ text: 'Day selected', tone: 'success' })
-  }
-  
-  // Budget handlers
-  const handleSaveBudget = async (budget: BudgetPlan) => {
-    if (!user) return
-    
-    const success = await saveBudgetToFirebase(user.uid, goalId, budget)
-    if (success) {
-      setBudgets((prev) => {
-        const existing = prev.findIndex((b) => b.id === budget.id)
-        if (existing >= 0) {
-          const updated = [...prev]
-          updated[existing] = budget
-          return updated
-        }
-        return [...prev, budget]
-      })
-    }
-  }
-  
-  const handleDeleteBudget = async (budgetId: string) => {
-    if (!user) return
-    
-    const success = await deleteBudgetFromFirebase(user.uid, goalId, budgetId)
-    if (success) {
-      setBudgets((prev) => prev.filter((b) => b.id !== budgetId))
-    }
-  }
-  
-  // SIP handlers
-  const handleSaveSIP = async (sip: SIPPlan) => {
-    if (!user) return
-    
-    const success = await saveSIPToFirebase(user.uid, goalId, sip)
-    if (success) {
-      setSips((prev) => {
-        const existing = prev.findIndex((s) => s.id === sip.id)
-        if (existing >= 0) {
-          const updated = [...prev]
-          updated[existing] = sip
-          return updated
-        }
-        return [...prev, sip]
-      })
-    }
-  }
-  
-  const handleDeleteSIP = async (sipId: string) => {
-    if (!user) return
-    
-    const success = await deleteSIPFromFirebase(user.uid, goalId, sipId)
-    if (success) {
-      setSips((prev) => prev.filter((s) => s.id !== sipId))
-    }
   }
 
   // Loading state (including auth check)
@@ -396,7 +255,7 @@ export default function GoalPage() {
             href="/"
             className="
               inline-flex items-center gap-2 px-6 py-3
-              bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
+              bg-linear-to-r from-[#007AFF] to-[#AF52DE]
               text-white font-medium rounded-2xl
               shadow-[0_0_30px_rgba(0,122,255,0.3)]
               hover:shadow-[0_0_40px_rgba(0,122,255,0.4)]
@@ -424,7 +283,15 @@ export default function GoalPage() {
         goalId={goalId}
         goalName={goal?.name || 'Nitya'}
         goalDescription={goal?.description}
-      />
+      >
+        <GroupedTabBar
+          goalId={goalId}
+          currentAddon="calendar"
+          currentYear={currentYear}
+          enabledAddons={enabledAddons}
+          onManageAddons={() => setShowAddonsManager(true)}
+        />
+      </Navbar>
 
       <div className="relative z-10 p-4 md:p-6">
         {/* Error Banner */}
@@ -443,79 +310,14 @@ export default function GoalPage() {
         )}
 
         <div className="max-w-7xl mx-auto space-y-4">
-          <div className="flex justify-between items-center">
-            {/* Left side - Back to travelling view button (only shown in month view) */}
-            <div>
-              {viewMode === 'month' && (
-                <button
-                  onClick={() => {
-                    setViewMode('travel')
-                    pushStatus({ text: 'Travelling Year', tone: 'info' })
-                  }}
-                  className="
-                    inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium
-                    bg-white/5 hover:bg-white/10 text-white/80 border border-white/10
-                    transition-all duration-150
-                  "
-                >
-                  ← Back to year view
-                </button>
-              )}
-            </div>
-
-            {/* Right side - View mode toggle */}
-            <div className="inline-flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
-              <button
-                onClick={() => setViewMode('month')}
-                className={`
-                  px-4 py-2 text-sm font-medium rounded-xl transition-all duration-150
-                  ${
-                    viewMode === 'month'
-                      ? 'bg-white/90 text-black shadow-[0_0_16px_rgba(255,255,255,0.25)]'
-                      : 'text-white/70 hover:bg-white/10'
-                  }
-                `}
-              >
-                📅 Month
-              </button>
-              <button
-                onClick={() => setViewMode('travel')}
-                className={`
-                  px-4 py-2 text-sm font-medium rounded-xl transition-all duration-150
-                  ${
-                    viewMode === 'travel'
-                      ? 'bg-white/90 text-black shadow-[0_0_16px_rgba(255,255,255,0.25)]'
-                      : 'text-white/70 hover:bg-white/10'
-                  }
-                `}
-              >
-                ✈️ Travel
-              </button>
-              <button
-                onClick={() => setViewMode('budgeting')}
-                className={`
-                  px-4 py-2 text-sm font-medium rounded-xl transition-all duration-150
-                  ${
-                    viewMode === 'budgeting'
-                      ? 'bg-white/90 text-black shadow-[0_0_16px_rgba(255,255,255,0.25)]'
-                      : 'text-white/70 hover:bg-white/10'
-                  }
-                `}
-              >
-                💰 Budget
-              </button>
-            </div>
-          </div>
-
-          {viewMode === 'month' ? (
-            <Card className="p-0 overflow-hidden">
+          <Card className="p-0 overflow-hidden">
               <div
                 className="
                 flex flex-col
                 md:grid md:grid-cols-2
                 divide-y md:divide-y-0
                 md:divide-x
-                divide-white/[0.06]
+                divide-white/6
               "
               >
                 {/* Calendar - Top on mobile, Left on desktop */}
@@ -563,62 +365,27 @@ export default function GoalPage() {
                   noCard
                   onStatus={pushStatus}
                   onNavigateToBudget={(date) => {
-                    setSelectedDate(date)
-                    setViewMode('budget')
+                    const [y, month, day] = date.split('-')
+                    router.push(`/goal/${goalId}/finance/${y}/${month}/${day}`)
                   }}
                   onNavigateToTravel={(date) => {
-                    setSelectedDate(date)
-                    setViewMode('travel')
+                    const [y, month, day] = date.split('-')
+                    router.push(`/goal/${goalId}/travel/${y}/${month}/${day}`)
                   }}
                 />
               </div>
             </Card>
-          ) : viewMode === 'travel' ? (
-            <YearView
-              year={currentYear}
-              todayISO={todayISO}
-              dayDetails={dayDetails}
-              onUpdateDay={handleUpdateDetails}
-              onJumpToDay={handleJumpToDay}
-              onPrevYear={() => {
-                pushStatus({ text: 'Previous year', tone: 'progress' })
-                goToPreviousYear()
-                pushStatus({ text: 'Year changed', tone: 'success' })
-              }}
-              onNextYear={() => {
-                pushStatus({ text: 'Next year', tone: 'progress' })
-                goToNextYear()
-                pushStatus({ text: 'Year changed', tone: 'success' })
-              }}
-              onAddTravel={handleAddTravel}
-            />
-          ) : (
-            <BudgetingView
-              year={currentYear}
-              todayISO={todayISO}
-              dayDetails={dayDetails}
-              budgets={budgets}
-              sips={sips}
-              onUpdateDay={handleUpdateDetails}
-              onSaveBudget={handleSaveBudget}
-              onDeleteBudget={handleDeleteBudget}
-              onSaveSIP={handleSaveSIP}
-              onDeleteSIP={handleDeleteSIP}
-              onJumpToDay={handleJumpToDay}
-              onPrevYear={() => {
-                pushStatus({ text: 'Previous year', tone: 'progress' })
-                goToPreviousYear()
-                pushStatus({ text: 'Year changed', tone: 'success' })
-              }}
-              onNextYear={() => {
-                pushStatus({ text: 'Next year', tone: 'progress' })
-                goToNextYear()
-                pushStatus({ text: 'Year changed', tone: 'success' })
-              }}
-            />
-          )}
         </div>
       </div>
+
+      {/* Add-ons Manager Modal */}
+      <AddonsManagerModal
+        open={showAddonsManager}
+        onClose={() => setShowAddonsManager(false)}
+        goalId={goalId}
+        enabledAddons={enabledAddons}
+        onSave={saveAddons}
+      />
     </div>
   )
 }

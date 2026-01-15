@@ -10,6 +10,8 @@ export { AgendaManager } from './AgendaManager'
 export { SubjectEntries } from './SubjectEntries'
 export { FirebaseHealthCheck } from './FirebaseHealthCheck'
 export { ActivityCard } from './ActivityCard'
+export { GroupedTabBar } from './GroupedTabBar'
+export { AddonsManagerModal } from './AddonsManagerModal'
 
 // Generic Year View Components
 export { GenericYearView } from './year-view/GenericYearView'

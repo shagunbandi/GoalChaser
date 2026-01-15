@@ -245,3 +245,13 @@ export type {
   ActivityItem,
   ActivityCardConfig,
 } from './activity-card-config'
+
+// ============ Add-on Config Types ============
+
+export type {
+  AddonId,
+  AddonCategory,
+  AddonSubItem,
+  GoalAddonsConfig,
+  AddonDefinition,
+} from './addon-config'

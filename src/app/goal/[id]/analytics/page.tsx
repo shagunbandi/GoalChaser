@@ -16,6 +16,8 @@ import {
   TopicBreakdown,
   ExtendedSummary,
 } from '@/components/features/analytics'
+import { GroupedTabBar, AddonsManagerModal } from '@/components/features'
+import { useAddonsConfig } from '@/hooks/useAddonsConfig'
 
 import {
   type DateRange,
@@ -53,6 +55,10 @@ export default function AnalyticsPage() {
           label: 'Today',
         }
   })
+
+  // Add-ons management
+  const { enabledAddons, saveAddons } = useAddonsConfig(user?.uid, goalId)
+  const [showAddonsManager, setShowAddonsManager] = useState(false)
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -151,7 +157,15 @@ export default function AnalyticsPage() {
         goalId={goalId}
         goalName={goal?.name || 'Goal'}
         goalDescription={goal?.description}
-      />
+      >
+        <GroupedTabBar
+          goalId={goalId}
+          currentAddon="analytics"
+          currentYear={new Date().getFullYear()}
+          enabledAddons={enabledAddons}
+          onManageAddons={() => setShowAddonsManager(true)}
+        />
+      </Navbar>
 
       <div className="relative z-10 p-4 md:p-6">
         {/* Error Banner */}
@@ -242,6 +256,15 @@ export default function AnalyticsPage() {
           )}
         </div>
       </div>
+
+      {/* Add-ons Manager Modal */}
+      <AddonsManagerModal
+        open={showAddonsManager}
+        onClose={() => setShowAddonsManager(false)}
+        goalId={goalId}
+        enabledAddons={enabledAddons}
+        onSave={saveAddons}
+      />
     </div>
   )
 }

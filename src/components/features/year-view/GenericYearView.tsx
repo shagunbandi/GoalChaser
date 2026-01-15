@@ -11,10 +11,16 @@ import { MONTH_NAMES, WEEKDAY_LABELS } from '@/constants'
 
 interface GenericYearViewProps {
   config: YearViewConfig
+  initialSelectedDay?: string | null
 }
 
-export function GenericYearView({ config }: GenericYearViewProps) {
-  const [selectedDay, setSelectedDay] = useState<string | null>(null)
+export function GenericYearView({
+  config,
+  initialSelectedDay,
+}: GenericYearViewProps) {
+  const [selectedDay, setSelectedDay] = useState<string | null>(
+    initialSelectedDay || null,
+  )
 
   const handleDaySelect = (date: string | null) => {
     setSelectedDay(date)

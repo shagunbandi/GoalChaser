@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { DayDetails, TravelPlan } from '@/types'
+import type { DayDetails, TravelPlan, ButtonConfig } from '@/types'
 import type { YearViewConfig } from '@/types/year-view-config'
 import { Modal } from '@/components/ui'
 import { GenericYearView } from './year-view/GenericYearView'
@@ -22,6 +22,7 @@ interface YearViewProps {
   onAddTravel: (travel: Omit<TravelPlan, 'id'>) => void | Promise<void>
   onUpdateDay: (iso: string, updates: Partial<DayDetails>) => Promise<void>
   onJumpToDay?: (iso: string) => void
+  initialSelectedDay?: string | null
 }
 
 export function YearView({
@@ -33,6 +34,7 @@ export function YearView({
   onAddTravel,
   onUpdateDay,
   onJumpToDay,
+  initialSelectedDay,
 }: YearViewProps) {
   const [showTravelModal, setShowTravelModal] = useState(false)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
@@ -437,13 +439,13 @@ export function YearView({
           return sections
         },
         getActions: (date: string) => {
-          const actions = [
+          const actions: ButtonConfig[] = [
             {
               id: 'add-travel',
               label: 'Add travel plan',
               icon: '✈️',
               onClick: () => handleAddTravelFromDay(date),
-              color: 'info' as const,
+              color: 'info',
             },
           ]
 
@@ -452,12 +454,18 @@ export function YearView({
               id: 'open-day',
               label: 'Open day view',
               onClick: () => onJumpToDay(date),
-              color: 'secondary' as const,
+              color: 'secondary',
             })
           }
 
           return actions
         },
+      },
+      onDaySelect: (date: string | null) => {
+        if (date && onJumpToDay) {
+          // Update URL with selected date
+          onJumpToDay(date)
+        }
       },
       onPrevYear,
       onNextYear,
@@ -481,7 +489,7 @@ export function YearView({
 
   return (
     <>
-      <GenericYearView config={config} />
+      <GenericYearView config={config} initialSelectedDay={initialSelectedDay} />
 
 
       <Modal
