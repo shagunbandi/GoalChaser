@@ -224,3 +224,15 @@ export interface Goal {
   successCriterion?: SuccessCriterion
 }
 
+// ============ Year View Config Types ============
+
+export type {
+  ButtonConfig,
+  DayIndicator,
+  DayConfig,
+  MonthFooterItem,
+  ModalSection,
+  HeaderConfig,
+  MonthConfig,
+  YearViewConfig,
+} from './year-view-config'

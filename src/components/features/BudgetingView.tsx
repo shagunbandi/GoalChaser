@@ -9,9 +9,9 @@ import type {
   Expense,
   Income,
 } from '@/types'
+import type { YearViewConfig } from '@/types/year-view-config'
 import { Card, Modal } from '@/components/ui'
-import { YearViewHeader } from './YearViewHeader'
-import { MonthCard } from './MonthCard'
+import { GenericYearView } from './year-view/GenericYearView'
 import {
   SIPForm,
   SIPCard,
@@ -21,7 +21,7 @@ import {
   ExpenseForm,
   IncomeForm,
 } from './budgeting'
-import { computeMonthInfo, formatDateDisplay } from '@/utils'
+import { computeMonthInfo } from '@/utils'
 import { generateSIPDates } from '@/lib/utils/sip-utils'
 
 interface BudgetingViewProps {
@@ -520,25 +520,530 @@ export function BudgetingView({
     await onSaveSIP(updatedSIP)
   }
 
+  // Build year view configuration
+  const config: YearViewConfig = useMemo(
+    () => ({
+      year,
+      todayISO,
+      header: {
+        icon: '💰',
+        title: 'Budgeting',
+        actions: [
+          {
+            id: 'add-sip',
+            label: '+ SIP',
+            onClick: () => setShowAddSIP(true),
+            color: 'info' as const,
+          },
+          {
+            id: 'add-budget',
+            label: '+ Budget',
+            onClick: () => setShowAddBudget(true),
+            color: 'success' as const,
+          },
+        ],
+      },
+      months: months.map((month) => {
+        const monthBudgets = getMonthBudgets(year, month.month)
+        const monthSIPs = getMonthSIPs(year, month.month)
+
+        return {
+          month: month.month,
+          year: month.year,
+          days: month.days.map((day) => {
+            const info = getDayInfo(day.iso)
+            const indicators = []
+            if (info.hasSIP) indicators.push({ type: 'sip' as const })
+            if (info.hasIncome) indicators.push({ type: 'income' as const })
+            if (info.hasExpense) indicators.push({ type: 'expense' as const })
+
+            return {
+              iso: day.iso,
+              dayOfMonth: day.dayOfMonth,
+              weekdayIndex: day.weekdayIndex,
+              indicators,
+            }
+          }),
+          footer: [
+            ...monthBudgets.map((budget) => {
+              const remaining = getBudgetRemaining(budget)
+              const isOverBudget = remaining < 0
+
+              return {
+                id: budget.id,
+                type: 'budget' as const,
+                title: budget.name,
+                subtitle: `₹${budget.income.toLocaleString('en-IN')} • ${
+                  isOverBudget
+                    ? `₹${Math.abs(remaining).toLocaleString('en-IN')} over`
+                    : `₹${remaining.toLocaleString('en-IN')} left`
+                }`,
+                actionButton: {
+                  icon: '👁️',
+                  onClick: () => setViewingBudget(budget),
+                },
+              }
+            }),
+            ...monthSIPs.map((sip) => {
+              const progress = getSIPMonthProgress(sip, year, month.month)
+
+              return {
+                id: sip.id,
+                type: 'sip' as const,
+                title: sip.name,
+                subtitle: `₹${progress.amount.toLocaleString('en-IN')} / ₹${(
+                  progress.amount + progress.pending
+                ).toLocaleString('en-IN')} • ${progress.completed}/${
+                  progress.totalInMonth
+                } done`,
+              }
+            }),
+          ],
+        }
+      }),
+      modal: {
+        getSections: (date: string) => {
+          const details = dayDetails[date] || {}
+          const daySips = getSIPsForDate(date)
+          const expenses = details.expenses || []
+          const income = details.income || []
+          const activeBudget = getActiveBudget(date)
+
+          const budgetExpenses = activeBudget
+            ? allExpenses.filter((e) => e.budgetId === activeBudget.id)
+            : []
+          const budgetIncome = activeBudget
+            ? allIncome.filter((i) => i.budgetId === activeBudget.id)
+            : []
+          const totalSpent = budgetExpenses.reduce(
+            (sum, e) => sum + e.amount,
+            0,
+          )
+          const totalEarned = budgetIncome.reduce(
+            (sum, i) => sum + i.amount,
+            0,
+          )
+          const remaining = activeBudget
+            ? activeBudget.income + totalEarned - totalSpent
+            : 0
+
+          const sections = []
+
+          // Budget Summary Section
+          if (activeBudget) {
+            sections.push({
+              id: 'budget-summary',
+              type: 'custom' as const,
+              content: (
+                <div className="rounded-xl bg-linear-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 p-4">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div>
+                      <div className="text-base font-semibold text-white flex items-center gap-2">
+                        <span>💵</span>
+                        <span>{activeBudget.name}</span>
+                      </div>
+                      <div className="text-xs text-white/60 mt-1">
+                        {new Date(activeBudget.startDate).toLocaleDateString(
+                          'en-US',
+                          {
+                            month: 'short',
+                            day: 'numeric',
+                          },
+                        )}{' '}
+                        →{' '}
+                        {new Date(activeBudget.endDate).toLocaleDateString(
+                          'en-US',
+                          { month: 'short', day: 'numeric' },
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-white/70">Total Spent:</span>
+                      <span className="text-white font-medium">
+                        ₹{totalSpent.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white/70">Remaining:</span>
+                      <span className="text-green-400 font-semibold">
+                        ₹{remaining.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-white/20 space-y-3">
+                    <div className="text-xs text-white/70 font-semibold uppercase tracking-wide">
+                      By Category
+                    </div>
+                    {(() => {
+                      const categoriesWithExpenses = activeBudget.categories
+                        .map((cat) => {
+                          const categoryExpenses = budgetExpenses.filter(
+                            (e) => e.categoryId === cat.id,
+                          )
+                          const spent = categoryExpenses.reduce(
+                            (sum, e) => sum + e.amount,
+                            0,
+                          )
+                          return { ...cat, spent, categoryExpenses }
+                        })
+                        .filter((cat) => cat.spent > 0)
+
+                      if (categoriesWithExpenses.length === 0) {
+                        return (
+                          <div className="text-xs text-white/40 py-2">
+                            No spending in any category yet
+                          </div>
+                        )
+                      }
+
+                      return categoriesWithExpenses.map((cat) => {
+                        const categoryRemaining =
+                          cat.allocatedAmount - cat.spent
+                        const isOver = cat.spent > cat.allocatedAmount
+                        const percentage =
+                          cat.allocatedAmount > 0
+                            ? Math.min(
+                                (cat.spent / cat.allocatedAmount) * 100,
+                                100,
+                              )
+                            : 0
+
+                        return (
+                          <div key={cat.id} className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: cat.color }}
+                                />
+                                <span className="text-xs text-white/80 font-medium truncate">
+                                  {cat.name}
+                                </span>
+                              </div>
+                              <span className="text-xs whitespace-nowrap ml-2">
+                                <span
+                                  className={`font-semibold ${
+                                    isOver ? 'text-red-400' : 'text-white'
+                                  }`}
+                                >
+                                  ₹{cat.spent.toLocaleString('en-IN')}
+                                </span>
+                                <span className="text-white/40"> / </span>
+                                <span className="text-white/60">
+                                  ₹
+                                  {cat.allocatedAmount.toLocaleString('en-IN')}
+                                </span>
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full transition-all duration-300 rounded-full ${
+                                    isOver
+                                      ? 'bg-linear-to-r from-red-500 to-red-600'
+                                      : 'bg-linear-to-r from-green-500 to-emerald-500'
+                                  }`}
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                              <span
+                                className={`text-[10px] font-medium min-w-[35px] text-right ${
+                                  isOver ? 'text-red-400' : 'text-white/60'
+                                }`}
+                              >
+                                {percentage.toFixed(0)}%
+                              </span>
+                            </div>
+
+                            {isOver && (
+                              <div className="text-[10px] text-red-400 flex items-center gap-1">
+                                <span>⚠️</span>
+                                <span>
+                                  Over by ₹
+                                  {Math.abs(categoryRemaining).toLocaleString(
+                                    'en-IN',
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })
+                    })()}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setViewingBudget(activeBudget)
+                    }}
+                    className="w-full mt-3 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs border border-white/20"
+                  >
+                    See Budget
+                  </button>
+                </div>
+              ),
+            })
+          }
+
+          // SIPs Section
+          if (daySips.length > 0) {
+            sections.push({
+              id: 'sips',
+              type: 'custom' as const,
+              content: (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
+                    SIP Investments
+                  </h4>
+                  {daySips.map((sip) => {
+                    const done = sip.completedDates?.includes(date)
+                    return (
+                      <div
+                        key={sip.id}
+                        className="rounded-lg border border-white/10 bg-white/5 p-3"
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="text-sm text-white">
+                              {sip.name}
+                            </div>
+                            <div className="text-xs text-white/60">
+                              ₹{sip.amount.toLocaleString('en-IN')} •{' '}
+                              {sip.frequency}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => toggleSIPDone(sip.id, date)}
+                            className={`px-3 py-1 rounded text-xs font-medium ${
+                              done
+                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                : 'bg-white/10 text-white/70 border border-white/20'
+                            }`}
+                          >
+                            {done ? '✓ Done' : 'Mark'}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ),
+            })
+          }
+
+          // Expenses Section
+          if (activeBudget && expenses.length > 0) {
+            sections.push({
+              id: 'expenses',
+              type: 'custom' as const,
+              content: (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
+                    Expenses Today
+                  </h4>
+                  {expenses.map((e) => {
+                    const category = activeBudget.categories.find(
+                      (c) => c.id === e.categoryId,
+                    )
+                    const categoryExpenses = budgetExpenses.filter(
+                      (ex) => ex.categoryId === e.categoryId,
+                    )
+                    const totalSpentInCategory = categoryExpenses.reduce(
+                      (sum, ex) => sum + ex.amount,
+                      0,
+                    )
+                    const categoryRemaining = category
+                      ? category.allocatedAmount - totalSpentInCategory
+                      : 0
+                    const isOver = categoryRemaining < 0
+
+                    return (
+                      <div
+                        key={e.id}
+                        className={`rounded-lg border p-3 transition-colors ${
+                          isOver
+                            ? 'border-red-500/30 bg-red-500/10'
+                            : 'border-white/10 bg-white/5'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-white font-medium">
+                              {e.categoryName}
+                            </div>
+                            {e.description && (
+                              <div className="text-xs text-white/60 mt-0.5 truncate">
+                                {e.description}
+                              </div>
+                            )}
+                            {category && (
+                              <div
+                                className={`text-[10px] mt-1.5 font-medium ${
+                                  isOver ? 'text-red-400' : 'text-green-400'
+                                }`}
+                              >
+                                {isOver ? (
+                                  <>
+                                    ⚠️ Over by ₹
+                                    {Math.abs(categoryRemaining).toLocaleString(
+                                      'en-IN',
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    ✓ ₹
+                                    {categoryRemaining.toLocaleString('en-IN')}{' '}
+                                    left in budget
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-red-400">
+                              -₹{e.amount.toLocaleString('en-IN')}
+                            </span>
+                            <button
+                              onClick={() => removeExpense(e)}
+                              className="text-white/40 hover:text-red-400 transition-colors"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ),
+            })
+          }
+
+          // Income Section
+          if (activeBudget && income.length > 0) {
+            sections.push({
+              id: 'income',
+              type: 'custom' as const,
+              content: (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
+                    Income Today
+                  </h4>
+                  {income.map((i) => (
+                    <div
+                      key={i.id}
+                      className="rounded-lg border border-green-500/30 bg-green-500/5 p-3"
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-white font-medium">
+                            {i.categoryName}
+                          </div>
+                          {i.description && (
+                            <div className="text-xs text-white/60 mt-0.5 truncate">
+                              {i.description}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-green-400 font-semibold">
+                            +₹{i.amount.toLocaleString('en-IN')}
+                          </span>
+                          <button
+                            onClick={() => removeIncome(i)}
+                            className="text-white/40 hover:text-red-400 transition-colors"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ),
+            })
+          }
+
+          // No data message
+          if (
+            !activeBudget &&
+            daySips.length === 0 &&
+            expenses.length === 0 &&
+            income.length === 0
+          ) {
+            sections.push({
+              id: 'no-data',
+              type: 'custom' as const,
+              content: (
+                <p className="text-sm text-white/40 text-center py-4">
+                  No financial activity for this day
+                </p>
+              ),
+            })
+          }
+
+          return sections
+        },
+        getActions: (date: string) => {
+          const activeBudget = getActiveBudget(date)
+          const actions = []
+
+          if (activeBudget) {
+            actions.push({
+              id: 'add-expense',
+              label: '+ Expense',
+              onClick: () => setShowAddExpense(true),
+              color: 'danger' as const,
+            })
+            actions.push({
+              id: 'add-income',
+              label: '+ Income',
+              onClick: () => setShowAddIncome(true),
+              color: 'success' as const,
+            })
+          }
+
+          if (onJumpToDay) {
+            actions.push({
+              id: 'open-day',
+              label: 'Open Day View',
+              onClick: () => onJumpToDay(date),
+              color: 'secondary' as const,
+            })
+          }
+
+          return actions
+        },
+      },
+      onPrevYear,
+      onNextYear,
+    }),
+    [
+      year,
+      todayISO,
+      months,
+      dayDetails,
+      budgets,
+      sips,
+      allExpenses,
+      allIncome,
+      onPrevYear,
+      onNextYear,
+      onJumpToDay,
+    ],
+  )
+
   return (
     <>
       <div className="space-y-4">
-        {/* Header */}
-        <YearViewHeader
-          icon="💰"
-          title="Budgeting"
-          year={year}
-          actions={[
-            { label: '+ SIP', onClick: () => setShowAddSIP(true), variant: 'secondary' },
-            { label: '+ Budget', onClick: () => setShowAddBudget(true) },
-          ]}
-          onPrevYear={onPrevYear}
-          onNextYear={onNextYear}
-        />
-
-        {/* Calendar */}
+        {/* Legend */}
         <Card className="p-4">
-          <div className="mb-3 flex flex-wrap gap-3 text-xs text-white/60">
+          <div className="flex flex-wrap gap-3 text-xs text-white/60">
             <span className="font-medium">Legend:</span>
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-full bg-green-400" />
@@ -553,180 +1058,9 @@ export function BudgetingView({
               <span>SIP</span>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:auto-rows-fr">
-            {months.map((month) => {
-              const monthBudgets = getMonthBudgets(year, month.month)
-              const monthSIPs = getMonthSIPs(year, month.month)
-
-              return (
-                <MonthCard
-                  key={month.month}
-                  month={month}
-                  todayISO={todayISO}
-                  renderDay={(day) => {
-                    const isToday = day.iso === todayISO
-                    const info = getDayInfo(day.iso)
-                    const hasAny =
-                      info.hasSIP || info.hasExpense || info.hasIncome
-
-                    return (
-                      <button
-                        key={day.iso}
-                        onClick={() => setSelectedDay(day.iso)}
-                        className={`
-                          h-8 rounded text-[11px] border relative
-                          ${isToday ? 'ring-1 ring-blue-400' : ''}
-                          ${
-                            info.hasExpense
-                              ? 'bg-red-500/10 border-red-500/30'
-                              : info.hasIncome
-                              ? 'bg-green-500/10 border-green-500/30'
-                              : 'bg-transparent border-white/10'
-                          }
-                          hover:bg-white/10 transition-colors text-white/80
-                        `}
-                      >
-                        {day.dayOfMonth}
-                        {hasAny && (
-                          <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
-                            {info.hasSIP && (
-                              <div className="w-1 h-1 rounded-full bg-blue-400" />
-                            )}
-                            {info.hasIncome && (
-                              <div className="w-1 h-1 rounded-full bg-green-400" />
-                            )}
-                            {info.hasExpense && (
-                              <div className="w-1 h-1 rounded-full bg-red-400" />
-                            )}
-                          </div>
-                        )}
-                      </button>
-                    )
-                  }}
-                  footerContent={
-                    <div className="space-y-3">
-                      {/* Budgets Section */}
-                      <div>
-                        {monthBudgets.length > 0 && (
-                          <div className="text-[10px] text-white/50 mb-1.5 font-medium uppercase tracking-wide">
-                            💵 Budgets
-                          </div>
-                        )}
-                        {monthBudgets.length > 0 && (
-                          <div className="space-y-1.5">
-                            {monthBudgets.map((budget) => {
-                              const remaining = getBudgetRemaining(budget)
-                              const isOverBudget = remaining < 0
-
-                              return (
-                                <div
-                                  key={budget.id}
-                                  className="flex items-center gap-2 text-[11px]"
-                                >
-                                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-white/80 truncate">
-                                      {budget.name}
-                                    </div>
-                                    <div className="text-[10px] text-white/60">
-                                      ₹{budget.income.toLocaleString('en-IN')} •
-                                      <span
-                                        className={
-                                          isOverBudget
-                                            ? 'text-red-400 font-medium'
-                                            : 'text-green-400'
-                                        }
-                                      >
-                                        {' '}
-                                        ₹
-                                        {Math.abs(remaining).toLocaleString(
-                                          'en-IN',
-                                        )}{' '}
-                                        {isOverBudget ? 'over' : 'left'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setViewingBudget(budget)
-                                    }}
-                                    className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white/90 transition-colors"
-                                    title="View Budget"
-                                  >
-                                    👁️
-                                  </button>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* SIPs Section */}
-                      <div>
-                        {monthSIPs.length > 0 && (
-                          <>
-                            <div className="text-[10px] text-white/50 mb-1.5 font-medium uppercase tracking-wide">
-                              📈 SIPs
-                            </div>
-                            <div className="space-y-1.5">
-                              {monthSIPs.map((sip) => {
-                                const progress = getSIPMonthProgress(
-                                  sip,
-                                  year,
-                                  month.month,
-                                )
-
-                                return (
-                                  <div
-                                    key={sip.id}
-                                    className="flex items-center gap-2 text-[11px]"
-                                  >
-                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-white/80 truncate">
-                                        {sip.name}
-                                      </div>
-                                      <div className="text-[10px] text-white/60">
-                                        ₹
-                                        {progress.amount.toLocaleString(
-                                          'en-IN',
-                                        )}{' '}
-                                        / ₹
-                                        {(
-                                          progress.amount + progress.pending
-                                        ).toLocaleString('en-IN')}{' '}
-                                        •
-                                        <span className="text-blue-400">
-                                          {' '}
-                                          {progress.completed}/
-                                          {progress.totalInMonth} done
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      {/* No data message */}
-                      {monthBudgets.length === 0 && monthSIPs.length === 0 && (
-                        <div className="text-[11px] text-white/40">
-                          No budgets or SIPs
-                        </div>
-                      )}
-                    </div>
-                  }
-                />
-              )
-            })}
-          </div>
         </Card>
+
+        <GenericYearView config={config} />
 
         {/* Lists */}
         <div className="grid md:grid-cols-2 gap-4">
@@ -772,416 +1106,6 @@ export function BudgetingView({
           </Card>
         </div>
       </div>
-
-      {/* Day Modal */}
-      {selectedDay && (
-        <Modal
-          open={true}
-          onClose={() => setSelectedDay(null)}
-          title={formatDateDisplay(selectedDay)}
-        >
-          <div className="space-y-3">
-            {(() => {
-              const details = dayDetails[selectedDay] || {}
-              const daySips = getSIPsForDate(selectedDay)
-              const expenses = details.expenses || []
-              const income = details.income || []
-              const activeBudget = getActiveBudget(selectedDay)
-
-              // Calculate total spent and earned for active budget
-              const budgetExpenses = activeBudget
-                ? allExpenses.filter((e) => e.budgetId === activeBudget.id)
-                : []
-              const budgetIncome = activeBudget
-                ? allIncome.filter((i) => i.budgetId === activeBudget.id)
-                : []
-              const totalSpent = budgetExpenses.reduce(
-                (sum, e) => sum + e.amount,
-                0,
-              )
-              const totalEarned = budgetIncome.reduce(
-                (sum, i) => sum + i.amount,
-                0,
-              )
-              const remaining = activeBudget
-                ? activeBudget.income + totalEarned - totalSpent
-                : 0
-
-              return (
-                <>
-                  {/* Budget Summary Card */}
-                  {activeBudget && (
-                    <div className="rounded-xl bg-linear-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 p-4">
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <div>
-                          <div className="text-base font-semibold text-white flex items-center gap-2">
-                            <span>💵</span>
-                            <span>{activeBudget.name}</span>
-                          </div>
-                          <div className="text-xs text-white/60 mt-1">
-                            {new Date(
-                              activeBudget.startDate,
-                            ).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            })}{' '}
-                            →{' '}
-                            {new Date(activeBudget.endDate).toLocaleDateString(
-                              'en-US',
-                              { month: 'short', day: 'numeric' },
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-white/70">Total Spent:</span>
-                          <span className="text-white font-medium">
-                            ₹{totalSpent.toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-white/70">Remaining:</span>
-                          <span className="text-green-400 font-semibold">
-                            ₹{remaining.toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Category Breakdown */}
-                      <div className="mt-3 pt-3 border-t border-white/20 space-y-3">
-                        <div className="text-xs text-white/70 font-semibold uppercase tracking-wide">
-                          By Category
-                        </div>
-                        {(() => {
-                          const categoriesWithExpenses = activeBudget.categories
-                            .map((cat) => {
-                              const categoryExpenses = budgetExpenses.filter(
-                                (e) => e.categoryId === cat.id
-                              )
-                              const spent = categoryExpenses.reduce(
-                                (sum, e) => sum + e.amount,
-                                0
-                              )
-                              return { ...cat, spent, categoryExpenses }
-                            })
-                            .filter((cat) => cat.spent > 0)
-
-                          if (categoriesWithExpenses.length === 0) {
-                            return (
-                              <div className="text-xs text-white/40 py-2">
-                                No spending in any category yet
-                              </div>
-                            )
-                          }
-
-                          return categoriesWithExpenses.map((cat) => {
-                            const categoryRemaining =
-                              cat.allocatedAmount - cat.spent
-                            const isOver = cat.spent > cat.allocatedAmount
-                            const percentage =
-                              cat.allocatedAmount > 0
-                                ? Math.min(
-                                    (cat.spent / cat.allocatedAmount) * 100,
-                                    100
-                                  )
-                                : 0
-
-                            return (
-                              <div key={cat.id} className="space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <span
-                                      className="w-2 h-2 rounded-full shrink-0"
-                                      style={{ backgroundColor: cat.color }}
-                                    />
-                                    <span className="text-xs text-white/80 font-medium truncate">
-                                      {cat.name}
-                                    </span>
-                                  </div>
-                                  <span className="text-xs whitespace-nowrap ml-2">
-                                    <span
-                                      className={`font-semibold ${
-                                        isOver ? 'text-red-400' : 'text-white'
-                                      }`}
-                                    >
-                                      ₹{cat.spent.toLocaleString('en-IN')}
-                                    </span>
-                                    <span className="text-white/40"> / </span>
-                                    <span className="text-white/60">
-                                      ₹{cat.allocatedAmount.toLocaleString('en-IN')}
-                                    </span>
-                                  </span>
-                                </div>
-
-                                {/* Progress Bar */}
-                                <div className="flex items-center gap-2">
-                                  <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                    <div
-                                      className={`h-full transition-all duration-300 rounded-full ${
-                                        isOver
-                                          ? 'bg-linear-to-r from-red-500 to-red-600'
-                                          : 'bg-linear-to-r from-green-500 to-emerald-500'
-                                      }`}
-                                      style={{ width: `${percentage}%` }}
-                                    />
-                                  </div>
-                                  <span
-                                    className={`text-[10px] font-medium min-w-[35px] text-right ${
-                                      isOver ? 'text-red-400' : 'text-white/60'
-                                    }`}
-                                  >
-                                    {percentage.toFixed(0)}%
-                                  </span>
-                                </div>
-
-                                {isOver && (
-                                  <div className="text-[10px] text-red-400 flex items-center gap-1">
-                                    <span>⚠️</span>
-                                    <span>
-                                      Over by ₹
-                                      {Math.abs(categoryRemaining).toLocaleString(
-                                        'en-IN'
-                                      )}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            )
-                          })
-                        })()}
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          setViewingBudget(activeBudget)
-                        }}
-                        className="w-full mt-3 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs border border-white/20"
-                      >
-                        See Budget
-                      </button>
-                    </div>
-                  )}
-
-                  {/* SIPs */}
-                  {daySips.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
-                        SIP Investments
-                      </h4>
-                      {daySips.map((sip) => {
-                        const done = sip.completedDates?.includes(selectedDay)
-                        return (
-                          <div
-                            key={sip.id}
-                            className="rounded-lg border border-white/10 bg-white/5 p-3"
-                          >
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <div className="text-sm text-white">
-                                  {sip.name}
-                                </div>
-                                <div className="text-xs text-white/60">
-                                  ₹{sip.amount.toLocaleString('en-IN')} •{' '}
-                                  {sip.frequency}
-                                </div>
-                              </div>
-                              <button
-                                onClick={() =>
-                                  toggleSIPDone(sip.id, selectedDay)
-                                }
-                                className={`px-3 py-1 rounded text-xs font-medium ${
-                                  done
-                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                    : 'bg-white/10 text-white/70 border border-white/20'
-                                }`}
-                              >
-                                {done ? '✓ Done' : 'Mark'}
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* Expenses for This Day */}
-                  {activeBudget && expenses.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
-                        Expenses Today
-                      </h4>
-                      {expenses.map((e) => {
-                          // Find the category in the budget
-                          const category = activeBudget.categories.find(
-                            (c) => c.id === e.categoryId
-                          )
-
-                          // Calculate total spent in this category (all expenses in budget period)
-                          const categoryExpenses = budgetExpenses.filter(
-                            (ex) => ex.categoryId === e.categoryId
-                          )
-                          const totalSpentInCategory = categoryExpenses.reduce(
-                            (sum, ex) => sum + ex.amount,
-                            0
-                          )
-
-                          // Calculate remaining budget for this category
-                          const categoryRemaining = category
-                            ? category.allocatedAmount - totalSpentInCategory
-                            : 0
-                          const isOver = categoryRemaining < 0
-
-                          return (
-                            <div
-                              key={e.id}
-                              className={`rounded-lg border p-3 transition-colors ${
-                                isOver
-                                  ? 'border-red-500/30 bg-red-500/10'
-                                  : 'border-white/10 bg-white/5'
-                              }`}
-                            >
-                              <div className="flex justify-between items-start gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm text-white font-medium">
-                                    {e.categoryName}
-                                  </div>
-                                  {e.description && (
-                                    <div className="text-xs text-white/60 mt-0.5 truncate">
-                                      {e.description}
-                                    </div>
-                                  )}
-                                  {/* Budget Context */}
-                                  {category && (
-                                    <div
-                                      className={`text-[10px] mt-1.5 font-medium ${
-                                        isOver
-                                          ? 'text-red-400'
-                                          : 'text-green-400'
-                                      }`}
-                                    >
-                                      {isOver ? (
-                                        <>
-                                          ⚠️ Over by ₹
-                                          {Math.abs(categoryRemaining).toLocaleString(
-                                            'en-IN'
-                                          )}
-                                        </>
-                                      ) : (
-                                        <>
-                                          ✓ ₹
-                                          {categoryRemaining.toLocaleString(
-                                            'en-IN'
-                                          )}{' '}
-                                          left in budget
-                                        </>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className={`text-sm font-semibold ${
-                                      isOver ? 'text-red-400' : 'text-red-400'
-                                    }`}
-                                  >
-                                    -₹{e.amount.toLocaleString('en-IN')}
-                                  </span>
-                                  <button
-                                    onClick={() => removeExpense(e)}
-                                    className="text-white/40 hover:text-red-400 transition-colors"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        })}
-                    </div>
-                  )}
-
-                  {/* Income for This Day */}
-                  {activeBudget && income.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
-                        Income Today
-                      </h4>
-                      {income.map((i) => (
-                          <div
-                            key={i.id}
-                            className="rounded-lg border border-green-500/30 bg-green-500/5 p-3"
-                          >
-                            <div className="flex justify-between items-start gap-2">
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm text-white font-medium">
-                                  {i.categoryName}
-                                </div>
-                                {i.description && (
-                                  <div className="text-xs text-white/60 mt-0.5 truncate">
-                                    {i.description}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-green-400 font-semibold">
-                                  +₹{i.amount.toLocaleString('en-IN')}
-                                </span>
-                                <button
-                                  onClick={() => removeIncome(i)}
-                                  className="text-white/40 hover:text-red-400 transition-colors"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  {activeBudget && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => setShowAddExpense(true)}
-                        className="px-4 py-2 rounded-lg bg-linear-to-r from-red-500 to-orange-500 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] text-white text-sm font-medium transition-all"
-                      >
-                        + Expense
-                      </button>
-                      <button
-                        onClick={() => setShowAddIncome(true)}
-                        className="px-4 py-2 rounded-lg bg-linear-to-r from-green-500 to-emerald-500 hover:shadow-[0_0_20px_rgba(34,197,94,0.3)] text-white text-sm font-medium transition-all"
-                      >
-                        + Income
-                      </button>
-                    </div>
-                  )}
-
-                  {onJumpToDay && (
-                    <button
-                      onClick={() => onJumpToDay(selectedDay)}
-                      className="w-full px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 border border-white/15 text-white text-sm transition-all"
-                    >
-                      Open Day View
-                    </button>
-                  )}
-
-                  {!activeBudget &&
-                    daySips.length === 0 &&
-                    expenses.length === 0 &&
-                    income.length === 0 && (
-                      <p className="text-sm text-white/40 text-center py-4">
-                        No financial activity for this day
-                      </p>
-                    )}
-                </>
-              )
-            })()}
-          </div>
-        </Modal>
-      )}
 
       {/* Forms */}
       <Modal
