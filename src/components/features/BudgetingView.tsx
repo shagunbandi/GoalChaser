@@ -10,6 +10,8 @@ import type {
   Income,
 } from '@/types'
 import { Card, Modal } from '@/components/ui'
+import { YearViewHeader } from './YearViewHeader'
+import { MonthCard } from './MonthCard'
 import {
   SIPForm,
   SIPCard,
@@ -19,7 +21,6 @@ import {
   ExpenseForm,
   IncomeForm,
 } from './budgeting'
-import { MONTH_NAMES, WEEKDAY_LABELS } from '@/constants'
 import { computeMonthInfo, formatDateDisplay } from '@/utils'
 import { generateSIPDates } from '@/lib/utils/sip-utils'
 
@@ -523,42 +524,17 @@ export function BudgetingView({
     <>
       <div className="space-y-4">
         {/* Header */}
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onPrevYear}
-                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-sm"
-              >
-                ←
-              </button>
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <span>💰</span>
-                <span>Budgeting {year}</span>
-              </h2>
-              <button
-                onClick={onNextYear}
-                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-sm"
-              >
-                →
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowAddSIP(true)}
-                className="px-3 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm border border-blue-500/30"
-              >
-                + SIP
-              </button>
-              <button
-                onClick={() => setShowAddBudget(true)}
-                className="px-3 py-1.5 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-300 text-sm border border-green-500/30"
-              >
-                + Budget
-              </button>
-            </div>
-          </div>
-        </Card>
+        <YearViewHeader
+          icon="💰"
+          title="Budgeting"
+          year={year}
+          actions={[
+            { label: '+ SIP', onClick: () => setShowAddSIP(true), variant: 'secondary' },
+            { label: '+ Budget', onClick: () => setShowAddBudget(true) },
+          ]}
+          onPrevYear={onPrevYear}
+          onNextYear={onNextYear}
+        />
 
         {/* Calendar */}
         <Card className="p-4">
@@ -578,152 +554,130 @@ export function BudgetingView({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:auto-rows-fr">
             {months.map((month) => {
-              const offset = month.days[0]?.weekdayIndex || 0
               const monthBudgets = getMonthBudgets(year, month.month)
+              const monthSIPs = getMonthSIPs(year, month.month)
 
               return (
-                <div
+                <MonthCard
                   key={month.month}
-                  className="rounded-xl border border-white/10 bg-white/5 p-3 flex flex-col"
-                >
-                  {/* Month Header */}
-                  <div className="text-sm font-semibold text-white mb-2">
-                    {MONTH_NAMES[month.month - 1]}
-                  </div>
+                  month={month}
+                  todayISO={todayISO}
+                  renderDay={(day) => {
+                    const isToday = day.iso === todayISO
+                    const info = getDayInfo(day.iso)
+                    const hasAny =
+                      info.hasSIP || info.hasExpense || info.hasIncome
 
-                  <div className="grid grid-cols-7 gap-1 mb-1">
-                    {WEEKDAY_LABELS.map((label) => (
-                      <div
-                        key={label}
-                        className="text-[10px] text-center text-white/40"
+                    return (
+                      <button
+                        key={day.iso}
+                        onClick={() => setSelectedDay(day.iso)}
+                        className={`
+                          h-8 rounded text-[11px] border relative
+                          ${isToday ? 'ring-1 ring-blue-400' : ''}
+                          ${
+                            info.hasExpense
+                              ? 'bg-red-500/10 border-red-500/30'
+                              : info.hasIncome
+                              ? 'bg-green-500/10 border-green-500/30'
+                              : 'bg-transparent border-white/10'
+                          }
+                          hover:bg-white/10 transition-colors text-white/80
+                        `}
                       >
-                        {label}
-                      </div>
-                    ))}
-                  </div>
+                        {day.dayOfMonth}
+                        {hasAny && (
+                          <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+                            {info.hasSIP && (
+                              <div className="w-1 h-1 rounded-full bg-blue-400" />
+                            )}
+                            {info.hasIncome && (
+                              <div className="w-1 h-1 rounded-full bg-green-400" />
+                            )}
+                            {info.hasExpense && (
+                              <div className="w-1 h-1 rounded-full bg-red-400" />
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    )
+                  }}
+                  footerContent={
+                    <div className="space-y-3">
+                      {/* Budgets Section */}
+                      <div>
+                        {monthBudgets.length > 0 && (
+                          <div className="text-[10px] text-white/50 mb-1.5 font-medium uppercase tracking-wide">
+                            💵 Budgets
+                          </div>
+                        )}
+                        {monthBudgets.length > 0 && (
+                          <div className="space-y-1.5">
+                            {monthBudgets.map((budget) => {
+                              const remaining = getBudgetRemaining(budget)
+                              const isOverBudget = remaining < 0
 
-                  <div className="grid grid-cols-7 gap-1 h-[192px]">
-                    {Array.from({ length: offset }).map((_, i) => (
-                      <div key={`empty-${i}`} className="h-7" />
-                    ))}
-                    {month.days.map((day) => {
-                      const isToday = day.iso === todayISO
-                      const info = getDayInfo(day.iso)
-                      const hasAny =
-                        info.hasSIP || info.hasExpense || info.hasIncome
-
-                      return (
-                        <button
-                          key={day.iso}
-                          onClick={() => setSelectedDay(day.iso)}
-                          className={`
-                            h-7 rounded text-[11px] border relative
-                            ${isToday ? 'ring-1 ring-blue-400' : ''}
-                            ${
-                              info.hasExpense
-                                ? 'bg-red-500/10 border-red-500/30'
-                                : info.hasIncome
-                                ? 'bg-green-500/10 border-green-500/30'
-                                : 'bg-transparent border-white/10'
-                            }
-                            hover:bg-white/10 transition-colors text-white/80
-                          `}
-                        >
-                          {day.dayOfMonth}
-                          {hasAny && (
-                            <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
-                              {info.hasSIP && (
-                                <div className="w-1 h-1 rounded-full bg-blue-400" />
-                              )}
-                              {info.hasIncome && (
-                                <div className="w-1 h-1 rounded-full bg-green-400" />
-                              )}
-                              {info.hasExpense && (
-                                <div className="w-1 h-1 rounded-full bg-red-400" />
-                              )}
-                            </div>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  {/* Budget & SIP Info Below Calendar - Fixed position */}
-                  <div className="mt-3 pt-2 border-t border-white/10 min-h-[60px] space-y-3">
-                    {/* Budgets Section */}
-                    <div>
-                      {monthBudgets.length > 0 && (
-                        <div className="text-[10px] text-white/50 mb-1.5 font-medium uppercase tracking-wide">
-                          💵 Budgets
-                        </div>
-                      )}
-                      {monthBudgets.length > 0 ? (
-                        <div className="space-y-1.5">
-                          {monthBudgets.map((budget) => {
-                            const remaining = getBudgetRemaining(budget)
-                            const isOverBudget = remaining < 0
-
-                            return (
-                              <div
-                                key={budget.id}
-                                className="flex items-center gap-2 text-[11px]"
-                              >
-                                <div className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-white/80 truncate">
-                                    {budget.name}
-                                  </div>
-                                  <div className="text-[10px] text-white/60">
-                                    ₹{budget.income.toLocaleString('en-IN')} •
-                                    <span
-                                      className={
-                                        isOverBudget
-                                          ? 'text-red-400 font-medium'
-                                          : 'text-green-400'
-                                      }
-                                    >
-                                      {' '}
-                                      ₹
-                                      {Math.abs(remaining).toLocaleString(
-                                        'en-IN',
-                                      )}{' '}
-                                      {isOverBudget ? 'over' : 'left'}
-                                    </span>
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setViewingBudget(budget)
-                                  }}
-                                  className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white/90 transition-colors"
-                                  title="View Budget"
+                              return (
+                                <div
+                                  key={budget.id}
+                                  className="flex items-center gap-2 text-[11px]"
                                 >
-                                  👁️
-                                </button>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      ) : null}
-                    </div>
+                                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-white/80 truncate">
+                                      {budget.name}
+                                    </div>
+                                    <div className="text-[10px] text-white/60">
+                                      ₹{budget.income.toLocaleString('en-IN')} •
+                                      <span
+                                        className={
+                                          isOverBudget
+                                            ? 'text-red-400 font-medium'
+                                            : 'text-green-400'
+                                        }
+                                      >
+                                        {' '}
+                                        ₹
+                                        {Math.abs(remaining).toLocaleString(
+                                          'en-IN',
+                                        )}{' '}
+                                        {isOverBudget ? 'over' : 'left'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setViewingBudget(budget)
+                                    }}
+                                    className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white/90 transition-colors"
+                                    title="View Budget"
+                                  >
+                                    👁️
+                                  </button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
 
-                    {/* SIPs Section */}
-                    <div>
-                      {(() => {
-                        const monthSIPs = getMonthSIPs(year, month.month)
-                        if (monthSIPs.length === 0) return null
-
-                        return (
+                      {/* SIPs Section */}
+                      <div>
+                        {monthSIPs.length > 0 && (
                           <>
                             <div className="text-[10px] text-white/50 mb-1.5 font-medium uppercase tracking-wide">
                               📈 SIPs
                             </div>
                             <div className="space-y-1.5">
                               {monthSIPs.map((sip) => {
-                                const progress = getSIPMonthProgress(sip, year, month.month)
+                                const progress = getSIPMonthProgress(
+                                  sip,
+                                  year,
+                                  month.month,
+                                )
 
                                 return (
                                   <div
@@ -736,10 +690,19 @@ export function BudgetingView({
                                         {sip.name}
                                       </div>
                                       <div className="text-[10px] text-white/60">
-                                        ₹{progress.amount.toLocaleString('en-IN')} / ₹
-                                        {(progress.amount + progress.pending).toLocaleString('en-IN')} • 
+                                        ₹
+                                        {progress.amount.toLocaleString(
+                                          'en-IN',
+                                        )}{' '}
+                                        / ₹
+                                        {(
+                                          progress.amount + progress.pending
+                                        ).toLocaleString('en-IN')}{' '}
+                                        •
                                         <span className="text-blue-400">
-                                          {' '}{progress.completed}/{progress.totalInMonth} done
+                                          {' '}
+                                          {progress.completed}/
+                                          {progress.totalInMonth} done
                                         </span>
                                       </div>
                                     </div>
@@ -748,18 +711,18 @@ export function BudgetingView({
                               })}
                             </div>
                           </>
-                        )
-                      })()}
-                    </div>
-
-                    {/* No data message */}
-                    {monthBudgets.length === 0 && getMonthSIPs(year, month.month).length === 0 && (
-                      <div className="text-[11px] text-white/40">
-                        No budgets or SIPs
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
+
+                      {/* No data message */}
+                      {monthBudgets.length === 0 && monthSIPs.length === 0 && (
+                        <div className="text-[11px] text-white/40">
+                          No budgets or SIPs
+                        </div>
+                      )}
+                    </div>
+                  }
+                />
               )
             })}
           </div>
@@ -848,7 +811,7 @@ export function BudgetingView({
                 <>
                   {/* Budget Summary Card */}
                   {activeBudget && (
-                    <div className="rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 p-4">
+                    <div className="rounded-xl bg-linear-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 p-4">
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <div>
                           <div className="text-base font-semibold text-white flex items-center gap-2">
@@ -958,8 +921,8 @@ export function BudgetingView({
                                     <div
                                       className={`h-full transition-all duration-300 rounded-full ${
                                         isOver
-                                          ? 'bg-gradient-to-r from-red-500 to-red-600'
-                                          : 'bg-gradient-to-r from-green-500 to-emerald-500'
+                                          ? 'bg-linear-to-r from-red-500 to-red-600'
+                                          : 'bg-linear-to-r from-green-500 to-emerald-500'
                                       }`}
                                       style={{ width: `${percentage}%` }}
                                     />
@@ -1183,13 +1146,13 @@ export function BudgetingView({
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => setShowAddExpense(true)}
-                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-orange-500 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] text-white text-sm font-medium transition-all"
+                        className="px-4 py-2 rounded-lg bg-linear-to-r from-red-500 to-orange-500 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] text-white text-sm font-medium transition-all"
                       >
                         + Expense
                       </button>
                       <button
                         onClick={() => setShowAddIncome(true)}
-                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-[0_0_20px_rgba(34,197,94,0.3)] text-white text-sm font-medium transition-all"
+                        className="px-4 py-2 rounded-lg bg-linear-to-r from-green-500 to-emerald-500 hover:shadow-[0_0_20px_rgba(34,197,94,0.3)] text-white text-sm font-medium transition-all"
                       >
                         + Income
                       </button>

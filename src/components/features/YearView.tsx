@@ -3,8 +3,10 @@
 import { useMemo, useState } from 'react'
 import type { DayDetails, TravelPlan } from '@/types'
 import { Card, Modal } from '@/components/ui'
+import { YearViewHeader } from './YearViewHeader'
+import { MonthCard } from './MonthCard'
 import { TravelCard, TravelForm } from './travel'
-import { MONTH_NAMES, WEEKDAY_LABELS } from '@/constants'
+import { WEEKDAY_LABELS } from '@/constants'
 import {
   computeMonthInfo,
   enumerateDateRange,
@@ -104,6 +106,31 @@ export function YearView({
 
     return plans
   }, [dayDetails, yearPrefix])
+
+  // Get travel plans for a specific month
+  const getMonthTravels = (year: number, month: number) => {
+    const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
+    const daysInMonth = new Date(year, month, 0).getDate()
+    const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(
+      daysInMonth,
+    ).padStart(2, '0')}`
+
+    // Get unique travel plans that have at least one day in this month
+    const monthTravelMap = new Map<string, TravelPlan>()
+    
+    Object.entries(dayDetails).forEach(([iso, details]) => {
+      if (iso >= monthStart && iso <= monthEnd) {
+        const travels = details.travelPlans || []
+        travels.forEach((travel) => {
+          if (!monthTravelMap.has(travel.id)) {
+            monthTravelMap.set(travel.id, travel)
+          }
+        })
+      }
+    })
+
+    return Array.from(monthTravelMap.values())
+  }
 
   const handleSaveTravel = async (formData: {
     title: string
@@ -256,217 +283,178 @@ export function YearView({
 
   return (
     <>
-      <Card className="p-6 space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onPrevYear}
-              className="
-                px-3 py-2 rounded-xl text-sm font-medium
-                bg-white/[0.05] hover:bg-white/[0.08]
-                border border-white/[0.08] hover:border-white/[0.12]
-                text-white/70 hover:text-white
-                transition-all duration-150
-              "
-            >
-              ←
-            </button>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">✈️</span>
-              <h2 className="text-xl font-semibold text-white/90">
-                Travelling Year: {year}
-              </h2>
-            </div>
-            <button
-              onClick={onNextYear}
-              className="
-                px-3 py-2 rounded-xl text-sm font-medium
-                bg-white/[0.05] hover:bg-white/[0.08]
-                border border-white/[0.08] hover:border-white/[0.12]
-                text-white/70 hover:text-white
-                transition-all duration-150
-              "
-            >
-              →
-            </button>
-          </div>
+      <YearViewHeader
+        icon="✈️"
+        title="Travelling Year:"
+        year={year}
+        stats={[
+          { label: 'Travel days', value: travelEntries.length },
+          { label: 'Weekdays', value: weekdayTravelCount },
+          { label: 'Weekends', value: weekendTravelCount },
+        ]}
+        actions={[{ label: '+ Add travel', onClick: handleAddNewTravel }]}
+        onPrevYear={onPrevYear}
+        onNextYear={onNextYear}
+      />
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="px-3 py-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm text-white/70">
-              Travel days:{' '}
-              <span className="text-white">{travelEntries.length}</span>
-            </div>
-            <div className="px-3 py-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm text-white/70">
-              Weekdays: <span className="text-white">{weekdayTravelCount}</span>
-            </div>
-            <div className="px-3 py-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm text-white/70">
-              Weekends: <span className="text-white">{weekendTravelCount}</span>
-            </div>
-            <button
-              onClick={handleAddNewTravel}
-              className="
-                inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
-                bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
-                text-white shadow-[0_0_20px_rgba(0,122,255,0.25)]
-                hover:shadow-[0_0_26px_rgba(175,82,222,0.35)]
-                transition-all duration-150
-              "
-            >
-              + Add travel
-            </button>
-          </div>
-        </div>
-
-        {/* Calendar Grid - Now shown FIRST */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <Card className="p-6">
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 md:auto-rows-fr">
           {months.map((month) => {
             const monthTravel = travelCountByMonth[month.month] || 0
-            const offset = month.days[0]?.weekdayIndex || 0
-            const monthLabel = MONTH_NAMES[month.month - 1]
+            const monthTravels = getMonthTravels(year, month.month)
 
             return (
-              <div
+              <MonthCard
                 key={month.month}
-                className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-semibold text-white/90">
-                    {monthLabel}
-                  </div>
+                month={month}
+                todayISO={todayISO}
+                headerRight={
                   <div className="text-xs text-white/50">
                     {monthTravel} travel day{monthTravel === 1 ? '' : 's'}
                   </div>
-                </div>
+                }
+                renderDay={(day) => {
+                  const travels = dayDetails[day.iso]?.travelPlans || []
+                  const agendaCount =
+                    (dayDetails[day.iso]?.agendaItems ||
+                      dayDetails[day.iso]?.plannedItems ||
+                      []).length
+                  const isToday = day.iso === todayISO
+                  const hasTravel = travels.length > 0
+                  const hasMultipleTravels = travels.length > 1
 
-                <div className="grid grid-cols-7 gap-1 mb-1">
-                  {WEEKDAY_LABELS.map((label) => (
-                    <div
-                      key={`${month.month}-${label}`}
-                      className="text-[10px] text-center text-white/40"
-                    >
-                      {label}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-7 gap-1">
-                  {Array.from({ length: offset }).map((_, index) => (
-                    <div
-                      key={`empty-${month.month}-${index}`}
-                      className="h-7"
-                    />
-                  ))}
-                  {month.days.map((day) => {
-                    const travels = dayDetails[day.iso]?.travelPlans || []
-                    const agendaCount =
-                      (dayDetails[day.iso]?.agendaItems || dayDetails[day.iso]?.plannedItems || []).length
-                    const isToday = day.iso === todayISO
-                    const hasTravel = travels.length > 0
-                    const hasMultipleTravels = travels.length > 1
-
-                    return (
-                      <button
-                        key={day.iso}
-                        onClick={() => setSelectedDay(day.iso)}
-                        className={`
-                          h-8 rounded-lg text-[11px] font-medium
-                          border relative flex flex-col items-center justify-center gap-0.5 py-1
-                          transition-all duration-150
-                          ${
-                            hasTravel
-                              ? 'border-white/[0.15] bg-white/[0.08] text-white shadow-[0_0_8px_rgba(255,255,255,0.1)]'
-                              : 'border-white/[0.07] bg-transparent text-white/70 hover:border-white/[0.12] hover:bg-white/[0.04]'
-                          }
-                          ${
-                            isToday
-                              ? 'ring-2 ring-[#007AFF] ring-offset-1 ring-offset-[#1a1a2e]'
-                              : ''
-                          }
-                          ${
-                            hasMultipleTravels
-                              ? 'ring-1 ring-yellow-500/40'
-                              : ''
-                          }
-                        `}
-                        title={
-                          travels.length
-                            ? travels.map((t) => t.title).join(' • ')
-                            : undefined
+                  return (
+                    <button
+                      key={day.iso}
+                      onClick={() => setSelectedDay(day.iso)}
+                      className={`
+                        h-8 rounded-lg text-[11px] font-medium
+                        border relative flex flex-col items-center justify-center gap-0.5 py-1
+                        transition-all duration-150
+                        ${
+                          hasTravel
+                            ? 'border-white/15 bg-white/8 text-white shadow-[0_0_8px_rgba(255,255,255,0.1)]'
+                            : 'border-white/[0.07] bg-transparent text-white/70 hover:border-white/12 hover:bg-white/4'
                         }
-                      >
-                        <span>{day.dayOfMonth}</span>
+                        ${
+                          isToday
+                            ? 'ring-2 ring-[#007AFF] ring-offset-1 ring-offset-[#1a1a2e]'
+                            : ''
+                        }
+                        ${hasMultipleTravels ? 'ring-1 ring-yellow-500/40' : ''}
+                      `}
+                      title={
+                        travels.length
+                          ? travels.map((t) => t.title).join(' • ')
+                          : undefined
+                      }
+                    >
+                      <span>{day.dayOfMonth}</span>
 
-                        {/* Travel dots below the number */}
-                        {travels.length > 0 && (
-                          <div className="flex gap-0.5 items-center">
-                            {travels.slice(0, 3).map((t) => (
-                              <span
-                                key={t.id}
-                                className="h-1 w-1 rounded-full ring-1 ring-black/20"
-                                style={{
-                                  backgroundColor:
-                                    t.color || 'rgba(14,165,233,0.9)',
-                                }}
-                                title={t.title}
-                              />
-                            ))}
-                            {travels.length > 3 && (
-                              <span className="text-[7px] font-bold text-white/80 leading-none ml-0.5">
-                                +{travels.length - 3}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                      {/* Travel dots below the number */}
+                      {travels.length > 0 && (
+                        <div className="flex gap-0.5 items-center">
+                          {travels.slice(0, 3).map((t) => (
+                            <span
+                              key={t.id}
+                              className="h-1 w-1 rounded-full ring-1 ring-black/20"
+                              style={{
+                                backgroundColor:
+                                  t.color || 'rgba(14,165,233,0.9)',
+                              }}
+                              title={t.title}
+                            />
+                          ))}
+                          {travels.length > 3 && (
+                            <span className="text-[7px] font-bold text-white/80 leading-none ml-0.5">
+                              +{travels.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
-                        {/* Agenda items indicator at the bottom */}
-                        {agendaCount > 0 && !hasTravel && (
-                          <span
-                            className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5"
-                            title={`${agendaCount} agenda item${
-                              agendaCount === 1 ? '' : 's'
-                            }`}
+                      {/* Agenda items indicator at the bottom */}
+                      {agendaCount > 0 && !hasTravel && (
+                        <span
+                          className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5"
+                          title={`${agendaCount} agenda item${
+                            agendaCount === 1 ? '' : 's'
+                          }`}
+                        >
+                          {Array.from({
+                            length: Math.min(agendaCount, 3),
+                          }).map((_, idx) => (
+                            <span
+                              key={idx}
+                              className="h-1 w-1 rounded-full bg-white/60"
+                            />
+                          ))}
+                          {agendaCount > 3 && (
+                            <span className="text-[7px] text-white/50 leading-none">
+                              +
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </button>
+                  )
+                }}
+                footerContent={
+                  monthTravels.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="text-[10px] text-white/50 mb-1.5 font-medium uppercase tracking-wide">
+                        ✈️ Travel Plans
+                      </div>
+                      <div className="space-y-1.5">
+                        {monthTravels.map((travel) => (
+                          <div
+                            key={travel.id}
+                            className="flex items-center gap-2 text-[11px]"
                           >
-                            {Array.from({
-                              length: Math.min(agendaCount, 3),
-                            }).map((_, idx) => (
-                              <span
-                                key={idx}
-                                className="h-1 w-1 rounded-full bg-white/60"
-                              />
-                            ))}
-                            {agendaCount > 3 && (
-                              <span className="text-[7px] text-white/50 leading-none">
-                                +
-                              </span>
-                            )}
-                          </span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
+                            <div
+                              className="w-1.5 h-1.5 rounded-full shrink-0"
+                              style={{
+                                backgroundColor:
+                                  travel.color || 'rgba(14,165,233,0.9)',
+                              }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-white/80 truncate">
+                                {travel.title}
+                              </div>
+                              <div className="text-[10px] text-white/60">
+                                {travel.destination && (
+                                  <span>{travel.destination} • </span>
+                                )}
+                                {formatShortDate(travel.startDate)} →{' '}
+                                {formatShortDate(travel.endDate)}
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleEditTravel(travel)
+                              }}
+                              className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white/90 transition-colors"
+                              title="Edit Travel"
+                            >
+                              ✏️
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-white/40">
+                      No travel plans
+                    </div>
+                  )
+                }
+              />
             )
           })}
         </div>
-
-        {/* Travel Plans Section - Now shown AFTER calendar */}
-        {travelPlans.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-white/70 mb-3">
-              Travel Plans
-            </h3>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {travelPlans.map((plan) => (
-                <TravelCard
-                  key={plan.id}
-                  travel={plan}
-                  onClick={() => handleEditTravel(plan)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
       </Card>
 
       <Modal
@@ -605,7 +593,7 @@ export function YearView({
                 onClick={() => handleAddTravelFromDay(selectedDay)}
                 className="
                   flex-1 px-4 py-2 rounded-xl text-sm font-medium
-                  bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
+                  bg-linear-to-r from-[#007AFF] to-[#AF52DE]
                   text-white hover:shadow-[0_0_20px_rgba(0,122,255,0.3)]
                   transition-all duration-150
                 "
