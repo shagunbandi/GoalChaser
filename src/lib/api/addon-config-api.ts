@@ -2,7 +2,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { getDb } from '@/lib/firebase'
 import type { GoalAddonsConfig, AddonId } from '@/types/addon-config'
 
-const DEFAULT_ADDONS: AddonId[] = ['calendar', 'finance', 'travel', 'analytics']
+const DEFAULT_ADDONS: AddonId[] = ['calendar', 'productivity', 'hours', 'finance', 'travel', 'analytics']
 
 /**
  * Load goal add-ons configuration from Firebase

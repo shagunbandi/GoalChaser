@@ -9,7 +9,7 @@ import { useGoals } from '@/hooks/useGoals'
 import { useAuth } from '@/hooks/useAuth'
 
 import { Card, Navbar } from '@/components/ui'
-import { Calendar, DetailView, GroupedTabBar, AddonsManagerModal } from '@/components/features'
+import { Calendar, GroupedTabBar, AddonsManagerModal } from '@/components/features'
 import { useAddonsConfig } from '@/hooks/useAddonsConfig'
 
 import {
@@ -18,7 +18,6 @@ import {
   getPreviousMonth,
   getNextMonth,
   getMsUntilMidnight,
-  enumerateDateRange,
 } from '@/utils'
 
 import type { DayStatus, DayDetails } from '@/types'
@@ -39,18 +38,9 @@ export default function GoalPage() {
   // Firebase hook for data persistence (scoped to this goal)
   const {
     dayDetails,
-    subjectConfigs,
     isLoading,
     error,
     updateDayDetails,
-    addSubjectConfig,
-    removeSubjectConfig,
-    updateSubjectConfig,
-    toggleSubjectHasTopics,
-    addTopicToSubject,
-    removeTopicFromSubject,
-    updateTopicInSubject,
-    isTopicInUse,
   } = useFirebase(goalId)
 
   // Initialize todayISO and selectedDate together so selectedDate defaults to today
@@ -125,7 +115,10 @@ export default function GoalPage() {
   const dayStatuses = useMemo(() => {
     const statuses: Record<string, DayStatus> = {}
     Object.entries(dayDetails).forEach(([iso, details]) => {
-      statuses[iso] = details.status
+      // Show any day with data as having "some activity"
+      if (details.note || details.agendaItems?.length || details.status) {
+        statuses[iso] = details.status || 5 // Default to "OK" indicator
+      }
     })
     return statuses
   }, [dayDetails])
@@ -149,14 +142,6 @@ export default function GoalPage() {
     setCurrentMonth(next.month)
   }
 
-  const goToPreviousYear = () => {
-    setCurrentYear((prev) => prev - 1)
-  }
-
-  const goToNextYear = () => {
-    setCurrentYear((prev) => prev + 1)
-  }
-
   const handleDayClick = (iso: string) => {
     pushStatus({ text: 'Selecting date…', tone: 'progress' })
     setSelectedDate(iso)
@@ -174,38 +159,6 @@ export default function GoalPage() {
     updates: Partial<DayDetails>,
   ) => {
     await updateDayDetails(iso, updates)
-  }
-
-  const handleAddSubject = (name: string) => {
-    addSubjectConfig(name)
-  }
-
-  const handleAddTopic = (subjectId: string, topic: string) => {
-    addTopicToSubject(subjectId, topic)
-  }
-
-  const handleRemoveSubject = (id: string) => {
-    removeSubjectConfig(id)
-  }
-
-  const handleUpdateSubject = (id: string, name: string) => {
-    updateSubjectConfig(id, name)
-  }
-
-  const handleToggleHasTopics = (id: string) => {
-    toggleSubjectHasTopics(id)
-  }
-
-  const handleRemoveTopic = (subjectId: string, topic: string) => {
-    removeTopicFromSubject(subjectId, topic)
-  }
-
-  const handleUpdateTopic = (
-    subjectId: string,
-    oldTopic: string,
-    newTopic: string,
-  ) => {
-    updateTopicInSubject(subjectId, oldTopic, newTopic)
   }
 
   // Loading state (including auth check)
@@ -267,6 +220,13 @@ export default function GoalPage() {
         </div>
       </div>
     )
+  }
+
+  const selectedDetails = dayDetails[selectedDate] || {
+    status: null,
+    subject: '',
+    topic: '',
+    note: '',
   }
 
   return (
@@ -337,7 +297,7 @@ export default function GoalPage() {
                   onNextMonth={() => {
                     pushStatus({ text: 'Next month', tone: 'progress' })
                     goToNextMonth()
-                    pushStatus({ text: 'Month changed', tone: 'success' })
+                    pushStatus({ text: 'Year changed', tone: 'success' })
                   }}
                   onDayClick={handleDayClick}
                   goalStartDate={goal?.startDate}
@@ -346,33 +306,122 @@ export default function GoalPage() {
                   noCard
                 />
 
-                {/* Day Details - Bottom on mobile, Right on desktop */}
-                <DetailView
-                  selectedDate={selectedDate}
-                  todayISO={todayISO}
-                  dayDetails={dayDetails}
-                  subjectConfigs={subjectConfigs}
-                  onUpdateDetails={handleUpdateDetails}
-                  onAddSubject={handleAddSubject}
-                  onRemoveSubject={handleRemoveSubject}
-                  onUpdateSubject={handleUpdateSubject}
-                  onToggleHasTopics={handleToggleHasTopics}
-                  onAddTopic={handleAddTopic}
-                  onRemoveTopic={handleRemoveTopic}
-                  onUpdateTopic={handleUpdateTopic}
-                  isTopicInUse={isTopicInUse}
-                  successCriterion={goal?.successCriterion}
-                  noCard
-                  onStatus={pushStatus}
-                  onNavigateToBudget={(date) => {
-                    const [y, month, day] = date.split('-')
-                    router.push(`/goal/${goalId}/finance/${y}/${month}/${day}`)
-                  }}
-                  onNavigateToTravel={(date) => {
-                    const [y, month, day] = date.split('-')
-                    router.push(`/goal/${goalId}/travel/${y}/${month}/${day}`)
-                  }}
-                />
+                {/* Day Details (Simple Notes) - Bottom on mobile, Right on desktop */}
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-white/90">
+                      {new Date(selectedDate).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </h2>
+                    {selectedDate === todayISO && (
+                      <span className="text-xs px-2 py-1 bg-[#007AFF]/20 text-[#007AFF] rounded-full border border-[#007AFF]/30">
+                        Today
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Notes */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-white/60">
+                      Notes
+                    </label>
+                    <textarea
+                      value={selectedDetails.note || ''}
+                      onChange={(e) => {
+                        handleUpdateDetails(selectedDate, { note: e.target.value })
+                      }}
+                      placeholder="Write notes for this day..."
+                      className="
+                        w-full min-h-[200px] px-4 py-3
+                        bg-white/5 border border-white/10
+                        rounded-xl text-white placeholder-white/30
+                        focus:outline-none focus:ring-2 focus:ring-[#007AFF]/50
+                        resize-none
+                      "
+                    />
+                  </div>
+
+                  {/* Quick Links */}
+                  <div className="space-y-2 pt-4 border-t border-white/10">
+                    <div className="text-sm font-medium text-white/60 mb-3">
+                      Track this day:
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {enabledAddons.includes('productivity') && (
+                        <Link
+                          href={`/goal/${goalId}/productivity/${currentYear}?date=${selectedDate}`}
+                          className="
+                            px-4 py-3 rounded-xl
+                            bg-white/5 hover:bg-white/10
+                            border border-white/10
+                            text-white/80 hover:text-white
+                            text-sm font-medium
+                            transition-all duration-150
+                            flex items-center gap-2
+                          "
+                        >
+                          <span>📊</span>
+                          <span>Productivity</span>
+                        </Link>
+                      )}
+                      {enabledAddons.includes('hours') && (
+                        <Link
+                          href={`/goal/${goalId}/hours/${currentYear}?date=${selectedDate}`}
+                          className="
+                            px-4 py-3 rounded-xl
+                            bg-white/5 hover:bg-white/10
+                            border border-white/10
+                            text-white/80 hover:text-white
+                            text-sm font-medium
+                            transition-all duration-150
+                            flex items-center gap-2
+                          "
+                        >
+                          <span>⏱️</span>
+                          <span>Hours</span>
+                        </Link>
+                      )}
+                      {enabledAddons.includes('finance') && (
+                        <Link
+                          href={`/goal/${goalId}/finance/${currentYear}?date=${selectedDate}`}
+                          className="
+                            px-4 py-3 rounded-xl
+                            bg-white/5 hover:bg-white/10
+                            border border-white/10
+                            text-white/80 hover:text-white
+                            text-sm font-medium
+                            transition-all duration-150
+                            flex items-center gap-2
+                          "
+                        >
+                          <span>💰</span>
+                          <span>Finance</span>
+                        </Link>
+                      )}
+                      {enabledAddons.includes('travel') && (
+                        <Link
+                          href={`/goal/${goalId}/travel/${currentYear}?date=${selectedDate}`}
+                          className="
+                            px-4 py-3 rounded-xl
+                            bg-white/5 hover:bg-white/10
+                            border border-white/10
+                            text-white/80 hover:text-white
+                            text-sm font-medium
+                            transition-all duration-150
+                            flex items-center gap-2
+                          "
+                        >
+                          <span>✈️</span>
+                          <span>Travel</span>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </Card>
         </div>

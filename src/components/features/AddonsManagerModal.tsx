@@ -23,7 +23,9 @@ export function AddonsManagerModal({
   const [selectedAddons, setSelectedAddons] = useState<AddonId[]>(enabledAddons)
   const [isSaving, setIsSaving] = useState(false)
 
-  const allAddons: AddonId[] = Object.keys(ADDON_REGISTRY) as AddonId[]
+  // Filter out primary addons (like calendar) - they can't be disabled
+  const allAddons: AddonId[] = (Object.keys(ADDON_REGISTRY) as AddonId[])
+    .filter(id => !ADDON_REGISTRY[id].isPrimary)
 
   const handleToggle = (addonId: AddonId) => {
     setSelectedAddons((prev) => {
@@ -66,7 +68,7 @@ export function AddonsManagerModal({
       <div className="space-y-6">
         {/* Description */}
         <p className="text-white/60 text-sm">
-          Enable or disable add-ons for this goal. You can customize which features you want to use.
+          Enable or disable add-ons for this goal. Calendar is always enabled and cannot be disabled.
         </p>
 
         {/* Add-ons List */}

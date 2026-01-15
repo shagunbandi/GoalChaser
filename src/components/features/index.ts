@@ -29,3 +29,8 @@ export * from './analytics'
 // Travel components
 export * from './travel'
 
+// Productivity components
+export * from './productivity'
+
+// Hours components
+export * from './hours'
