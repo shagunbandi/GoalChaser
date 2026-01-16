@@ -8,13 +8,16 @@ import type { PluginIndicator } from '@/components/features/Calendar'
 interface PluginSummaryAggregatorProps {
   /** Enabled plugins to query for summaries */
   plugins: Plugin[]
-  
+
   /** Date to get summaries for */
   date: string
-  
+
   /** Plugin data for the date (map of pluginId -> data) */
   pluginData: Record<string, any>
-  
+
+  /** Goal ID for building navigation URLs */
+  goalId?: string
+
   /** Optional callback when an action is clicked */
   onActionClick?: (pluginId: string, actionLabel: string) => void
 }
@@ -27,24 +30,25 @@ export function PluginSummaryAggregator({
   plugins,
   date,
   pluginData,
+  goalId,
   onActionClick,
 }: PluginSummaryAggregatorProps) {
   const summaries = useMemo(() => {
     const result: Array<{ pluginId: string; summary: CalendarDaySummary }> = []
-    
+
     for (const plugin of plugins) {
       if (!plugin.calendar?.getDaySummary) continue
-      
+
       const data = pluginData[plugin.id] || null
-      const summary = plugin.calendar.getDaySummary(date, data)
-      
+      const summary = plugin.calendar.getDaySummary(date, data, { goalId })
+
       if (summary && summary.hasData && summary.summary) {
         result.push({ pluginId: plugin.id, summary })
       }
     }
-    
+
     return result
-  }, [plugins, date, pluginData])
+  }, [plugins, date, pluginData, goalId])
 
   if (summaries.length === 0) {
     return null
@@ -71,21 +75,22 @@ export function PluginSummaryAggregator({
 export function usePluginIndicators(
   plugins: Plugin[],
   dateRange: string[],
-  pluginDataByDate: Record<string, Record<string, any>>
+  pluginDataByDate: Record<string, Record<string, any>>,
+  goalId?: string,
 ): Record<string, PluginIndicator[]> {
   return useMemo(() => {
     const indicators: Record<string, PluginIndicator[]> = {}
-    
+
     for (const date of dateRange) {
       const dayIndicators: PluginIndicator[] = []
       const pluginData = pluginDataByDate[date] || {}
-      
+
       for (const plugin of plugins) {
         if (!plugin.calendar?.getDaySummary) continue
-        
+
         const data = pluginData[plugin.id] || null
-        const summary = plugin.calendar.getDaySummary(date, data)
-        
+        const summary = plugin.calendar.getDaySummary(date, data, { goalId })
+
         if (summary) {
           dayIndicators.push({
             pluginId: plugin.id,
@@ -95,12 +100,12 @@ export function usePluginIndicators(
           })
         }
       }
-      
+
       if (dayIndicators.length > 0) {
         indicators[date] = dayIndicators
       }
     }
-    
+
     return indicators
-  }, [plugins, dateRange, pluginDataByDate])
+  }, [plugins, dateRange, pluginDataByDate, goalId])
 }

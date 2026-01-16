@@ -28,9 +28,14 @@ export interface Plugin<TDayData = any, TConfig = any> {
      * Generate calendar summary for a specific date
      * @param date ISO date string (YYYY-MM-DD)
      * @param data Day data for this plugin (or null if no data)
+     * @param context Optional context information (goalId, etc.) for building navigation URLs
      * @returns CalendarDaySummary or null if no summary to show
      */
-    getDaySummary: (date: string, data: TDayData | null) => CalendarDaySummary | null
+    getDaySummary: (
+      date: string,
+      data: TDayData | null,
+      context?: { goalId?: string }
+    ) => CalendarDaySummary | null
   }
 
   /** Optional: Analytics integration for charts and metrics */
@@ -296,8 +301,11 @@ export interface CalendarSummaryAction {
   /** Button label */
   label: string
 
-  /** Click handler */
-  onClick: () => void
+  /** Navigation URL (if provided, will be used instead of onClick) */
+  url?: string
+
+  /** Click handler (optional if url is provided) */
+  onClick?: () => void
 
   /** Optional icon */
   icon?: string

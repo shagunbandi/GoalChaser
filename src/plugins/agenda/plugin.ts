@@ -3,6 +3,7 @@ import { AgendaDataProvider } from './data-provider'
 import { AgendaDetailProviderImpl } from './detail-provider'
 import AgendaPage from './pages/AgendaPage'
 import type { AgendaItem } from './types'
+import { buildPluginUrl } from '@/lib/plugin-url-utils'
 
 export const AgendaPlugin: Plugin = {
   id: 'agenda',
@@ -29,7 +30,7 @@ export const AgendaPlugin: Plugin = {
 
   // Calendar integration
   calendar: {
-    getDaySummary: (date, data) => {
+    getDaySummary: (date, data, context) => {
       // Data expected to be array of agenda items
       const items: AgendaItem[] = data?.agendaItems || data || []
       
@@ -39,6 +40,18 @@ export const AgendaPlugin: Plugin = {
 
       const completedCount = items.filter(item => item.completed).length
       const totalCount = items.length
+
+      // Build navigation URL
+      const dateObj = new Date(date)
+      const year = dateObj.getFullYear()
+      const url = context?.goalId
+        ? buildPluginUrl({
+            goalId: context.goalId,
+            pluginId: 'agenda',
+            year,
+            date,
+          })
+        : undefined
 
       return {
         color: '#FF9500', // Orange
@@ -51,9 +64,7 @@ export const AgendaPlugin: Plugin = {
           actions: [
             {
               label: 'Add item',
-              onClick: () => {
-                console.log('Navigate to agenda for', date)
-              },
+              url,
               variant: 'primary',
             },
           ],

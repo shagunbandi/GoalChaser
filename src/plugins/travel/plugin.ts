@@ -3,6 +3,7 @@ import { TravelDataProvider } from './data-provider'
 import { TravelDetailProviderImpl } from './detail-provider'
 import TravelPage from './pages/TravelPage'
 import type { TravelPlan } from './types'
+import { buildPluginUrl } from '@/lib/plugin-url-utils'
 
 export const TravelPlugin: Plugin = {
   id: 'travel',
@@ -29,7 +30,7 @@ export const TravelPlugin: Plugin = {
 
   // Calendar integration
   calendar: {
-    getDaySummary: (date, data) => {
+    getDaySummary: (date, data, context) => {
       // Data is now day-based with travelPlans array
       const plans: TravelPlan[] = data?.travelPlans || []
       
@@ -55,6 +56,18 @@ export const TravelPlugin: Plugin = {
         content += ` (+${activePlans.length - 1} more)`
       }
 
+      // Build navigation URL
+      const dateObj = new Date(date)
+      const year = dateObj.getFullYear()
+      const url = context?.goalId
+        ? buildPluginUrl({
+            goalId: context.goalId,
+            pluginId: 'travel',
+            year,
+            date,
+          })
+        : undefined
+
       return {
         color: plan.color || '#8E44AD', // Use plan color or default purple
         hasData: true,
@@ -66,9 +79,7 @@ export const TravelPlugin: Plugin = {
           actions: [
             {
               label: 'View details',
-              onClick: () => {
-                console.log('Navigate to travel for', date)
-              },
+              url,
             },
           ],
         },

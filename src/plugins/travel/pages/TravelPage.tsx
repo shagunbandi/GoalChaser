@@ -3,7 +3,7 @@
 import type { PluginPageProps } from '@/sdk'
 import { YearView } from '../components'
 import { useGoalData } from '@/hooks/useGoalData'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { enumerateDateRange } from '@/utils'
 import type { TravelPlan, TravelPlanInput } from '../types'
 
@@ -13,6 +13,8 @@ export default function TravelPage({
 }: PluginPageProps) {
   const goalId = params.id
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialSelectedDay = searchParams.get('date')
 
   const { goal, isLoading, todayISO, pluginData, handleUpdateData } =
     useGoalData(goalId, year)
@@ -93,7 +95,7 @@ export default function TravelPage({
         onAddTravel={handleAddTravel}
         onUpdateDay={handleUpdateDetails}
         onJumpToDay={handleJumpToDay}
-        initialSelectedDay={null}
+        initialSelectedDay={initialSelectedDay}
       />
     </main>
   )

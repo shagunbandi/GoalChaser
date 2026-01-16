@@ -1,9 +1,13 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Calendar, PluginIndicator } from '../Calendar'
 import { CalendarDetailPanel } from './CalendarDetailPanel'
-import { PluginSummaryAggregator, usePluginIndicators } from './PluginSummaryAggregator'
+import {
+  PluginSummaryAggregator,
+  usePluginIndicators,
+} from './PluginSummaryAggregator'
 import { useGoalData } from '@/hooks/useGoalData'
 import { usePluginRegistry } from '@/core/plugin-registry/hooks'
 import { useAddonsConfig } from '@/hooks/useAddonsConfig'
@@ -17,12 +21,18 @@ interface CalendarPageProps {
 
 export default function CalendarPage({ context }: CalendarPageProps) {
   const { user } = useAuth()
+  const router = useRouter()
   const goalId = context.goalId
-  const { goal, isLoading: loading, pluginData, handleUpdateData } = useGoalData(goalId)
+  const {
+    goal,
+    isLoading: loading,
+    pluginData,
+    handleUpdateData,
+  } = useGoalData(goalId)
   const { enabledAddons } = useAddonsConfig(user?.uid, goalId)
   const { registry } = usePluginRegistry()
   const plugins = registry.getAllPlugins()
-  
+
   // Extract calendar-specific data
   const calendarData = pluginData?.['calendar'] || {}
 
@@ -37,10 +47,12 @@ export default function CalendarPage({ context }: CalendarPageProps) {
   const monthInfo: MonthInfo = useMemo(() => {
     const daysInMonth = new Date(year, month, 0).getDate()
     const days: DayInfo[] = []
-    
+
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month - 1, day)
-      const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      const iso = `${year}-${String(month).padStart(2, '0')}-${String(
+        day,
+      ).padStart(2, '0')}`
       days.push({
         date,
         iso,
@@ -48,23 +60,23 @@ export default function CalendarPage({ context }: CalendarPageProps) {
         weekdayIndex: (date.getDay() + 6) % 7, // Convert Sunday=0 to Monday=0
       })
     }
-    
+
     return { year, month, days }
   }, [year, month])
 
   // Generate date range for the current month
   const dateRange = useMemo(() => {
-    return monthInfo.days.map(d => d.iso)
+    return monthInfo.days.map((d) => d.iso)
   }, [monthInfo])
 
   // Organize plugin data by date (aggregate all plugin data for each date)
   const pluginDataByDate: Record<string, Record<string, any>> = useMemo(() => {
     const data: Record<string, Record<string, any>> = {}
     if (pluginData) {
-      dateRange.forEach(date => {
+      dateRange.forEach((date) => {
         // Aggregate data from all plugins for this date
         const dayData: Record<string, any> = {}
-        Object.keys(pluginData).forEach(pluginId => {
+        Object.keys(pluginData).forEach((pluginId) => {
           const pluginDayData = pluginData[pluginId]?.[date]
           if (pluginDayData) {
             dayData[pluginId] = pluginDayData
@@ -77,13 +89,18 @@ export default function CalendarPage({ context }: CalendarPageProps) {
   }, [pluginData, dateRange])
 
   // Get plugin indicators (colored dots) for this month
-  const pluginIndicators = usePluginIndicators(plugins, dateRange, pluginDataByDate)
+  const pluginIndicators = usePluginIndicators(
+    plugins,
+    dateRange,
+    pluginDataByDate,
+    goalId,
+  )
 
   // Build dayStatuses from productivity plugin data
   const dayStatuses: Record<string, DayStatus> = useMemo(() => {
     const statuses: Record<string, DayStatus> = {}
     const productivityData = pluginData?.['productivity'] || {}
-    Object.keys(productivityData).forEach(date => {
+    Object.keys(productivityData).forEach((date) => {
       statuses[date] = productivityData[date]?.status || null
     })
     return statuses
@@ -107,8 +124,10 @@ export default function CalendarPage({ context }: CalendarPageProps) {
   }
 
   const handleJumpToPlugin = (pluginId: string, date: string) => {
-    // TODO: Implement navigation to plugin with date context
-    console.log('Jump to plugin:', pluginId, date)
+    // Navigate to plugin page with date context
+    const dateObj = new Date(date)
+    const year = dateObj.getFullYear()
+    router.push(`/goal/${goalId}/${pluginId}/${year}?date=${date}`)
   }
 
   if (loading || !goal) {
@@ -119,10 +138,14 @@ export default function CalendarPage({ context }: CalendarPageProps) {
     )
   }
 
-  const selectedDateNotes = selectedDate ? (calendarData?.[selectedDate]?.notes || '') : ''
+  const selectedDateNotes = selectedDate
+    ? calendarData?.[selectedDate]?.notes || ''
+    : ''
 
   // Convert enabledAddons array to object for PluginSummaryAggregator
-  const enabledAddonsObj = Object.fromEntries(enabledAddons.map(id => [id, {}]))
+  const enabledAddonsObj = Object.fromEntries(
+    enabledAddons.map((id) => [id, {}]),
+  )
 
   const todayISO = new Date().toISOString().split('T')[0]
 
@@ -160,7 +183,10 @@ export default function CalendarPage({ context }: CalendarPageProps) {
                   plugins={plugins}
                   date={selectedDate}
                   pluginData={pluginDataByDate[selectedDate] || {}}
-                  onActionClick={(pluginId, actionLabel) => handleJumpToPlugin(pluginId, selectedDate)}
+                  goalId={goalId}
+                  onActionClick={(pluginId) =>
+                    handleJumpToPlugin(pluginId, selectedDate)
+                  }
                 />
               }
             />

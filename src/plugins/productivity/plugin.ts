@@ -7,6 +7,7 @@ import { ProductivityDataProvider } from './data-provider'
 import { ProductivityDetailProviderImpl } from './detail-provider'
 import ProductivityPage from './pages/ProductivityPage'
 import type { ProductivityDayData, ProductivityConfig } from './types'
+import { buildPluginUrl } from '@/lib/plugin-url-utils'
 
 export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig> = {
   id: 'productivity',
@@ -33,7 +34,7 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
 
   // Calendar integration
   calendar: {
-    getDaySummary: (date, data) => {
+    getDaySummary: (date, data, context) => {
       if (!data || (data.status === null && !data.areas?.length)) {
         return null
       }
@@ -58,6 +59,18 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
         ? `${status}/10 (${level})` 
         : `${areasCount} area${areasCount > 1 ? 's' : ''}`
 
+      // Build navigation URL
+      const dateObj = new Date(date)
+      const year = dateObj.getFullYear()
+      const url = context?.goalId
+        ? buildPluginUrl({
+            goalId: context.goalId,
+            pluginId: 'productivity',
+            year,
+            date,
+          })
+        : undefined
+
       return {
         color: '#34C759', // Green
         hasData: true,
@@ -69,9 +82,7 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
           actions: [
             {
               label: 'View details',
-              onClick: () => {
-                console.log('Navigate to productivity for', date)
-              },
+              url,
             },
           ],
         },

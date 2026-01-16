@@ -9,6 +9,7 @@ import { HoursDataProvider } from './data-provider'
 import { HoursDetailProviderImpl } from './detail-provider'
 import HoursPage from './pages/HoursPage'
 import type { HoursDayData, HoursConfig } from './types'
+import { buildPluginUrl } from '@/lib/plugin-url-utils'
 
 export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
   id: 'hours',
@@ -35,7 +36,7 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
 
   // Calendar integration
   calendar: {
-    getDaySummary: (date, data) => {
+    getDaySummary: (date, data, context) => {
       if (!data || (!data.subjects?.length && !data.directHours)) {
         return null
       }
@@ -53,6 +54,18 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
         ? data.subjects.map(s => `${s.subject}: ${s.hours}h`).join(', ')
         : `${totalHours}h tracked`
 
+      // Build navigation URL
+      const dateObj = new Date(date)
+      const year = dateObj.getFullYear()
+      const url = context?.goalId
+        ? buildPluginUrl({
+            goalId: context.goalId,
+            pluginId: 'hours',
+            year,
+            date,
+          })
+        : undefined
+
       return {
         color: '#007AFF', // Blue
         hasData: true,
@@ -64,10 +77,7 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
           actions: [
             {
               label: 'View details',
-              onClick: () => {
-                // Navigation will be handled by the calendar component
-                console.log('Navigate to hours for', date)
-              },
+              url,
             },
           ],
         },

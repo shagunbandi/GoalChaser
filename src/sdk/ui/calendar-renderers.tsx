@@ -1,6 +1,11 @@
 'use client'
 
-import type { CalendarSummaryConfig, CalendarSummaryAction } from '../interfaces/plugin.interface'
+import React from 'react'
+import Link from 'next/link'
+import type {
+  CalendarSummaryConfig,
+  CalendarSummaryAction,
+} from '../interfaces/plugin.interface'
 
 /**
  * Props for summary renderer components
@@ -8,6 +13,46 @@ import type { CalendarSummaryConfig, CalendarSummaryAction } from '../interfaces
 interface SummaryRendererProps {
   config: CalendarSummaryConfig
   onActionClick?: (action: CalendarSummaryAction) => void
+}
+
+/**
+ * Action button component that handles both URL and onClick actions
+ */
+function ActionButton({
+  action,
+  onClick,
+  className,
+}: {
+  action: CalendarSummaryAction
+  onClick?: () => void
+  className: string
+}) {
+  const content = (
+    <>
+      {action.icon && <span className="mr-1">{action.icon}</span>}
+      {action.label}
+    </>
+  )
+
+  if (action.url) {
+    return (
+      <Link href={action.url} className={className} onClick={onClick}>
+        {content}
+      </Link>
+    )
+  }
+
+  return (
+    <button
+      onClick={() => {
+        action.onClick?.()
+        onClick?.()
+      }}
+      className={className}
+    >
+      {content}
+    </button>
+  )
 }
 
 /**
@@ -21,8 +66,10 @@ export function SummaryChip({ config, onActionClick }: SummaryRendererProps) {
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {icon && <span className="text-lg flex-shrink-0">{icon}</span>}
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="text-sm font-medium text-white/80 truncate">{title}</span>
-          <span 
+          <span className="text-sm font-medium text-white/80 truncate">
+            {title}
+          </span>
+          <span
             className="text-sm text-white/60 truncate"
             style={color ? { color } : undefined}
           >
@@ -30,21 +77,16 @@ export function SummaryChip({ config, onActionClick }: SummaryRendererProps) {
           </span>
         </div>
       </div>
-      
+
       {actions && actions.length > 0 && (
         <div className="flex items-center gap-1 flex-shrink-0">
           {actions.map((action, idx) => (
-            <button
+            <ActionButton
               key={idx}
-              onClick={() => {
-                action.onClick()
-                onActionClick?.(action)
-              }}
+              action={action}
+              onClick={() => onActionClick?.(action)}
               className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
-            >
-              {action.icon && <span className="mr-1">{action.icon}</span>}
-              {action.label}
-            </button>
+            />
           ))}
         </div>
       )}
@@ -55,7 +97,10 @@ export function SummaryChip({ config, onActionClick }: SummaryRendererProps) {
 /**
  * Accordion renderer - expandable summary with details
  */
-export function SummaryAccordion({ config, onActionClick }: SummaryRendererProps) {
+export function SummaryAccordion({
+  config,
+  onActionClick,
+}: SummaryRendererProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const { icon, title, content, color, actions } = config
 
@@ -71,19 +116,26 @@ export function SummaryAccordion({ config, onActionClick }: SummaryRendererProps
           <span className="text-sm font-medium text-white/90">{title}</span>
         </div>
         <svg
-          className={`w-5 h-5 text-white/60 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-5 h-5 text-white/60 transition-transform ${
+            isOpen ? 'rotate-180' : ''
+          }`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
         </svg>
       </button>
 
       {/* Content */}
       {isOpen && (
         <div className="px-4 py-3 border-t border-white/10">
-          <div 
+          <div
             className="text-sm text-white/70 mb-3"
             style={color ? { color } : undefined}
           >
@@ -99,22 +151,29 @@ export function SummaryAccordion({ config, onActionClick }: SummaryRendererProps
           {actions && actions.length > 0 && (
             <div className="flex items-center gap-2 pt-2 border-t border-white/10">
               {actions.map((action, idx) => (
-                <button
+                <ActionButton
                   key={idx}
-                  onClick={() => {
-                    action.onClick()
-                    onActionClick?.(action)
-                  }}
+                  action={action}
+                  onClick={() => onActionClick?.(action)}
                   className={`
                     text-xs px-3 py-1.5 rounded font-medium transition-colors
-                    ${action.variant === 'primary' ? 'bg-blue-500 hover:bg-blue-600 text-white' : ''}
-                    ${action.variant === 'danger' ? 'bg-red-500 hover:bg-red-600 text-white' : ''}
-                    ${!action.variant || action.variant === 'secondary' ? 'bg-white/10 hover:bg-white/20 text-white/80' : ''}
+                    ${
+                      action.variant === 'primary'
+                        ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                        : ''
+                    }
+                    ${
+                      action.variant === 'danger'
+                        ? 'bg-red-500 hover:bg-red-600 text-white'
+                        : ''
+                    }
+                    ${
+                      !action.variant || action.variant === 'secondary'
+                        ? 'bg-white/10 hover:bg-white/20 text-white/80'
+                        : ''
+                    }
                   `}
-                >
-                  {action.icon && <span className="mr-1">{action.icon}</span>}
-                  {action.label}
-                </button>
+                />
               ))}
             </div>
           )}
@@ -136,9 +195,11 @@ export function SummaryCard({ config, onActionClick }: SummaryRendererProps) {
       <div className="px-4 py-3 border-b border-white/10">
         <div className="flex items-center gap-3">
           {icon && (
-            <div 
+            <div
               className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
-              style={{ backgroundColor: color ? `${color}20` : 'rgba(255,255,255,0.1)' }}
+              style={{
+                backgroundColor: color ? `${color}20` : 'rgba(255,255,255,0.1)',
+              }}
             >
               {icon}
             </div>
@@ -149,7 +210,7 @@ export function SummaryCard({ config, onActionClick }: SummaryRendererProps) {
 
       {/* Content */}
       <div className="px-4 py-4">
-        <div 
+        <div
           className="text-sm text-white/70"
           style={color ? { color } : undefined}
         >
@@ -158,7 +219,9 @@ export function SummaryCard({ config, onActionClick }: SummaryRendererProps) {
               {Object.entries(content).map(([key, value]) => (
                 <div key={key} className="flex justify-between">
                   <span className="text-white/50">{key}:</span>
-                  <span className="text-white/80 font-medium">{String(value)}</span>
+                  <span className="text-white/80 font-medium">
+                    {String(value)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -172,22 +235,29 @@ export function SummaryCard({ config, onActionClick }: SummaryRendererProps) {
       {actions && actions.length > 0 && (
         <div className="px-4 py-3 border-t border-white/10 flex items-center gap-2">
           {actions.map((action, idx) => (
-            <button
+            <ActionButton
               key={idx}
-              onClick={() => {
-                action.onClick()
-                onActionClick?.(action)
-              }}
+              action={action}
+              onClick={() => onActionClick?.(action)}
               className={`
                 flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors
-                ${action.variant === 'primary' ? 'bg-blue-500 hover:bg-blue-600 text-white' : ''}
-                ${action.variant === 'danger' ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400' : ''}
-                ${!action.variant || action.variant === 'secondary' ? 'bg-white/10 hover:bg-white/15 text-white/80' : ''}
+                ${
+                  action.variant === 'primary'
+                    ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                    : ''
+                }
+                ${
+                  action.variant === 'danger'
+                    ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
+                    : ''
+                }
+                ${
+                  !action.variant || action.variant === 'secondary'
+                    ? 'bg-white/10 hover:bg-white/15 text-white/80'
+                    : ''
+                }
               `}
-            >
-              {action.icon && <span className="mr-2">{action.icon}</span>}
-              {action.label}
-            </button>
+            />
           ))}
         </div>
       )}
@@ -198,7 +268,10 @@ export function SummaryCard({ config, onActionClick }: SummaryRendererProps) {
 /**
  * Main renderer component that selects the appropriate renderer based on type
  */
-export function CalendarSummaryRenderer({ config, onActionClick }: SummaryRendererProps) {
+export function CalendarSummaryRenderer({
+  config,
+  onActionClick,
+}: SummaryRendererProps) {
   if (config.type === 'custom' && config.customRender) {
     return <>{config.customRender()}</>
   }
@@ -214,6 +287,3 @@ export function CalendarSummaryRenderer({ config, onActionClick }: SummaryRender
       return <SummaryChip config={config} onActionClick={onActionClick} />
   }
 }
-
-// Fix React import
-import React from 'react'
