@@ -395,10 +395,12 @@ export interface PluginDetailProvider<TDayData = any> {
    * @param data Day data for this plugin
    * @param date ISO date string
    * @param onUpdate Callback to update data
+   * @param context Optional context data (e.g., config, callbacks)
    */
   renderDetail(
     data: TDayData | null,
     date: string,
-    onUpdate: (data: Partial<TDayData>) => Promise<void>
+    onUpdate: (data: Partial<TDayData>) => Promise<void>,
+    context?: any
   ): ReactNode
 }

@@ -169,6 +169,14 @@ export default function HoursPage({
           maxHours={maxHours}
           onUpdateDay={updateDayData}
           onBackToYear={() => navigateToYear(currentYear)}
+          onAddSubject={handleAddSubject}
+          onAddTopic={handleAddTopic}
+          onRemoveTopic={handleRemoveTopic}
+          onUpdateTopic={handleUpdateTopic}
+          onRemoveSubject={handleRemoveSubject}
+          onUpdateSubject={handleUpdateSubject}
+          onToggleHasTopics={handleToggleHasTopics}
+          isTopicInUse={isTopicInUse}
           headerConfig={monthHeaderConfig}
           onPrevYear={navigateToPrevYear}
           onNextYear={navigateToNextYear}

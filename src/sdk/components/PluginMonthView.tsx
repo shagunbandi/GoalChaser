@@ -51,6 +51,9 @@ export interface PluginMonthViewProps<TDayData extends PluginDayData = any> {
   /** Navigation handlers for header */
   onPrevYear?: () => void
   onNextYear?: () => void
+
+  /** Optional context to pass to detail provider */
+  detailContext?: any
 }
 
 /**
@@ -76,6 +79,7 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
   headerConfig,
   onPrevYear,
   onNextYear,
+  detailContext,
 }: PluginMonthViewProps<TDayData>) {
   const {
     year,
@@ -129,6 +133,7 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
         selectedDayData,
         selectedDate,
         (updates) => onUpdateDay(selectedDate, updates),
+        detailContext,
       )
 
       if (DetailComponent) {

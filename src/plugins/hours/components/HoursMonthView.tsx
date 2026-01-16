@@ -18,6 +18,14 @@ interface HoursMonthViewProps {
   maxHours: number
   onUpdateDay: (iso: string, updates: Partial<HoursDayData>) => Promise<void>
   onBackToYear: () => void
+  onAddSubject: (name: string) => void
+  onAddTopic: (subjectId: string, topic: string) => void
+  onRemoveTopic: (subjectId: string, topic: string) => void
+  onUpdateTopic: (subjectId: string, oldTopic: string, newTopic: string) => void
+  onRemoveSubject: (id: string) => void
+  onUpdateSubject: (id: string, name: string) => void
+  onToggleHasTopics: (id: string) => void
+  isTopicInUse: (subjectId: string, topic: string) => boolean
   headerConfig?: HeaderConfig
   onPrevYear?: () => void
   onNextYear?: () => void
@@ -35,6 +43,14 @@ export function HoursMonthView({
   maxHours,
   onUpdateDay,
   onBackToYear,
+  onAddSubject,
+  onAddTopic,
+  onRemoveTopic,
+  onUpdateTopic,
+  onRemoveSubject,
+  onUpdateSubject,
+  onToggleHasTopics,
+  isTopicInUse,
   headerConfig,
   onPrevYear,
   onNextYear,
@@ -95,6 +111,18 @@ export function HoursMonthView({
       headerConfig={headerConfig}
       onPrevYear={onPrevYear}
       onNextYear={onNextYear}
+      detailContext={{
+        subjectConfigs,
+        maxHours,
+        onAddSubject,
+        onAddTopic,
+        onRemoveTopic,
+        onUpdateTopic,
+        onRemoveSubject,
+        onUpdateSubject,
+        onToggleHasTopics,
+        isTopicInUse,
+      }}
     />
   )
 }
