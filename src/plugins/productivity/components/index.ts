@@ -1,4 +1,5 @@
 export { ProductivityView } from './ProductivityView'
+export { ProductivityMonthView } from './ProductivityMonthView'
 export { AreaManager } from './AreaManager'
 export { AreaEntries } from './AreaEntries'
 export { StatusSelector } from './StatusSelector'

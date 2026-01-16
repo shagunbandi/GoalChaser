@@ -1,4 +1,5 @@
 export { BudgetingView } from './BudgetingView'
+export { FinanceMonthView } from './FinanceMonthView'
 export { BudgetCard } from './BudgetCard'
 export { BudgetForm } from './BudgetForm'
 export { BudgetViewModal } from './BudgetViewModal'

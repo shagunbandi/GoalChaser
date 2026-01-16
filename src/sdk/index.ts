@@ -38,6 +38,8 @@ export type {
   MonthInfo,
   TimeRangeType,
   TimeRange,
+  ViewType,
+  StatItem,
 } from './types'
 
 // Services (for advanced use cases)
@@ -47,13 +49,15 @@ export { createPluginLogger, createPluginFirestore } from './services'
 export { createPluginContext } from './services/plugin-context.service'
 
 // Hooks
-export { usePluginPage } from './hooks'
+export { usePluginPage, useMonthCalendar } from './hooks'
+export type { UseMonthCalendarOptions, UseMonthCalendarReturn } from './hooks'
 
 // Utilities
 export * from './utils'
 
 // Components
-export { LoadingState, NotFoundState } from './components'
+export { LoadingState, NotFoundState, PluginMonthView } from './components'
+export type { PluginMonthViewProps } from './components'
 
 // UI components
 export { 
@@ -66,5 +70,14 @@ export {
   TextArea,
   Select,
   FormActions,
-  Section
+  Section,
+  MonthCalendar
+} from './ui'
+
+// UI types
+export type {
+  CalendarIndicator,
+  DayCustomization,
+  DayRenderInfo,
+  MonthCalendarProps
 } from './ui'

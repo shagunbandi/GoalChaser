@@ -12,8 +12,15 @@ export { StatusBar } from '@/components/ui/StatusBar'
 // Form components
 export { Input, TextArea, Select, FormActions, Section } from '@/components/ui/forms'
 
-// Calendar summary renderers
+// Calendar components
 export * from './calendar-renderers'
+export {
+  MonthCalendar,
+  type CalendarIndicator,
+  type DayCustomization,
+  type DayRenderInfo,
+  type MonthCalendarProps,
+} from './MonthCalendar'
 
 // Chart components for analytics
 export * from './charts'

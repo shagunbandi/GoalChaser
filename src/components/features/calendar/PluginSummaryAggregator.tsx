@@ -3,7 +3,16 @@
 import { useMemo } from 'react'
 import type { Plugin, CalendarDaySummary } from '@/sdk'
 import { CalendarSummaryRenderer } from '@/sdk/ui'
-import type { PluginIndicator } from '@/components/features/Calendar'
+
+/**
+ * Plugin indicator for calendar dots
+ */
+export interface PluginIndicator {
+  pluginId: string
+  pluginName: string
+  color: string
+  hasData: boolean
+}
 
 interface PluginSummaryAggregatorProps {
   /** Enabled plugins to query for summaries */

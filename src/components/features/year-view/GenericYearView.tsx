@@ -23,12 +23,22 @@ export function GenericYearView({
   )
 
   const handleDaySelect = (date: string | null) => {
-    setSelectedDay(date)
-    config.onDaySelect?.(date)
+    // If showDayModal is false, don't set selectedDay (which would open the modal)
+    // Just call the onDaySelect callback directly
+    if (config.showDayModal === false) {
+      config.onDaySelect?.(date)
+    } else {
+      // Default behavior: show modal
+      setSelectedDay(date)
+      config.onDaySelect?.(date)
+    }
   }
 
   const modalSections = selectedDay ? config.modal.getSections(selectedDay) : []
   const modalActions = selectedDay ? config.modal.getActions(selectedDay) : []
+
+  // Only show modal if showDayModal is not explicitly set to false
+  const shouldShowModal = config.showDayModal !== false
 
   return (
     <>
@@ -54,9 +64,18 @@ export function GenericYearView({
               >
                 {/* Month Header */}
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-semibold text-white/90">
+                  <button
+                    onClick={() => {
+                      if (monthConfig.onHeaderClick) {
+                        monthConfig.onHeaderClick()
+                      } else if (config.onMonthClick) {
+                        config.onMonthClick(monthConfig.year, monthConfig.month)
+                      }
+                    }}
+                    className="text-sm font-semibold text-white/90 hover:text-white transition-colors cursor-pointer"
+                  >
                     {monthLabel}
-                  </div>
+                  </button>
                   {monthConfig.headerRight}
                 </div>
 
@@ -102,14 +121,16 @@ export function GenericYearView({
         </div>
       </Card>
 
-      {/* Day Details Modal */}
-      <ModalRenderer
-        open={!!selectedDay}
-        onClose={() => handleDaySelect(null)}
-        date={selectedDay}
-        sections={modalSections}
-        actions={modalActions}
-      />
+      {/* Day Details Modal - Only show if showDayModal is not false */}
+      {shouldShowModal && (
+        <ModalRenderer
+          open={!!selectedDay}
+          onClose={() => handleDaySelect(null)}
+          date={selectedDay}
+          sections={modalSections}
+          actions={modalActions}
+        />
+      )}
     </>
   )
 }

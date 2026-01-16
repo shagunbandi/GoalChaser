@@ -27,6 +27,7 @@ interface HoursViewProps {
   onUpdateTopic: (subjectId: string, oldTopic: string, newTopic: string) => void
   isTopicInUse: (subjectId: string, topic: string) => boolean
   onJumpToDay?: (iso: string) => void
+  onMonthClick?: (year: number, month: number) => void
   initialSelectedDay?: string | null
 }
 
@@ -38,6 +39,7 @@ export function HoursView({
   maxHours,
   onPrevYear,
   onNextYear,
+  onMonthClick,
   onUpdateDay,
   onAddSubject,
   onRemoveSubject,
@@ -62,20 +64,24 @@ export function HoursView({
   const getTotalHours = (details: any): number => {
     const subjectHours = (details.subjects || []).reduce(
       (sum: number, entry: any) => sum + (entry.hours || 0),
-      0
+      0,
     )
-    return subjectHours > 0 ? subjectHours : (details.directHours || 0)
+    return subjectHours > 0 ? subjectHours : details.directHours || 0
   }
 
   // Calculate stats for the year
   const yearStats = useMemo(() => {
     const entries = Object.entries(dayDetails).filter(([iso]) =>
-      iso.startsWith(yearPrefix)
+      iso.startsWith(yearPrefix),
     )
 
     const daysWithHours = entries.filter(([_, d]) => getTotalHours(d) > 0)
-    const totalHours = entries.reduce((sum, [_, d]) => sum + getTotalHours(d), 0)
-    const average = daysWithHours.length > 0 ? totalHours / daysWithHours.length : 0
+    const totalHours = entries.reduce(
+      (sum, [_, d]) => sum + getTotalHours(d),
+      0,
+    )
+    const average =
+      daysWithHours.length > 0 ? totalHours / daysWithHours.length : 0
 
     return {
       totalHours,
@@ -120,17 +126,23 @@ export function HoursView({
       year,
       todayISO,
       onDaySelect: (date: string | null) => {
+        // Navigate directly to month view, don't open modal
         if (date && onJumpToDay) {
           onJumpToDay(date)
         }
       },
+      showDayModal: false, // Don't show modal on day click, navigate to month view instead
       header: {
         icon: '⏱️',
         title: 'Hours Year:',
         stats: [
           { label: 'Total hours', value: Math.round(yearStats.totalHours) },
           { label: 'Days tracked', value: yearStats.daysWithHours },
-          { label: 'Avg/day', value: yearStats.average.toFixed(1) + 'h', color: '#5856D6' },
+          {
+            label: 'Avg/day',
+            value: yearStats.average.toFixed(1) + 'h',
+            color: '#5856D6',
+          },
         ],
         legends: [
           { label: `Target: ${maxHours}h/day`, color: 'rgb(155, 89, 182)' },
@@ -151,11 +163,13 @@ export function HoursView({
         return {
           month: month.month,
           year: month.year,
+          onHeaderClick: () => onMonthClick?.(month.year, month.month), // Navigate to month view
           headerRight: (
             <div className="text-xs text-white/50">
               {stats.total > 0 ? (
                 <>
-                  {stats.days} day{stats.days === 1 ? '' : 's'} • {Math.round(stats.total)}h
+                  {stats.days} day{stats.days === 1 ? '' : 's'} •{' '}
+                  {Math.round(stats.total)}h
                 </>
               ) : (
                 'No data'
@@ -190,9 +204,10 @@ export function HoursView({
 
           const subjectHours = (details.subjects || []).reduce(
             (sum: number, entry: any) => sum + (entry.hours || 0),
-            0
+            0,
           )
-          const totalHours = subjectHours > 0 ? subjectHours : (details.directHours || 0)
+          const totalHours =
+            subjectHours > 0 ? subjectHours : details.directHours || 0
 
           return [
             {
@@ -281,6 +296,7 @@ export function HoursView({
       },
       onPrevYear,
       onNextYear,
+      onMonthClick,
     }),
     [
       year,
@@ -302,6 +318,7 @@ export function HoursView({
       isTopicInUse,
       onPrevYear,
       onNextYear,
+      onMonthClick,
       onJumpToDay,
       showSubjectManager,
     ],
@@ -309,7 +326,10 @@ export function HoursView({
 
   return (
     <>
-      <GenericYearView config={config} initialSelectedDay={initialSelectedDay} />
+      <GenericYearView
+        config={config}
+        initialSelectedDay={initialSelectedDay}
+      />
       {showSubjectManager && (
         <SubjectManager
           subjectConfigs={subjectConfigs}

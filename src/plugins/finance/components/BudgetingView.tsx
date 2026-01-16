@@ -38,6 +38,7 @@ interface BudgetingViewProps {
   onDeleteBudget: (budgetId: string) => Promise<void>
   onSaveSIP: (sip: SIPPlan) => Promise<void>
   onDeleteSIP: (sipId: string) => Promise<void>
+  onMonthClick?: (year: number, month: number) => void
   onJumpToDay?: (iso: string) => void
   initialSelectedDay?: string | null
 }
@@ -56,6 +57,7 @@ export function BudgetingView({
   onSaveSIP,
   onDeleteSIP,
   onJumpToDay,
+  onMonthClick,
   initialSelectedDay,
 }: BudgetingViewProps) {
   const [selectedDay, setSelectedDay] = useState<string | null>(
@@ -70,15 +72,9 @@ export function BudgetingView({
 
   // Reset expense/income modals when day changes
   const handleDaySelect = useCallback((date: string | null) => {
-    setSelectedDay(date)
+    // Navigate directly to month view, don't open modal
     if (date && onJumpToDay) {
-      // Update URL with selected date
       onJumpToDay(date)
-    }
-    if (!date) {
-      // Close expense/income modals when day modal closes
-      setShowAddExpense(false)
-      setShowAddIncome(false)
     }
   }, [onJumpToDay])
 
@@ -580,6 +576,7 @@ export function BudgetingView({
       year,
       todayISO,
       onDaySelect: handleDaySelect,
+      showDayModal: false, // Don't show modal on day click, navigate to month view instead
       header: {
         icon: '💰',
         title: 'Finance',
@@ -610,6 +607,7 @@ export function BudgetingView({
         return {
           month: month.month,
           year: month.year,
+          onHeaderClick: () => onMonthClick?.(month.year, month.month), // Navigate to month view
           days: month.days.map((day) => {
             const info = getDayInfo(day.iso)
             const indicators = []
@@ -963,6 +961,7 @@ export function BudgetingView({
       },
       onPrevYear,
       onNextYear,
+      onMonthClick,
     }),
     [
       year,
@@ -973,6 +972,7 @@ export function BudgetingView({
       allIncome,
       onPrevYear,
       onNextYear,
+      onMonthClick,
       onJumpToDay,
       handleDaySelect,
       handleAddExpense,

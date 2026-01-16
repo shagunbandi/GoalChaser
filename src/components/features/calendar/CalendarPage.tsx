@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, PluginIndicator } from '../Calendar'
+import { MonthCalendar, useMonthCalendar } from '@/sdk'
+import type { DayCustomization, CalendarIndicator } from '@/sdk'
 import { CalendarDetailPanel } from './CalendarDetailPanel'
 import {
   PluginSummaryAggregator,
@@ -12,7 +13,8 @@ import { useGoalData } from '@/hooks/useGoalData'
 import { usePluginRegistry } from '@/core/plugin-registry/hooks'
 import { useAddonsConfig } from '@/hooks/useAddonsConfig'
 import { useAuth } from '@/hooks/useAuth'
-import type { MonthInfo, DayInfo, DayStatus } from '@/types'
+import { getScoreColorClass } from '@/utils'
+import { Card } from '@/components/ui/Card'
 
 interface CalendarPageProps {
   context: any // PluginContext from SDK, but calendar is core so we just need minimal info
@@ -36,33 +38,17 @@ export default function CalendarPage({ context }: CalendarPageProps) {
   // Extract calendar-specific data
   const calendarData = pluginData?.['calendar'] || {}
 
-  // Current month state
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
-
-  const year = currentDate.getFullYear()
-  const month = currentDate.getMonth() + 1
-
-  // Build monthInfo
-  const monthInfo: MonthInfo = useMemo(() => {
-    const daysInMonth = new Date(year, month, 0).getDate()
-    const days: DayInfo[] = []
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month - 1, day)
-      const iso = `${year}-${String(month).padStart(2, '0')}-${String(
-        day,
-      ).padStart(2, '0')}`
-      days.push({
-        date,
-        iso,
-        dayOfMonth: day,
-        weekdayIndex: (date.getDay() + 6) % 7, // Convert Sunday=0 to Monday=0
-      })
-    }
-
-    return { year, month, days }
-  }, [year, month])
+  // Use the month calendar hook
+  const {
+    year,
+    month,
+    monthInfo,
+    todayISO,
+    selectedDate,
+    prevMonth,
+    nextMonth,
+    setSelectedDate,
+  } = useMonthCalendar()
 
   // Generate date range for the current month
   const dateRange = useMemo(() => {
@@ -96,27 +82,58 @@ export default function CalendarPage({ context }: CalendarPageProps) {
     goalId,
   )
 
-  // Build dayStatuses from productivity plugin data
-  const dayStatuses: Record<string, DayStatus> = useMemo(() => {
-    const statuses: Record<string, DayStatus> = {}
+  // Build day customizations from productivity status and plugin indicators
+  const dayCustomizations = useMemo(() => {
+    const customizations: Record<string, DayCustomization> = {}
     const productivityData = pluginData?.['productivity'] || {}
-    Object.keys(productivityData).forEach((date) => {
-      statuses[date] = productivityData[date]?.status || null
+
+    monthInfo.days.forEach((day) => {
+      const status = productivityData[day.iso]?.status || null
+      const indicators = pluginIndicators[day.iso] || []
+      const activeIndicators = indicators.filter((ind) => ind.hasData)
+
+      // Build customization for this day
+      const bgColor = getScoreColorClass(status)
+
+      customizations[day.iso] = {
+        backgroundColor: bgColor,
+        indicators: activeIndicators.map((ind) => ({
+          id: ind.pluginId,
+          label: ind.pluginName,
+          color: ind.color,
+        })),
+      }
     })
-    return statuses
-  }, [pluginData])
 
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(year, month - 2, 1))
-  }
+    return customizations
+  }, [monthInfo.days, pluginData, pluginIndicators])
 
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(year, month, 1))
-  }
+  // Build legend for plugins
+  const pluginLegend = useMemo(() => {
+    const pluginsMap = new Map<
+      string,
+      { id: string; name: string; color: string }
+    >()
 
-  const handleDayClick = (iso: string) => {
-    setSelectedDate(iso)
-  }
+    Object.values(pluginIndicators).forEach((dayIndicators) => {
+      dayIndicators.forEach((indicator) => {
+        if (indicator.hasData && !pluginsMap.has(indicator.pluginId)) {
+          pluginsMap.set(indicator.pluginId, {
+            id: indicator.pluginId,
+            name: indicator.pluginName,
+            color: indicator.color,
+          })
+        }
+      })
+    })
+
+    return Array.from(pluginsMap.values())
+  }, [pluginIndicators])
+
+  // Compute values that depend on state
+  const selectedDateNotes = selectedDate
+    ? calendarData?.[selectedDate]?.notes || ''
+    : ''
 
   const handleNotesUpdate = async (date: string, notes: string) => {
     // Update calendar notes
@@ -138,38 +155,39 @@ export default function CalendarPage({ context }: CalendarPageProps) {
     )
   }
 
-  const selectedDateNotes = selectedDate
-    ? calendarData?.[selectedDate]?.notes || ''
-    : ''
-
-  // Convert enabledAddons array to object for PluginSummaryAggregator
-  const enabledAddonsObj = Object.fromEntries(
-    enabledAddons.map((id) => [id, {}]),
-  )
-
-  const todayISO = new Date().toISOString().split('T')[0]
-
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Calendar Month View */}
-        <div className="glass-panel p-6 rounded-lg">
-          <Calendar
-            currentYear={year}
-            currentMonth={month}
-            monthInfo={monthInfo}
-            dayStatuses={dayStatuses}
-            dayDetails={pluginDataByDate}
-            selectedDate={selectedDate}
-            todayISO={todayISO}
-            onPrevMonth={handlePrevMonth}
-            onNextMonth={handleNextMonth}
-            onDayClick={handleDayClick}
-            goalStartDate={goal.startDate}
-            goalEndDate={goal.endDate}
-            pluginIndicators={pluginIndicators}
-          />
-        </div>
+        <MonthCalendar
+          year={year}
+          month={month}
+          monthInfo={monthInfo}
+          todayISO={todayISO}
+          selectedDate={selectedDate}
+          startDate={goal.startDate}
+          endDate={goal.endDate}
+          dayCustomizations={dayCustomizations}
+          onPrevMonth={prevMonth}
+          onNextMonth={nextMonth}
+          onDayClick={setSelectedDate}
+          footerContent={
+            pluginLegend.length > 0 ? (
+              <div className="flex flex-wrap gap-4 text-xs text-white/60">
+                {pluginLegend.map((plugin) => (
+                  <div key={plugin.id} className="flex items-center gap-2">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: plugin.color }}
+                    />
+                    <span>{plugin.name}</span>
+                  </div>
+                ))}
+              </div>
+            ) : undefined
+          }
+          testIdPrefix="calendar"
+        />
 
         {/* Detail Panel */}
         <div className="glass-panel p-6 rounded-lg">

@@ -5,3 +5,4 @@
 
 export { LoadingState } from './LoadingState'
 export { NotFoundState } from './NotFoundState'
+export { PluginMonthView, type PluginMonthViewProps } from './PluginMonthView'

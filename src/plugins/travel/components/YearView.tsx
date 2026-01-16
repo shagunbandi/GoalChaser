@@ -23,6 +23,7 @@ interface YearViewProps {
   onAddTravel: (travel: TravelPlanInput) => void | Promise<void>
   onUpdateDay: (iso: string, updates: any) => Promise<void>
   onJumpToDay?: (iso: string) => void
+  onMonthClick?: (year: number, month: number) => void
   initialSelectedDay?: string | null
 }
 
@@ -35,6 +36,7 @@ export function YearView({
   onAddTravel,
   onUpdateDay,
   onJumpToDay,
+  onMonthClick,
   initialSelectedDay,
 }: YearViewProps) {
   const [showTravelModal, setShowTravelModal] = useState(false)
@@ -266,6 +268,7 @@ export function YearView({
         return {
           month: month.month,
           year: month.year,
+          onHeaderClick: () => onMonthClick?.(month.year, month.month), // Navigate to month view
           headerRight: (
             <div className="text-xs text-white/50">
               {monthTravel} travel day{monthTravel === 1 ? '' : 's'}
@@ -401,13 +404,15 @@ export function YearView({
         },
       },
       onDaySelect: (date: string | null) => {
+        // Navigate directly to month view, don't open modal
         if (date && onJumpToDay) {
-          // Update URL with selected date
           onJumpToDay(date)
         }
       },
+      showDayModal: false, // Don't show modal on day click, navigate to month view instead
       onPrevYear,
       onNextYear,
+      onMonthClick,
     }),
     [
       year,
@@ -421,6 +426,7 @@ export function YearView({
       isUpdating,
       onPrevYear,
       onNextYear,
+      onMonthClick,
       onJumpToDay,
     ],
   )

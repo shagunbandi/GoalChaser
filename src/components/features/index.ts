@@ -1,5 +1,4 @@
 // Core Components
-export { Calendar } from './Calendar'
 export { GroupedTabBar } from './GroupedTabBar'
 export { AddonsManagerModal } from './AddonsManagerModal'
 export { FirebaseHealthCheck } from './FirebaseHealthCheck'

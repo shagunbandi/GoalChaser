@@ -69,3 +69,6 @@ export interface ActivityItem {
   label?: string
   [key: string]: unknown
 }
+
+// View-related types
+export type { ViewType, StatItem } from './view.types'

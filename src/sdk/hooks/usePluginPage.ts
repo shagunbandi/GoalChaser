@@ -36,7 +36,11 @@ interface UsePluginPageResult<TDayData = any, TConfig = any> {
   // Navigation helpers
   navigateToPrevYear: () => void
   navigateToNextYear: () => void
+  navigateToMonth: (year: number, month: number, date?: string) => void
+  navigateToPrevMonth: (currentYear: number, currentMonth: number) => void
+  navigateToNextMonth: (currentYear: number, currentMonth: number) => void
   jumpToDay: (iso: string) => void
+  navigateToYear: (year: number) => void
 }
 
 /**
@@ -111,9 +115,38 @@ export function usePluginPage<TDayData = any, TConfig = any>({
     router.push(`/goal/${goalId}/${pluginId}/${year + 1}`)
   }
 
+  const navigateToMonth = (targetYear: number, targetMonth: number, date?: string) => {
+    const url = `/goal/${goalId}/${pluginId}/${targetYear}/${targetMonth}`
+    if (date) {
+      router.push(`${url}?date=${date}`)
+    } else {
+      router.push(url)
+    }
+  }
+
+  const navigateToPrevMonth = (currentYear: number, currentMonth: number) => {
+    if (currentMonth === 1) {
+      navigateToMonth(currentYear - 1, 12)
+    } else {
+      navigateToMonth(currentYear, currentMonth - 1)
+    }
+  }
+
+  const navigateToNextMonth = (currentYear: number, currentMonth: number) => {
+    if (currentMonth === 12) {
+      navigateToMonth(currentYear + 1, 1)
+    } else {
+      navigateToMonth(currentYear, currentMonth + 1)
+    }
+  }
+
   const jumpToDay = (iso: string) => {
     const currentPath = window.location.pathname
     router.replace(`${currentPath}?date=${iso}`, { scroll: false })
+  }
+
+  const navigateToYear = (targetYear: number) => {
+    router.push(`/goal/${goalId}/${pluginId}/${targetYear}`)
   }
 
   return {
@@ -130,6 +163,10 @@ export function usePluginPage<TDayData = any, TConfig = any>({
     updateConfig,
     navigateToPrevYear,
     navigateToNextYear,
+    navigateToYear,
+    navigateToMonth,
+    navigateToPrevMonth,
+    navigateToNextMonth,
     jumpToDay,
   }
 }

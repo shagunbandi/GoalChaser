@@ -1,9 +1,9 @@
 /**
  * Dynamic Route Handler for Goal Pages
- * 
+ *
  * This page handles both the core calendar view and plugin routes.
  * Route: /goal/[id]/[[...plugin]]
- * 
+ *
  * Examples:
  * - /goal/abc123 -> Calendar (core, always available)
  * - /goal/abc123/hours/2024 -> Hours plugin for 2024
@@ -32,35 +32,36 @@ export default function PluginPage() {
   const pluginSegments = (params.plugin as string[]) || []
   // Create a stable string representation to avoid array comparison issues
   const pluginPath = pluginSegments.join('/')
-  
+
   const { user, isLoading: authLoading } = useAuth()
   const { getGoal, isLoading: goalsLoading } = useGoals()
   const goal = getGoal(goalId)
-  
+
   const { enabledAddons, saveAddons } = useAddonsConfig(user?.uid, goalId)
   const [showAddonsManager, setShowAddonsManager] = useState(false)
-  
+
   const [plugin, setPlugin] = useState<Plugin | null>(null)
-  const [PluginComponent, setPluginComponent] = useState<React.ComponentType<any> | null>(null)
+  const [PluginComponent, setPluginComponent] =
+    useState<React.ComponentType<any> | null>(null)
   const [context, setContext] = useState<PluginContext | null>(null)
   const [year, setYear] = useState<number | undefined>(undefined)
-  
+  const [month, setMonth] = useState<number | undefined>(undefined)
+
   // Use the registry hook instead of initializing directly
   const { registry: pluginReg, loading: registryLoading } = usePluginRegistry()
 
   // Resolve plugin route once registry is loaded
   useEffect(() => {
     if (registryLoading) return
-    
+
     async function resolveRoute() {
       try {
-        
         // If no plugin segments, show Calendar (core feature, not a plugin)
         if (pluginSegments.length === 0) {
           setPlugin(null) // null indicates core calendar
           setPluginComponent(() => CalendarPage)
           setYear(undefined)
-          
+
           // Create a minimal context for calendar
           if (user) {
             const ctx: PluginContext = {
@@ -69,7 +70,8 @@ export default function PluginPage() {
               goal,
               logger: {
                 info: (msg: string) => console.log(`[Calendar] ${msg}`),
-                error: (msg: string, err?: unknown) => console.error(`[Calendar] ${msg}`, err),
+                error: (msg: string, err?: unknown) =>
+                  console.error(`[Calendar] ${msg}`, err),
                 warn: (msg: string) => console.warn(`[Calendar] ${msg}`),
                 success: (msg: string) => console.log(`[Calendar] ✓ ${msg}`),
                 progress: (msg: string) => console.log(`[Calendar] ... ${msg}`),
@@ -80,11 +82,13 @@ export default function PluginPage() {
           }
           return
         }
-        
+
         // Otherwise, load a plugin
         const pluginId = pluginSegments[0]
         let yearParam: number | undefined
-        
+        let monthParam: number | undefined
+
+        // Parse URL segments: /goal/[id]/[pluginId]/[year]/[month]
         // If there's a second segment and it's a number, it's the year
         if (pluginSegments.length > 1) {
           const parsedYear = parseInt(pluginSegments[1])
@@ -92,37 +96,50 @@ export default function PluginPage() {
             yearParam = parsedYear
           }
         }
-        
+
+        // If there's a third segment and it's a number, it's the month
+        if (pluginSegments.length > 2) {
+          const parsedMonth = parseInt(pluginSegments[2])
+          if (!isNaN(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12) {
+            monthParam = parsedMonth
+          }
+        }
+
         const loadedPlugin = pluginReg.getPlugin(pluginId)
-        
+
         if (!loadedPlugin) {
           console.error(`Plugin not found: ${pluginId}`)
           return
         }
-        
+
         // Find the matching route
-        const route = loadedPlugin.routes.find(r => {
+        const route = loadedPlugin.routes.find((r) => {
           if (r.requiresYear) {
             return yearParam !== undefined
           }
           return true
         })
-        
+
         if (!route) {
           console.error(`No matching route for plugin: ${pluginId}`)
           return
         }
-        
+
         setPlugin(loadedPlugin)
         setPluginComponent(() => route.component)
         setYear(yearParam)
-        
+        setMonth(monthParam)
+
         // Create plugin context
         if (user) {
-          const ctx = pluginReg.createContext(user.uid, goalId, loadedPlugin.id, goal)
+          const ctx = pluginReg.createContext(
+            user.uid,
+            goalId,
+            loadedPlugin.id,
+            goal,
+          )
           setContext(ctx)
         }
-        
       } catch (error) {
         console.error('Failed to resolve plugin:', error)
       }
@@ -172,8 +189,12 @@ export default function PluginPage() {
         <div className="noise-overlay" />
         <div className="relative z-10 text-center">
           <div className="text-6xl mb-4 opacity-80">🤔</div>
-          <h1 className="text-2xl font-semibold text-white/90 mb-4">Goal Not Found</h1>
-          <p className="text-white/50 mb-6">This goal doesn&apos;t exist or was deleted.</p>
+          <h1 className="text-2xl font-semibold text-white/90 mb-4">
+            Goal Not Found
+          </h1>
+          <p className="text-white/50 mb-6">
+            This goal doesn&apos;t exist or was deleted.
+          </p>
         </div>
       </div>
     )
@@ -190,7 +211,9 @@ export default function PluginPage() {
         <div className="noise-overlay" />
         <div className="relative z-10 text-center">
           <div className="text-6xl mb-4 opacity-80">🔌</div>
-          <h1 className="text-2xl font-semibold text-white/90 mb-4">Loading...</h1>
+          <h1 className="text-2xl font-semibold text-white/90 mb-4">
+            Loading...
+          </h1>
           <p className="text-white/50 mb-6">Please wait...</p>
         </div>
       </div>
@@ -228,6 +251,7 @@ export default function PluginPage() {
             context={context}
             params={params}
             year={year}
+            month={month}
           />
         </div>
       </div>

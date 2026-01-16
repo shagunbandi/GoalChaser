@@ -4,3 +4,8 @@
  */
 
 export { usePluginPage } from './usePluginPage'
+export {
+  useMonthCalendar,
+  type UseMonthCalendarOptions,
+  type UseMonthCalendarReturn,
+} from './useMonthCalendar'

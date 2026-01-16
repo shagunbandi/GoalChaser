@@ -6,12 +6,19 @@
 
 import type { PluginPageProps } from '@/sdk'
 import { usePluginPage, LoadingState, NotFoundState } from '@/sdk'
-import { HoursView } from '../components'
+import { HoursView, HoursMonthView } from '../components'
 import type { HoursDayData, HoursConfig } from '../types'
+import { HoursPlugin } from '../plugin'
 
-export default function HoursPage({ context, params, year }: PluginPageProps) {
+export default function HoursPage({
+  context,
+  params,
+  year,
+  month,
+}: PluginPageProps) {
   const {
     goal,
+    goalId,
     isLoading,
     todayISO,
     pluginDayData,
@@ -21,15 +28,25 @@ export default function HoursPage({ context, params, year }: PluginPageProps) {
     updateConfig,
     navigateToPrevYear,
     navigateToNextYear,
+    navigateToYear,
+    navigateToMonth,
     jumpToDay,
+    router,
     year: currentYear,
   } = usePluginPage<HoursDayData, HoursConfig>({
     pluginId: 'hours',
     params,
     year,
   })
+  
+  // Handler to navigate to month view with selected day
+  const handleJumpToDay = (iso: string) => {
+    const [y, m] = iso.split('-').map(Number)
+    navigateToMonth(y, m, iso)
+  }
 
   const subjectConfigs = pluginConfig?.subjects || []
+  const maxHours = pluginConfig?.maxHours || 14
 
   const handleAddSubject = (name: string) => {
     const newSubject = {
@@ -113,6 +130,54 @@ export default function HoursPage({ context, params, year }: PluginPageProps) {
   if (isLoading) return <LoadingState />
   if (!goal) return <NotFoundState />
 
+  // If month is specified, show month view
+  if (month) {
+    // Calculate month-specific stats
+    const monthData = Object.entries(pluginDayData).filter(([date]) => {
+      const [y, m] = date.split('-').map(Number)
+      return y === currentYear && m === month
+    })
+    const monthStats = {
+      days: monthData.filter(([, data]) => data?.subjects && data.subjects.length > 0).length,
+      total: monthData.reduce((sum, [, data]) => {
+        return sum + (data?.subjects?.reduce((s: number, entry: any) => s + (entry.hours || 0), 0) || 0)
+      }, 0),
+    }
+
+    const monthHeaderConfig = {
+      icon: '⏱️',
+      title: `Hours Month:`,
+      stats: [
+        { label: 'Days tracked', value: monthStats.days },
+        { label: 'Total hours', value: monthStats.total.toFixed(1) },
+      ],
+      legends: [],
+      actions: [],
+    }
+
+    return (
+      <main className="container mx-auto px-4 py-6 space-y-4">
+        <HoursMonthView
+          plugin={HoursPlugin}
+          month={month}
+          year={currentYear}
+          goalId={goalId}
+          todayISO={todayISO}
+          dayData={pluginDayData}
+          initialSelectedDate={initialSelectedDay}
+          subjectConfigs={subjectConfigs}
+          maxHours={maxHours}
+          onUpdateDay={updateDayData}
+          onBackToYear={() => navigateToYear(currentYear)}
+          headerConfig={monthHeaderConfig}
+          onPrevYear={navigateToPrevYear}
+          onNextYear={navigateToNextYear}
+        />
+      </main>
+    )
+  }
+
+  // Otherwise show year view
   return (
     <main className="container mx-auto px-4 py-6 space-y-4">
       <HoursView
@@ -124,7 +189,8 @@ export default function HoursPage({ context, params, year }: PluginPageProps) {
         onPrevYear={navigateToPrevYear}
         onNextYear={navigateToNextYear}
         onUpdateDay={updateDayData}
-        onJumpToDay={jumpToDay}
+        onJumpToDay={handleJumpToDay}
+        onMonthClick={navigateToMonth}
         initialSelectedDay={initialSelectedDay}
         onAddSubject={handleAddSubject}
         onRemoveSubject={handleRemoveSubject}

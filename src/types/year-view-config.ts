@@ -76,6 +76,7 @@ export type MonthConfig = {
   headerRight?: ReactNode
   days: DayConfig[]
   footer: MonthFooterItem[]
+  onHeaderClick?: () => void // Click handler for month header to navigate to month view
 }
 
 // Complete year view configuration
@@ -91,4 +92,6 @@ export type YearViewConfig = {
   onPrevYear: () => void
   onNextYear: () => void
   onDaySelect?: (date: string | null) => void
+  onMonthClick?: (year: number, month: number) => void // Navigate to month view
+  showDayModal?: boolean // Control whether clicking a day opens a modal (default: true) or navigates directly
 }

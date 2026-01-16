@@ -27,6 +27,7 @@ interface ProductivityViewProps {
   onUpdateTopic: (areaId: string, oldTopic: string, newTopic: string) => void
   isTopicInUse: (areaId: string, topic: string) => boolean
   onJumpToDay?: (iso: string) => void
+  onMonthClick?: (year: number, month: number) => void
   initialSelectedDay?: string | null
 }
 
@@ -47,6 +48,7 @@ export function ProductivityView({
   onUpdateTopic,
   isTopicInUse,
   onJumpToDay,
+  onMonthClick,
   initialSelectedDay,
 }: ProductivityViewProps) {
   const [showAreaManager, setShowAreaManager] = useState(false)
@@ -148,11 +150,12 @@ export function ProductivityView({
       year,
       todayISO,
       onDaySelect: (date: string | null) => {
-        setSelectedDay(date)
+        // Navigate directly to month view, don't open modal
         if (date && onJumpToDay) {
           onJumpToDay(date)
         }
       },
+      showDayModal: false, // Don't show modal on day click, navigate to month view instead
       header: {
         icon: '📊',
         title: 'Productivity Year:',
@@ -181,6 +184,7 @@ export function ProductivityView({
         return {
           month: month.month,
           year: month.year,
+          onHeaderClick: () => onMonthClick?.(month.year, month.month), // Navigate to month view
           headerRight: (
             <div className="text-xs text-white/50">
               {stats.total > 0 ? (
@@ -337,8 +341,9 @@ export function ProductivityView({
       },
       onPrevYear,
       onNextYear,
+      onMonthClick, // Enable month header clicks to navigate to month view
     }),
-    [year, todayISO, yearStats, monthlyStats, months, dayDetails, areaConfigs, draftData, selectedDay, onUpdateDay, onAddArea, onAddTopic, isTopicInUse, onPrevYear, onNextYear, onJumpToDay],
+    [year, todayISO, yearStats, monthlyStats, months, dayDetails, areaConfigs, draftData, selectedDay, onUpdateDay, onAddArea, onAddTopic, isTopicInUse, onPrevYear, onNextYear, onJumpToDay, onMonthClick],
   )
 
   return (

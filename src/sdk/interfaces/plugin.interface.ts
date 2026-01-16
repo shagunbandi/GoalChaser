@@ -106,6 +106,9 @@ export interface PluginPageProps {
   /** Current year (if route requires it) */
   year?: number
 
+  /** Current month (1-12, if route includes it) */
+  month?: number
+
   /** Route parameters */
   params: {
     id: string // goalId
