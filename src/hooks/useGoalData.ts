@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from './useAuth'
 import { useGoals } from './useGoals'
 import { useGoalDataLoader } from './useGoalDataLoader'
-import type { TravelPlan } from '@/types'
-import { toISODateString, getMsUntilMidnight, enumerateDateRange } from '@/utils'
+import { toISODateString, getMsUntilMidnight } from '@/utils'
+import type { PluginConfigData, PluginDayData } from '@/sdk'
+import type { TravelPlan } from '@/plugins/travel/types'
+import type { BudgetPlan, SIPPlan } from '@/plugins/finance/types'
 
 /**
  * Main hook for goal data management
- * Now uses the new add-on-specific data loader architecture
+ * Now uses the new generic plugin data architecture
  */
 export function useGoalData(goalId: string, year?: number) {
   const router = useRouter()
@@ -33,17 +35,15 @@ export function useGoalData(goalId: string, year?: number) {
   
   // Use new data loader hook
   const {
-    dayDetails,
-    subjectConfigs,
-    areaConfigs,
+    pluginData,
+    pluginConfigs,
     budgets,
     sips,
     travelPlans,
     loading: dataLoading,
     error: dataError,
-    updateDay,
-    updateSubjectConfigs,
-    updateAreaConfigs,
+    updatePluginData,
+    updatePluginConfig,
     saveBudget,
     deleteBudget: deleteBudgetHandler,
     saveSIP,
@@ -86,137 +86,15 @@ export function useGoalData(goalId: string, year?: number) {
     return () => clearTimeout(timeoutId)
   }, [])
 
-  // Subject management helpers
-  const addSubjectConfig = useCallback(async (name: string) => {
-    const newConfig = {
-      id: `subject_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      name,
-      topics: [],
-      hasTopics: true
-    }
-    await updateSubjectConfigs([...subjectConfigs, newConfig])
-  }, [subjectConfigs, updateSubjectConfigs])
+  // Generic config management helpers
+  const updateConfig = useCallback(async (pluginId: string, config: PluginConfigData) => {
+    await updatePluginConfig(pluginId, config)
+  }, [updatePluginConfig])
 
-  const removeSubjectConfig = useCallback(async (id: string) => {
-    await updateSubjectConfigs(subjectConfigs.filter(s => s.id !== id))
-  }, [subjectConfigs, updateSubjectConfigs])
-
-  const updateSubjectConfig = useCallback(async (id: string, name: string) => {
-    await updateSubjectConfigs(
-      subjectConfigs.map(s => s.id === id ? { ...s, name } : s)
-    )
-  }, [subjectConfigs, updateSubjectConfigs])
-
-  const toggleSubjectHasTopics = useCallback(async (id: string) => {
-    await updateSubjectConfigs(
-      subjectConfigs.map(s => s.id === id ? { ...s, hasTopics: !(s.hasTopics ?? true) } : s)
-    )
-  }, [subjectConfigs, updateSubjectConfigs])
-
-  const addTopicToSubject = useCallback(async (subjectId: string, topic: string) => {
-    await updateSubjectConfigs(
-      subjectConfigs.map(s => 
-        s.id === subjectId 
-          ? { ...s, topics: [...s.topics, topic] }
-          : s
-      )
-    )
-  }, [subjectConfigs, updateSubjectConfigs])
-
-  const removeTopicFromSubject = useCallback(async (subjectId: string, topic: string) => {
-    await updateSubjectConfigs(
-      subjectConfigs.map(s => 
-        s.id === subjectId 
-          ? { ...s, topics: s.topics.filter(t => t !== topic) }
-          : s
-      )
-    )
-  }, [subjectConfigs, updateSubjectConfigs])
-
-  const updateTopicInSubject = useCallback(async (subjectId: string, oldTopic: string, newTopic: string) => {
-    await updateSubjectConfigs(
-      subjectConfigs.map(s => 
-        s.id === subjectId 
-          ? { ...s, topics: s.topics.map(t => t === oldTopic ? newTopic : t) }
-          : s
-      )
-    )
-  }, [subjectConfigs, updateSubjectConfigs])
-
-  const isTopicInUse = useCallback((subjectId: string, topic: string): boolean => {
-    return Object.values(dayDetails).some(day =>
-      day.subjects?.some(entry =>
-        subjectConfigs.find(s => s.id === subjectId)?.name === entry.subject &&
-        entry.topics.includes(topic)
-      )
-    )
-  }, [dayDetails, subjectConfigs])
-
-  // Area management helpers (for productivity)
-  const addAreaConfig = useCallback(async (name: string) => {
-    const newConfig = {
-      id: `area_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      name,
-      topics: [],
-      hasTopics: true
-    }
-    await updateAreaConfigs([...areaConfigs, newConfig])
-  }, [areaConfigs, updateAreaConfigs])
-
-  const removeAreaConfig = useCallback(async (id: string) => {
-    await updateAreaConfigs(areaConfigs.filter(a => a.id !== id))
-  }, [areaConfigs, updateAreaConfigs])
-
-  const updateAreaConfig = useCallback(async (id: string, name: string) => {
-    await updateAreaConfigs(
-      areaConfigs.map(a => a.id === id ? { ...a, name } : a)
-    )
-  }, [areaConfigs, updateAreaConfigs])
-
-  const toggleAreaHasTopics = useCallback(async (id: string) => {
-    await updateAreaConfigs(
-      areaConfigs.map(a => a.id === id ? { ...a, hasTopics: !(a.hasTopics ?? true) } : a)
-    )
-  }, [areaConfigs, updateAreaConfigs])
-
-  const addTopicToArea = useCallback(async (areaId: string, topic: string) => {
-    await updateAreaConfigs(
-      areaConfigs.map(a =>
-        a.id === areaId
-          ? { ...a, topics: [...a.topics, topic] }
-          : a
-      )
-    )
-  }, [areaConfigs, updateAreaConfigs])
-
-  const removeTopicFromArea = useCallback(async (areaId: string, topic: string) => {
-    await updateAreaConfigs(
-      areaConfigs.map(a =>
-        a.id === areaId
-          ? { ...a, topics: a.topics.filter(t => t !== topic) }
-          : a
-      )
-    )
-  }, [areaConfigs, updateAreaConfigs])
-
-  const updateTopicInArea = useCallback(async (areaId: string, oldTopic: string, newTopic: string) => {
-    await updateAreaConfigs(
-      areaConfigs.map(a =>
-        a.id === areaId
-          ? { ...a, topics: a.topics.map(t => t === oldTopic ? newTopic : t) }
-          : a
-      )
-    )
-  }, [areaConfigs, updateAreaConfigs])
-
-  const isAreaTopicInUse = useCallback((areaId: string, topic: string): boolean => {
-    return Object.values(dayDetails).some(day =>
-      day.areas?.some(entry =>
-        areaConfigs.find(a => a.id === areaId)?.name === entry.area &&
-        entry.topics.includes(topic)
-      )
-    )
-  }, [dayDetails, areaConfigs])
+  // Generic data update helper
+  const handleUpdateData = useCallback(async (pluginId: string, date: string, updates: Partial<PluginDayData>) => {
+    await updatePluginData(pluginId, date, updates)
+  }, [updatePluginData])
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -230,10 +108,10 @@ export function useGoalData(goalId: string, year?: number) {
     pushStatus({ text: 'Saving travel…', tone: 'progress' })
 
     try {
-      const plan: TravelPlan = {
+      const plan = {
         ...travel,
         id: `travel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      }
+      } as TravelPlan
 
       await saveTravelPlan(plan)
 
@@ -248,7 +126,7 @@ export function useGoalData(goalId: string, year?: number) {
   }, [saveTravelPlan, pushStatus])
 
   // Budget handlers  
-  const handleSaveBudget = useCallback(async (budget: any) => {
+  const handleSaveBudget = useCallback(async (budget: BudgetPlan) => {
     if (!user) return
     await saveBudget(budget)
   }, [user, saveBudget])
@@ -259,7 +137,7 @@ export function useGoalData(goalId: string, year?: number) {
   }, [user, deleteBudgetHandler])
 
   // SIP handlers
-  const handleSaveSIP = useCallback(async (sip: any) => {
+  const handleSaveSIP = useCallback(async (sip: SIPPlan) => {
     if (!user) return
     await saveSIP(sip)
   }, [user, saveSIP])
@@ -286,36 +164,18 @@ export function useGoalData(goalId: string, year?: number) {
     // Date state
     todayISO,
     
-    // Data
-    dayDetails,
-    subjectConfigs,
-    areaConfigs,
+    // Generic plugin data
+    pluginData,
+    pluginConfigs,
+    
+    // Non-day-based data
     budgets,
     sips,
     travelPlans,
 
-    // Subject handlers (for hours)
-    handleAddSubject: addSubjectConfig,
-    handleRemoveSubject: removeSubjectConfig,
-    handleUpdateSubject: updateSubjectConfig,
-    handleToggleHasTopics: toggleSubjectHasTopics,
-    handleAddTopic: addTopicToSubject,
-    handleRemoveTopic: removeTopicFromSubject,
-    handleUpdateTopic: updateTopicInSubject,
-    isTopicInUse,
-
-    // Area handlers (for productivity)
-    handleAddArea: addAreaConfig,
-    handleRemoveArea: removeAreaConfig,
-    handleUpdateArea: updateAreaConfig,
-    handleToggleAreaHasTopics: toggleAreaHasTopics,
-    handleAddAreaTopic: addTopicToArea,
-    handleRemoveAreaTopic: removeTopicFromArea,
-    handleUpdateAreaTopic: updateTopicInArea,
-    isAreaTopicInUse,
-
-    // Day details handler
-    handleUpdateDetails: updateDay,
+    // Generic handlers
+    handleUpdateData,
+    updateConfig,
     
     // Travel handlers
     handleAddTravel,

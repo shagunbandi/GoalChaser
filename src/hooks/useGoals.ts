@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './useAuth'
 import { getFirebaseDb, isUsingEmulator } from '@/lib/firebase-service'
-import type { SuccessCriterion } from '@/types'
 import { logger } from '@/lib/logger'
 
 // ============ Types ============
@@ -15,7 +14,6 @@ export interface Goal {
   color?: string
   startDate?: string
   endDate?: string
-  successCriterion?: SuccessCriterion
 }
 
 // ============ LocalStorage Keys ============
@@ -64,7 +62,6 @@ async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
         color: data.color,
         startDate: data.startDate,
         endDate: data.endDate,
-        successCriterion: data.successCriterion,
       })
     })
 
@@ -91,7 +88,6 @@ async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> 
       color: goal.color || '',
       startDate: goal.startDate || null,
       endDate: goal.endDate || null,
-      successCriterion: goal.successCriterion || null,
       updatedAt: new Date().toISOString(),
     })
     logger.success('Goal saved')
@@ -126,7 +122,7 @@ interface CreateGoalOptions {
   color?: string
   startDate?: string
   endDate?: string
-  successCriterion?: SuccessCriterion
+  enabledPlugins?: string[]
 }
 
 interface UseGoalsReturn {
@@ -196,7 +192,6 @@ export function useGoals(): UseGoalsReturn {
         color: options.color,
         startDate: options.startDate,
         endDate: options.endDate,
-        successCriterion: options.successCriterion,
       }
 
       const newGoals = [newGoal, ...goals]
@@ -205,6 +200,18 @@ export function useGoals(): UseGoalsReturn {
 
       if (isUsingFirebase && user) {
         await saveGoalToFirebase(user.uid, newGoal)
+        
+        // Save addon configuration if provided
+        if (options.enabledPlugins && options.enabledPlugins.length > 0) {
+          try {
+            const { saveGoalAddonsConfig } = await import('@/lib/api/addon-config-api')
+            await saveGoalAddonsConfig(user.uid, newGoal.id, {
+              enabled: options.enabledPlugins as any[],
+            })
+          } catch (error) {
+            logger.error('Failed to save addon config', error)
+          }
+        }
       }
 
       return newGoal

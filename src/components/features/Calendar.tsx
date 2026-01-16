@@ -3,20 +3,28 @@
 import type {
   DayStatus,
   MonthInfo,
-  SuccessCriterion,
-  DayDetails,
 } from '@/types'
 import { Card } from '@/components/ui/Card'
-import { getScoreColorClass, getStatusColorStyle } from '@/utils'
+import { getScoreColorClass } from '@/utils'
 import { WEEKDAY_LABELS, MONTH_NAMES } from '@/constants'
+
+/**
+ * Plugin indicator for calendar dots
+ */
+export interface PluginIndicator {
+  pluginId: string
+  pluginName: string
+  color: string
+  hasData: boolean
+}
 
 interface CalendarProps {
   currentYear: number
   currentMonth: number
   monthInfo: MonthInfo
   dayStatuses: Record<string, DayStatus>
-  dayDetails?: Record<string, DayDetails>
-  selectedDate: string
+  dayDetails?: Record<string, any>
+  selectedDate?: string | null
   todayISO: string
   onPrevMonth: () => void
   onNextMonth: () => void
@@ -25,8 +33,8 @@ interface CalendarProps {
   // Goal date range (optional)
   goalStartDate?: string
   goalEndDate?: string
-  // Success criterion for coloring
-  successCriterion?: SuccessCriterion
+  // Plugin indicators for colored dots (NEW)
+  pluginIndicators?: Record<string, PluginIndicator[]> // date -> indicators
 }
 
 export function Calendar({
@@ -43,7 +51,7 @@ export function Calendar({
   noCard = false,
   goalStartDate,
   goalEndDate,
-  successCriterion,
+  pluginIndicators = {},
 }: CalendarProps) {
   const firstDayWeekdayIndex = monthInfo.days[0]?.weekdayIndex || 0
   const emptyCells = Array(firstDayWeekdayIndex).fill(null)
@@ -61,7 +69,7 @@ export function Calendar({
     const details = dayDetails[iso]
     if (!details) return 0
     const subjectHours =
-      details.subjects?.reduce((sum, entry) => sum + (entry.hours || 0), 0) || 0
+      details.subjects?.reduce((sum: number, entry: any) => sum + (entry.hours || 0), 0) || 0
     const directHours = details.directHours || 0
     // Subject hours take priority over direct hours
     return subjectHours > 0 ? subjectHours : directHours
@@ -73,10 +81,8 @@ export function Calendar({
     isSelected: boolean,
     isInRange: boolean,
   ): string => {
-    // For productivity criterion or default, use the existing color class
-    const useProductivityColors =
-      !successCriterion || successCriterion.type === 'productivity'
-    const bg = useProductivityColors ? getScoreColorClass(status) : ''
+    // Use default productivity-based coloring
+    const bg = getScoreColorClass(status)
 
     const todayRing = isToday
       ? 'ring-2 ring-[#007AFF] ring-offset-1 ring-offset-[#0a0a12]'
@@ -97,72 +103,47 @@ export function Calendar({
     `
   }
 
-  // Get inline style for hours-based coloring
-  const getDayStyle = (iso: string): React.CSSProperties => {
-    if (!successCriterion || successCriterion.type !== 'hours') return {}
-    const totalHours = getTotalHours(iso)
-    return getStatusColorStyle(successCriterion, null, totalHours)
-  }
-
-  const getActivityIcons = (iso: string) => {
-    const details = dayDetails?.[iso]
-    const agendaItems = details?.agendaItems || []
-    const expenses = details?.expenses || []
-    const income = details?.income || []
-    const travelPlans = details?.travelPlans || []
-
-    const icons = []
+  /**
+   * Get plugin indicators for a specific day (colored dots)
+   */
+  const getPluginDots = (iso: string) => {
+    const indicators = pluginIndicators[iso] || []
+    const activeIndicators = indicators.filter(ind => ind.hasData)
     
-    // Agenda
-    if (agendaItems.length > 0) {
-      icons.push({
-        emoji: '📝',
-        tooltip: `${agendaItems.length} agenda item${agendaItems.length > 1 ? 's' : ''}: ${agendaItems.map(i => i.title).join(', ')}`
-      })
-    }
-    
-    // Expenses
-    if (expenses.length > 0) {
-      const total = expenses.reduce((sum, e) => sum + e.amount, 0)
-      icons.push({
-        emoji: '💸',
-        tooltip: `${expenses.length} expense${expenses.length > 1 ? 's' : ''}: ₹${total.toLocaleString('en-IN')}`
-      })
-    }
-    
-    // Income
-    if (income.length > 0) {
-      const total = income.reduce((sum, i) => sum + i.amount, 0)
-      icons.push({
-        emoji: '💰',
-        tooltip: `${income.length} income: ₹${total.toLocaleString('en-IN')}`
-      })
-    }
-    
-    // Travel
-    if (travelPlans.length > 0) {
-      icons.push({
-        emoji: '✈️',
-        tooltip: travelPlans.map(t => t.title).join(', ')
-      })
-    }
-
-    if (icons.length === 0) return null
+    if (activeIndicators.length === 0) return null
 
     return (
-      <div className="mt-auto w-full flex justify-center gap-0.5">
-        {icons.map((icon, idx) => (
-          <span
-            key={idx}
-            className="text-[11px] opacity-80"
-            title={icon.tooltip}
-          >
-            {icon.emoji}
-          </span>
+      <div className="mt-auto w-full flex justify-center gap-1">
+        {activeIndicators.map((indicator) => (
+          <div
+            key={indicator.pluginId}
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ backgroundColor: indicator.color }}
+            title={indicator.pluginName}
+          />
         ))}
       </div>
     )
   }
+
+  /**
+   * Get unique plugins across all days for the legend
+   */
+  const getActivePlugins = (): PluginIndicator[] => {
+    const pluginsMap = new Map<string, PluginIndicator>()
+    
+    Object.values(pluginIndicators).forEach(dayIndicators => {
+      dayIndicators.forEach(indicator => {
+        if (indicator.hasData && !pluginsMap.has(indicator.pluginId)) {
+          pluginsMap.set(indicator.pluginId, indicator)
+        }
+      })
+    })
+    
+    return Array.from(pluginsMap.values())
+  }
+
+  const activePlugins = getActivePlugins()
 
   const content = (
     <>
@@ -231,7 +212,7 @@ export function Calendar({
           const isToday = day.iso === todayISO
           const isSelected = day.iso === selectedDate
           const isInRange = isDateInRange(day.iso)
-          const activityIcons = getActivityIcons(day.iso)
+          const pluginDots = getPluginDots(day.iso)
           return (
             <div
               key={day.iso}
@@ -240,34 +221,28 @@ export function Calendar({
               data-today={isToday}
               onClick={() => isInRange && onDayClick(day.iso)}
               className={getDayClasses(status, isToday, isSelected, isInRange)}
-              style={isInRange ? getDayStyle(day.iso) : undefined}
             >
               <span className="text-sm font-medium">{day.dayOfMonth}</span>
-              {activityIcons}
+              {pluginDots}
             </div>
           )
         })}
       </div>
 
-      {/* Activity Legend */}
-      <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap gap-4 text-[11px] text-white/60">
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm">📝</span>
-          <span>Agenda</span>
+      {/* Plugin Legend - Show colored dots */}
+      {activePlugins.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap gap-4 text-xs text-white/60">
+          {activePlugins.map((plugin) => (
+            <div key={plugin.pluginId} className="flex items-center gap-2">
+              <div
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: plugin.color }}
+              />
+              <span>{plugin.pluginName}</span>
+            </div>
+          ))}
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm">💸</span>
-          <span>Expense</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm">💰</span>
-          <span>Income</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm">✈️</span>
-          <span>Travel</span>
-        </div>
-      </div>
+      )}
     </>
   )
 

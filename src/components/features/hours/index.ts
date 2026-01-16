@@ -1,1 +1,0 @@
-export { HoursView } from './HoursView'

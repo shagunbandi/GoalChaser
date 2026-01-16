@@ -1,4 +1,4 @@
-import type { DayStatus, SuccessCriterion } from '@/types'
+import type { DayStatus } from '@/types'
 
 export type ScoreCategory = 'low' | 'ok' | 'high' | null
 
@@ -97,7 +97,7 @@ export function getHoursLabel(hours: number, maxHours: number): string {
 }
 
 export function getStatusColorClass(
-  criterion: SuccessCriterion | undefined,
+  criterion: any | undefined,
   productivityScore: DayStatus,
   totalHours: number | null
 ): string {
@@ -113,7 +113,7 @@ export function getStatusColorClass(
 }
 
 export function getStatusColorStyle(
-  criterion: SuccessCriterion | undefined,
+  criterion: any | undefined,
   productivityScore: DayStatus,
   totalHours: number | null
 ): React.CSSProperties {

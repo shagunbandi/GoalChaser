@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import type { AddonId, AddonCategory } from '@/types/addon-config'
-import { ADDON_REGISTRY } from '@/lib/addon-registry'
+import { usePluginRegistry } from '@/core/plugin-registry/hooks'
 
 interface GroupedTabBarProps {
   goalId: string
@@ -23,6 +23,7 @@ export function GroupedTabBar({
   const router = useRouter()
   const [openDropdown, setOpenDropdown] = useState<AddonId | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const { registry, loading } = usePluginRegistry()
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -36,46 +37,75 @@ export function GroupedTabBar({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Build addon categories from registry, sorted with primary addons first
-  const addons: AddonCategory[] = enabledAddons
-    .map((addonId) => {
-      const def = ADDON_REGISTRY[addonId]
-      if (!def) return null
+  // Build addon categories: Core tabs first (Calendar, Analytics), then enabled plugins
+  const addons: AddonCategory[] = loading ? [] : [
+    // Core tabs - always visible
+    {
+      id: 'calendar' as AddonId,
+      name: 'Calendar',
+      icon: '📅',
+      isPrimary: true,
+    },
+    {
+      id: 'analytics' as AddonId,
+      name: 'Analytics',
+      icon: '📊',
+      isPrimary: true,
+    },
+    // Then show enabled plugins
+    ...enabledAddons
+      .map((addonId) => {
+        const plugin = registry.getPlugin(addonId)
+        if (!plugin) return null
 
-      const category: AddonCategory = {
-        id: def.id,
-        name: def.name,
-        icon: def.icon,
-        isPrimary: def.isPrimary,
-      }
+        const category: AddonCategory = {
+          id: plugin.id as AddonId,
+          name: plugin.metadata.name,
+          icon: plugin.metadata.icon,
+          isPrimary: plugin.metadata.isPrimary,
+        }
 
-      // Add sub-items if they exist
-      if (def.subModules && def.subModules.length > 0) {
-        category.subItems = def.subModules.map((module) => ({
-          id: module,
-          name: module.charAt(0).toUpperCase() + module.slice(1),
-          route: `${def.route(goalId, currentYear)}/${module}`,
-        }))
-      }
+        // Add sub-items from routes if they exist
+        if (plugin.routes && plugin.routes.length > 1) {
+          category.subItems = plugin.routes.map((route) => ({
+            id: route.path,
+            name: route.path.charAt(0).toUpperCase() + route.path.slice(1),
+            route: `/goal/${goalId}/${plugin.id}/${route.path}`,
+          }))
+        }
 
-      return category
-    })
-    .filter((addon): addon is AddonCategory => addon !== null)
-    .sort((a, b) => {
-      // Primary addons (calendar) come first
-      if (a.isPrimary && !b.isPrimary) return -1
-      if (!a.isPrimary && b.isPrimary) return 1
-      return 0
-    })
+        return category
+      })
+      .filter((addon): addon is AddonCategory => addon !== null),
+  ]
 
   const handleTabClick = (addon: AddonCategory) => {
     // If has sub-items, toggle dropdown
     if (addon.subItems && addon.subItems.length > 0) {
       setOpenDropdown(openDropdown === addon.id ? null : addon.id)
     } else {
-      // Navigate directly
-      const def = ADDON_REGISTRY[addon.id]
-      router.push(def.route(goalId, currentYear))
+      // Core tabs have special routes
+      if (addon.id === 'calendar') {
+        router.push(`/goal/${goalId}`)
+        setOpenDropdown(null)
+        return
+      }
+      
+      if (addon.id === 'analytics') {
+        router.push(`/goal/${goalId}/analytics`)
+        setOpenDropdown(null)
+        return
+      }
+      
+      // Navigate to plugin
+      const plugin = registry.getPlugin(addon.id)
+      if (plugin && plugin.routes.length > 0) {
+        const route = plugin.routes[0]
+        const path = route.requiresYear 
+          ? `/goal/${goalId}/${plugin.id}/${currentYear}`
+          : `/goal/${goalId}/${plugin.id}`
+        router.push(path)
+      }
       setOpenDropdown(null)
     }
   }

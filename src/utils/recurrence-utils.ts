@@ -1,5 +1,7 @@
-import type { RepeatType } from '@/types'
 import { toISODateString } from './date-utils'
+
+// Generic repeat types (not plugin-specific)
+export type RepeatType = 'none' | 'daily' | 'weekly'
 
 export const WEEKDAY_CODES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 export const REPEAT_WINDOW_DAYS = 365

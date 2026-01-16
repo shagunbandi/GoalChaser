@@ -1,33 +1,29 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import type { 
-  DayDetails, 
-  SubjectConfig, 
-  AreaConfig,
-  BudgetPlan, 
-  SIPPlan, 
-  TravelPlan,
-  AddonId 
-} from '@/types'
-import { loadCalendarDays, saveCalendarDay } from '@/lib/api/calendar-api'
-import { loadProductivityDays, saveProductivityDay, loadProductivityConfig, saveProductivityConfig } from '@/lib/api/productivity-api'
-import { loadHoursDays, saveHoursDay, loadHoursConfig, saveHoursConfig } from '@/lib/api/hours-api'
+import { useState, useEffect, useCallback } from 'react'
+import type { AddonId } from '@/types'
+import { loadCalendarDays, saveCalendarDay } from '@/components/features/calendar/api'
+// Exception: Finance and Travel APIs are imported directly for non-day-based data
+// (budgets, SIPs, travel plans) which don't fit the standard day data provider pattern
 import { 
-  loadFinanceTransactions, 
-  saveFinanceTransaction,
   loadBudgetsFromFirebase,
   saveBudgetToFirebase,
   deleteBudgetFromFirebase,
   loadSIPsFromFirebase,
   saveSIPToFirebase,
-  deleteSIPFromFirebase
-} from '@/lib/api/budget-api'
-import { loadTravelPlans, saveTravelPlan, deleteTravelPlan } from '@/lib/api/travel-api'
-import { setFirebaseDb } from '@/lib/api/budget-api'
+  deleteSIPFromFirebase,
+  setFirebaseDb
+} from '@/plugins/finance/api'
+import { saveTravelPlan, deleteTravelPlan } from '@/plugins/travel/api'
+import { initFirebase } from '@/lib/api/firebase-client'
 import { getFirestore } from 'firebase/firestore'
 import { getFirebaseApp } from '@/lib/firebase-service'
 import { loadGoalAddonsConfig } from '@/lib/api/addon-config-api'
+import { usePluginRegistry } from '@/core/plugin-registry/hooks'
+import { createPluginContext } from '@/sdk'
+import type { PluginDayData, PluginConfigData } from '@/sdk'
+import type { BudgetPlan, SIPPlan } from '@/plugins/finance/types'
+import type { TravelPlan } from '@/plugins/travel/types'
 
 interface UseGoalDataLoaderParams {
   userId: string
@@ -38,10 +34,13 @@ interface UseGoalDataLoaderParams {
 }
 
 interface UseGoalDataLoaderResult {
-  // Aggregated data
-  dayDetails: Record<string, DayDetails>
-  subjectConfigs: SubjectConfig[]
-  areaConfigs: AreaConfig[]
+  // Generic plugin data: pluginId -> date -> data
+  pluginData: Record<string, Record<string, PluginDayData>>
+  
+  // Plugin configs: pluginId -> config
+  pluginConfigs: Record<string, PluginConfigData>
+  
+  // Non-day-based data (plugin-specific for now, but not tied to days)
   budgets: BudgetPlan[]
   sips: SIPPlan[]
   travelPlans: TravelPlan[]
@@ -51,9 +50,8 @@ interface UseGoalDataLoaderResult {
   error: Error | null
   
   // Save methods
-  updateDay: (date: string, updates: Partial<DayDetails>) => Promise<void>
-  updateSubjectConfigs: (configs: SubjectConfig[]) => Promise<void>
-  updateAreaConfigs: (configs: AreaConfig[]) => Promise<void>
+  updatePluginData: (pluginId: string, date: string, updates: Partial<PluginDayData>) => Promise<void>
+  updatePluginConfig: (pluginId: string, config: PluginConfigData) => Promise<void>
   saveBudget: (budget: BudgetPlan) => Promise<void>
   deleteBudget: (budgetId: string) => Promise<void>
   saveSIP: (sip: SIPPlan) => Promise<void>
@@ -68,8 +66,8 @@ interface UseGoalDataLoaderResult {
 /**
  * Smart data loader hook that:
  * 1. Loads data from all enabled add-ons in parallel
- * 2. Aggregates data into a single DayDetails record
- * 3. Provides save methods that route to correct APIs
+ * 2. Stores plugin data separately by pluginId
+ * 3. Provides save methods that route to correct plugins
  * 4. Handles caching and selective reloading
  */
 export function useGoalDataLoader({
@@ -79,23 +77,33 @@ export function useGoalDataLoader({
   endDate,
   enabled = true
 }: UseGoalDataLoaderParams): UseGoalDataLoaderResult {
-  const [dayDetails, setDayDetails] = useState<Record<string, DayDetails>>({})
-  const [subjectConfigs, setSubjectConfigs] = useState<SubjectConfig[]>([])
-  const [areaConfigs, setAreaConfigs] = useState<AreaConfig[]>([])
+  // Generic plugin data structure: pluginId -> date -> data
+  const [pluginData, setPluginData] = useState<Record<string, Record<string, PluginDayData>>>({})
+  const [pluginConfigs, setPluginConfigs] = useState<Record<string, PluginConfigData>>({})
   const [budgets, setBudgets] = useState<BudgetPlan[]>([])
   const [sips, setSips] = useState<SIPPlan[]>([])
   const [travelPlans, setTravelPlans] = useState<TravelPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [enabledAddons, setEnabledAddons] = useState<AddonId[]>(['calendar'])
+  
+  // Get plugin registry
+  const { registry, initialized: registryInitialized } = usePluginRegistry()
 
   // Initialize Firebase DB
   useEffect(() => {
-    const app = getFirebaseApp()
-    if (app) {
-      const db = getFirestore(app)
-      setFirebaseDb(db)
+    async function init() {
+      const app = getFirebaseApp()
+      if (app) {
+        const db = getFirestore(app)
+        setFirebaseDb(db)
+      }
+      
+      // Also initialize firebase-client for travel-api and other APIs
+      await initFirebase()
     }
+    
+    init()
   }, [])
 
   // Load enabled add-ons configuration
@@ -119,8 +127,8 @@ export function useGoalDataLoader({
 
   // Main data loading function
   const loadData = useCallback(async () => {
-    // Don't load if not enabled or userId is missing
-    if (!enabled || !userId) {
+    // Don't load if not enabled or userId is missing or registry not initialized
+    if (!enabled || !userId || !registryInitialized) {
       setLoading(false)
       return
     }
@@ -129,221 +137,115 @@ export function useGoalDataLoader({
     setError(null)
 
     try {
-      // Create promises for all enabled add-ons
-      const promises: Promise<any>[] = []
+      const newPluginData: Record<string, Record<string, PluginDayData>> = {}
+      const newPluginConfigs: Record<string, PluginConfigData> = {}
       
-      // Calendar (always loaded)
-      promises.push(loadCalendarDays(userId, goalId, startDate, endDate))
+      // Calendar (always loaded - core feature)
+      const calendarData = await loadCalendarDays(userId, goalId, startDate, endDate)
+      newPluginData['calendar'] = calendarData
       
-      // Productivity + config
-      if (enabledAddons.includes('productivity')) {
-        promises.push(loadProductivityDays(userId, goalId, startDate, endDate))
-        promises.push(loadProductivityConfig(userId, goalId))
-      } else {
-        promises.push(Promise.resolve({}))
-        promises.push(Promise.resolve([]))
+      // Load data from plugins using plugin registry
+      for (const addonId of enabledAddons) {
+        if (addonId === 'calendar') continue // Already loaded
+        
+        const plugin = registry.getPlugin(addonId)
+        if (plugin?.dataProvider) {
+          const context = createPluginContext({ userId, goalId, pluginId: addonId })
+          
+          // Load day data
+          const dayData = await plugin.dataProvider.loadDateRange(context, startDate, endDate)
+          newPluginData[addonId] = dayData || {}
+          
+          // Load config if available
+          if (plugin.dataProvider.loadConfig) {
+            const config = await plugin.dataProvider.loadConfig(context)
+            newPluginConfigs[addonId] = config
+          }
+        }
       }
       
-      // Hours + config
-      if (enabledAddons.includes('hours')) {
-        promises.push(loadHoursDays(userId, goalId, startDate, endDate))
-        promises.push(loadHoursConfig(userId, goalId))
-      } else {
-        promises.push(Promise.resolve({}))
-        promises.push(Promise.resolve([]))
-      }
-      
-      // Finance
+      // Load finance-specific data (budgets, SIPs) - these are not day-based
+      let budgetsData: BudgetPlan[] = []
+      let sipsData: SIPPlan[] = []
       if (enabledAddons.includes('finance')) {
-        promises.push(loadFinanceTransactions(userId, goalId, startDate, endDate))
-        promises.push(loadBudgetsFromFirebase(userId, goalId))
-        promises.push(loadSIPsFromFirebase(userId, goalId))
-      } else {
-        promises.push(Promise.resolve({}))
-        promises.push(Promise.resolve([]))
-        promises.push(Promise.resolve([]))
+        budgetsData = await loadBudgetsFromFirebase(userId, goalId)
+        sipsData = await loadSIPsFromFirebase(userId, goalId)
       }
       
-      // Travel
-      if (enabledAddons.includes('travel')) {
-        promises.push(loadTravelPlans(userId, goalId, startDate, endDate))
-      } else {
-        promises.push(Promise.resolve([]))
-      }
+      // Note: Travel data is now loaded via the plugin's data provider (day-based storage)
+      // No need to load from the old plans collection
 
-      // Execute all queries in parallel
-      const [
-        calendarData,
-        productivityData,
-        productivityConfigData,
-        hoursData,
-        hoursConfigData,
-        financeData,
-        budgetsData,
-        sipsData,
-        travelData
-      ] = await Promise.all(promises)
-
-      // Aggregate data into DayDetails format
-      const aggregated: Record<string, DayDetails> = {}
-      
-      // Get all dates covered by travel plans
-      const travelDates = new Set<string>()
-      travelData.forEach((plan: TravelPlan) => {
-        const start = new Date(plan.startDate)
-        const end = new Date(plan.endDate)
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          const dateStr = d.toISOString().split('T')[0]
-          travelDates.add(dateStr)
-        }
-      })
-      
-      // Get all unique dates from all sources including travel
-      const allDates = new Set<string>([
-        ...Object.keys(calendarData),
-        ...Object.keys(productivityData),
-        ...Object.keys(hoursData),
-        ...Object.keys(financeData),
-        ...travelDates
-      ])
-
-      // Aggregate each date
-      for (const date of allDates) {
-        const calendar = calendarData[date] || { note: '', agendaItems: [] }
-        const productivity = productivityData[date] || { status: null, areas: [] }
-        const hours = hoursData[date] || { subjects: [], directHours: 0 }
-        const finance = financeData[date] || { expenses: [], income: [] }
-
-        aggregated[date] = {
-          // Calendar
-          note: calendar.note,
-          agendaItems: calendar.agendaItems,
-          
-          // Productivity
-          status: productivity.status,
-          areas: productivity.areas,
-          
-          // Hours
-          subjects: hours.subjects,
-          directHours: hours.directHours,
-          subject: '',
-          topic: '',
-          
-          // Finance
-          expenses: finance.expenses,
-          income: finance.income,
-          
-          // Travel (aggregated separately)
-          travelPlans: travelData.filter((plan: TravelPlan) => 
-            plan.startDate <= date && plan.endDate >= date
-          )
-        }
-      }
-
-      setDayDetails(aggregated)
-      setSubjectConfigs(hoursConfigData)
-      setAreaConfigs(productivityConfigData)
+      setPluginData(newPluginData)
+      setPluginConfigs(newPluginConfigs)
       setBudgets(budgetsData)
       setSips(sipsData)
-      setTravelPlans(travelData)
+      setTravelPlans([])
     } catch (err) {
       console.error('Failed to load goal data:', err)
       setError(err as Error)
     } finally {
       setLoading(false)
     }
-  }, [userId, goalId, startDate, endDate, enabledAddons, enabled])
+  }, [userId, goalId, startDate, endDate, enabledAddons, enabled, registryInitialized, registry])
 
   // Load data on mount and when params change
   useEffect(() => {
     loadData()
   }, [loadData])
 
-  // Update day details
-  const updateDay = useCallback(async (date: string, updates: Partial<DayDetails>) => {
+  // Update plugin data
+  const updatePluginData = useCallback(async (pluginId: string, date: string, updates: Record<string, any>) => {
     try {
-      // Determine which add-on APIs to call based on updates
-      const promises: Promise<any>[] = []
-
-      // Calendar updates
-      if ('note' in updates || 'agendaItems' in updates) {
-        promises.push(saveCalendarDay(userId, goalId, date, {
-          note: updates.note,
-          agendaItems: updates.agendaItems
-        }))
-      }
-
-      // Productivity updates
-      if ('status' in updates || 'areas' in updates) {
-        promises.push(saveProductivityDay(userId, goalId, date, {
-          status: updates.status ?? null,
-          areas: updates.areas
-        }))
-      }
-
-      // Hours updates
-      if ('subjects' in updates || 'directHours' in updates) {
-        promises.push(saveHoursDay(userId, goalId, date, {
-          subjects: updates.subjects,
-          directHours: updates.directHours
-        }))
-      }
-
-      // Finance updates
-      if ('expenses' in updates || 'income' in updates) {
-        promises.push(saveFinanceTransaction(userId, goalId, date, {
-          expenses: updates.expenses,
-          income: updates.income
-        }))
-      }
-
-      // Travel updates (handled differently - by plan ID)
-      if ('travelPlans' in updates && updates.travelPlans) {
-        for (const plan of updates.travelPlans) {
-          promises.push(saveTravelPlan(userId, goalId, plan))
+      // Route to appropriate plugin or core feature
+      if (pluginId === 'calendar') {
+        // Calendar is a core feature with its own API
+        await saveCalendarDay(userId, goalId, date, updates)
+      } else {
+        // Use plugin's data provider
+        const plugin = registry.getPlugin(pluginId)
+        if (plugin?.dataProvider) {
+          const context = createPluginContext({ userId, goalId, pluginId })
+          await plugin.dataProvider.saveDayData(context, date, updates)
         }
       }
 
-      await Promise.all(promises)
-
       // Update local state optimistically
-      setDayDetails(prev => ({
+      setPluginData(prev => ({
         ...prev,
-        [date]: {
-          ...prev[date],
-          ...updates
+        [pluginId]: {
+          ...prev[pluginId],
+          [date]: {
+            ...(prev[pluginId]?.[date] || {}),
+            ...updates
+          }
         }
       }))
     } catch (err) {
-      console.error('Failed to update day:', err)
+      console.error(`Failed to update ${pluginId} data:`, err)
       throw err
     }
-  }, [userId, goalId])
+  }, [userId, goalId, registry])
 
-  // Update subject configs
-  const updateSubjectConfigs = useCallback(async (configs: SubjectConfig[]) => {
+  // Update plugin config
+  const updatePluginConfig = useCallback(async (pluginId: string, config: any) => {
     try {
-      await saveHoursConfig(userId, goalId, configs)
-      setSubjectConfigs(configs)
+      const plugin = registry.getPlugin(pluginId)
+      if (plugin?.dataProvider?.saveConfig) {
+        const context = createPluginContext({ userId, goalId, pluginId })
+        await plugin.dataProvider.saveConfig(context, config)
+      }
+      setPluginConfigs(prev => ({
+        ...prev,
+        [pluginId]: config
+      }))
     } catch (err) {
-      console.error('Failed to update subject configs:', err)
+      console.error(`Failed to update ${pluginId} config:`, err)
       throw err
     }
-  }, [userId, goalId])
-
-  // Update area configs
-  const updateAreaConfigs = useCallback(async (configs: AreaConfig[]) => {
-    try {
-      await saveProductivityConfig(userId, goalId, configs)
-      setAreaConfigs(configs)
-    } catch (err) {
-      console.error('Failed to update area configs:', err)
-      throw err
-    }
-  }, [userId, goalId])
+  }, [userId, goalId, registry])
 
   // Budget handlers
-  const saveBudget = useCallback(async (budget: BudgetPlan) => {
+  const saveBudgetHandler = useCallback(async (budget: any) => {
     try {
       await saveBudgetToFirebase(userId, goalId, budget)
       setBudgets(prev => {
@@ -361,7 +263,7 @@ export function useGoalDataLoader({
     }
   }, [userId, goalId])
 
-  const deleteBudget = useCallback(async (budgetId: string) => {
+  const deleteBudgetHandler = useCallback(async (budgetId: string) => {
     try {
       await deleteBudgetFromFirebase(userId, goalId, budgetId)
       setBudgets(prev => prev.filter(b => b.id !== budgetId))
@@ -372,7 +274,7 @@ export function useGoalDataLoader({
   }, [userId, goalId])
 
   // SIP handlers
-  const saveSIP = useCallback(async (sip: SIPPlan) => {
+  const saveSIPHandler = useCallback(async (sip: any) => {
     try {
       await saveSIPToFirebase(userId, goalId, sip)
       setSips(prev => {
@@ -390,7 +292,7 @@ export function useGoalDataLoader({
     }
   }, [userId, goalId])
 
-  const deleteSIP = useCallback(async (sipId: string) => {
+  const deleteSIPHandler = useCallback(async (sipId: string) => {
     try {
       await deleteSIPFromFirebase(userId, goalId, sipId)
       setSips(prev => prev.filter(s => s.id !== sipId))
@@ -401,7 +303,7 @@ export function useGoalDataLoader({
   }, [userId, goalId])
 
   // Travel handlers
-  const saveTravelPlanHandler = useCallback(async (plan: TravelPlan) => {
+  const saveTravelPlanHandler = useCallback(async (plan: any) => {
     try {
       await saveTravelPlan(userId, goalId, plan)
       setTravelPlans(prev => {
@@ -413,7 +315,7 @@ export function useGoalDataLoader({
         }
         return [...prev, plan]
       })
-      // Also update dayDetails to include this plan in relevant dates
+      // Also reload to update date-based data
       await loadData()
     } catch (err) {
       console.error('Failed to save travel plan:', err)
@@ -425,7 +327,7 @@ export function useGoalDataLoader({
     try {
       await deleteTravelPlan(userId, goalId, planId)
       setTravelPlans(prev => prev.filter(t => t.id !== planId))
-      // Also update dayDetails to remove this plan from dates
+      // Also reload to update date-based data
       await loadData()
     } catch (err) {
       console.error('Failed to delete travel plan:', err)
@@ -434,21 +336,19 @@ export function useGoalDataLoader({
   }, [userId, goalId, loadData])
 
   return {
-    dayDetails,
-    subjectConfigs,
-    areaConfigs,
+    pluginData,
+    pluginConfigs,
     budgets,
     sips,
     travelPlans,
     loading,
     error,
-    updateDay,
-    updateSubjectConfigs,
-    updateAreaConfigs,
-    saveBudget,
-    deleteBudget,
-    saveSIP,
-    deleteSIP,
+    updatePluginData,
+    updatePluginConfig,
+    saveBudget: saveBudgetHandler,
+    deleteBudget: deleteBudgetHandler,
+    saveSIP: saveSIPHandler,
+    deleteSIP: deleteSIPHandler,
     saveTravelPlan: saveTravelPlanHandler,
     deleteTravelPlan: deleteTravelPlanHandler,
     reload: loadData

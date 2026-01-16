@@ -19,6 +19,9 @@
       }
     ],
     "paths": {
+      "@/sdk/*": ["./src/sdk/*"],
+      "@/core/*": ["./src/core/*"],
+      "@/plugins/*": ["./src/plugins/*"],
       "@/*": ["./src/*"]
     }
   },

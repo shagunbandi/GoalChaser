@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import type { AddonId } from '@/types/addon-config'
-import { ADDON_REGISTRY } from '@/lib/addon-registry'
+import { useManageablePlugins } from '@/core/plugin-registry/hooks'
 
 interface AddonsManagerModalProps {
   open: boolean
@@ -22,10 +22,10 @@ export function AddonsManagerModal({
 }: AddonsManagerModalProps) {
   const [selectedAddons, setSelectedAddons] = useState<AddonId[]>(enabledAddons)
   const [isSaving, setIsSaving] = useState(false)
+  const { plugins: manageablePlugins, loading } = useManageablePlugins()
 
   // Filter out primary addons (like calendar) - they can't be disabled
-  const allAddons: AddonId[] = (Object.keys(ADDON_REGISTRY) as AddonId[])
-    .filter(id => !ADDON_REGISTRY[id].isPrimary)
+  const allAddons: AddonId[] = manageablePlugins.map(p => p.id as AddonId)
 
   const handleToggle = (addonId: AddonId) => {
     setSelectedAddons((prev) => {
@@ -68,13 +68,18 @@ export function AddonsManagerModal({
       <div className="space-y-6">
         {/* Description */}
         <p className="text-white/60 text-sm">
-          Enable or disable add-ons for this goal. Calendar is always enabled and cannot be disabled.
+          Enable or disable add-ons for this goal. The calendar is always available as your core tracker.
         </p>
 
         {/* Add-ons List */}
         <div className="space-y-3">
-          {allAddons.map((addonId) => {
-            const addon = ADDON_REGISTRY[addonId]
+          {loading ? (
+            <div className="text-center text-white/50 py-4">Loading plugins...</div>
+          ) : (
+            allAddons.map((addonId) => {
+              const plugin = manageablePlugins.find(p => p.id === addonId)
+              if (!plugin) return null
+              
             const isEnabled = selectedAddons.includes(addonId)
             const isOnlyEnabled = isEnabled && selectedAddons.length === 1
 
@@ -89,18 +94,18 @@ export function AddonsManagerModal({
                 "
               >
                 <div className="flex items-start gap-3 flex-1">
-                  <span className="text-2xl">{addon.icon}</span>
+                  <span className="text-2xl">{plugin.metadata.icon}</span>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-white font-medium">{addon.name}</h3>
-                      {addon.isPrimary && (
+                      <h3 className="text-white font-medium">{plugin.metadata.name}</h3>
+                      {plugin.metadata.isPrimary && (
                         <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full">
                           Primary
                         </span>
                       )}
                     </div>
                     <p className="text-white/50 text-sm mt-0.5">
-                      {addon.description}
+                      {plugin.metadata.description}
                     </p>
                   </div>
                 </div>
@@ -127,7 +132,8 @@ export function AddonsManagerModal({
                 </button>
               </div>
             )
-          })}
+          })
+          )}
         </div>
 
         {/* Info message */}

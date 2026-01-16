@@ -1,20 +1,11 @@
-// Re-export all feature components
+// Core Components
 export { Calendar } from './Calendar'
-export { DetailView } from './DetailView'
-export { YearView } from './YearView'
-export { BudgetingView } from './BudgetingView'
-export { StatusSelector } from './StatusSelector'
-export { SubjectManager } from './SubjectManager'
-export { HoursSummary } from './HoursSummary'
-export { AgendaManager } from './AgendaManager'
-export { SubjectEntries } from './SubjectEntries'
-export { FirebaseHealthCheck } from './FirebaseHealthCheck'
-export { ActivityCard } from './ActivityCard'
 export { GroupedTabBar } from './GroupedTabBar'
 export { AddonsManagerModal } from './AddonsManagerModal'
+export { FirebaseHealthCheck } from './FirebaseHealthCheck'
 
 // Calendar components
-export * from './calendar'
+export * from './calendar/'
 
 // Generic Year View Components
 export { GenericYearView } from './year-view/GenericYearView'
@@ -29,16 +20,7 @@ export { ModalRenderer } from './year-view/renderers/ModalRenderer'
 // Analytics components
 export * from './analytics'
 
-// Travel components
-export * from './travel'
-
-// Productivity components
-export * from './productivity'
-
-// Hours components
-export * from './hours'
-
-// Agenda components
-export { AgendaView } from './agenda/AgendaView'
-export { AgendaDayModal } from './agenda/AgendaDayModal'
-export { AgendaStats } from './agenda/AgendaStats'
+// Home
+export { Dashboard } from './home'
+export { CreateGoalForm } from './home'
+export { SignInView } from './home'
