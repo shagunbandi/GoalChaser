@@ -26,7 +26,7 @@ export default function TravelPage() {
     pushStatus,
     statusText,
     statusTone,
-  } = useGoalData(goalId)
+  } = useGoalData(goalId, year)
 
   const { enabledAddons, saveAddons } = useAddonsConfig(user?.uid, goalId)
   const [showAddonsManager, setShowAddonsManager] = useState(false)

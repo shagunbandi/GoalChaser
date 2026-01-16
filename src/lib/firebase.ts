@@ -167,6 +167,5 @@ export async function getSuggestionsFromFirestore(): Promise<SavedSuggestions> {
   }
 }
 
-// Re-export service functions for backwards compatibility
 export { getFirebaseDb as getDb, getFirebaseApp as getApp } from './firebase-service'
 

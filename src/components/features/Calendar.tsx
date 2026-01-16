@@ -106,7 +106,7 @@ export function Calendar({
 
   const getActivityIcons = (iso: string) => {
     const details = dayDetails?.[iso]
-    const agendaItems = details?.agendaItems || details?.plannedItems || []
+    const agendaItems = details?.agendaItems || []
     const expenses = details?.expenses || []
     const income = details?.income || []
     const travelPlans = details?.travelPlans || []

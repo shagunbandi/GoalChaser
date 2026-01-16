@@ -283,7 +283,6 @@ function getCurrentStreak(
   dayData: DayProductivity[],
   isHoursBased: boolean
 ): number {
-  // Work backwards from the end
   let streak = 0
   for (let i = dayData.length - 1; i >= 0; i--) {
     const day = dayData[i]
@@ -517,7 +516,6 @@ export function calculateTopicStats(dayData: DayProductivity[]): TopicStats[] {
         })
       })
     }
-    // Fallback to legacy
     else if (day.topic && day.score !== null && day.score > 0) {
       const key = `${day.subject}||${day.topic}`
       if (!topicMap.has(key)) {

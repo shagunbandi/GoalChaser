@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger'
-import type { BudgetPlan, SIPPlan, Expense, Income } from '@/types'
+import type { BudgetPlan, SIPPlan, Expense, Income, FinanceTransactionData } from '@/types'
+import { collection, doc, getDocs, setDoc, deleteDoc, getDoc, query, where } from 'firebase/firestore'
 
 let firebaseDb: any = null
 
@@ -45,11 +46,10 @@ export async function loadBudgetsFromFirebase(
   }
 
   try {
-    const { collection, getDocs } = await import('firebase/firestore')
     const db = getFirebaseDb()
     if (!db) return []
 
-    const budgetsRef = collection(db, 'users', userId, 'goals', goalId, 'budgets')
+    const budgetsRef = collection(db, 'users', userId, 'goals', goalId, 'addons', 'finance', 'budgets')
     const snapshot = await getDocs(budgetsRef)
     
     const budgets: BudgetPlan[] = []
@@ -77,14 +77,13 @@ export async function saveBudgetToFirebase(
   }
 
   try {
-    const { doc, setDoc } = await import('firebase/firestore')
     const db = getFirebaseDb()
     if (!db) {
       logger.error('Save failed')
       return false
     }
     
-    const budgetRef = doc(db, 'users', userId, 'goals', goalId, 'budgets', budget.id)
+    const budgetRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'finance', 'budgets', budget.id)
     
     const cleanedBudget = removeUndefinedFields({
       ...budget,
@@ -113,14 +112,13 @@ export async function deleteBudgetFromFirebase(
   }
 
   try {
-    const { doc, deleteDoc } = await import('firebase/firestore')
     const db = getFirebaseDb()
     if (!db) {
       logger.error('Remove failed')
       return false
     }
     
-    const budgetRef = doc(db, 'users', userId, 'goals', goalId, 'budgets', budgetId)
+    const budgetRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'finance', 'budgets', budgetId)
     await deleteDoc(budgetRef)
     logger.success('Budget removed')
     return true
@@ -141,11 +139,10 @@ export async function loadSIPsFromFirebase(
   }
 
   try {
-    const { collection, getDocs } = await import('firebase/firestore')
     const db = getFirebaseDb()
     if (!db) return []
 
-    const sipsRef = collection(db, 'users', userId, 'goals', goalId, 'sips')
+    const sipsRef = collection(db, 'users', userId, 'goals', goalId, 'addons', 'finance', 'sips')
     const snapshot = await getDocs(sipsRef)
     
     const sips: SIPPlan[] = []
@@ -173,14 +170,13 @@ export async function saveSIPToFirebase(
   }
 
   try {
-    const { doc, setDoc } = await import('firebase/firestore')
     const db = getFirebaseDb()
     if (!db) {
       logger.error('Save failed')
       return false
     }
     
-    const sipRef = doc(db, 'users', userId, 'goals', goalId, 'sips', sip.id)
+    const sipRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'finance', 'sips', sip.id)
     
     const cleanedSIP = removeUndefinedFields({
       ...sip,
@@ -209,19 +205,113 @@ export async function deleteSIPFromFirebase(
   }
 
   try {
-    const { doc, deleteDoc } = await import('firebase/firestore')
     const db = getFirebaseDb()
     if (!db) {
       logger.error('Remove failed')
       return false
     }
     
-    const sipRef = doc(db, 'users', userId, 'goals', goalId, 'sips', sipId)
+    const sipRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'finance', 'sips', sipId)
     await deleteDoc(sipRef)
     logger.success('SIP removed')
     return true
   } catch (error) {
     logger.error('Remove failed', error)
+    return false
+  }
+}
+
+// ============ Finance Transactions ============
+
+/**
+ * Load finance transaction data for a date range
+ */
+export async function loadFinanceTransactions(
+  userId: string,
+  goalId: string,
+  startDate: string,
+  endDate: string
+): Promise<Record<string, FinanceTransactionData>> {
+  if (!isFirebaseAvailable() || !getFirebaseDb()) {
+    return {}
+  }
+
+  try {
+    const db = getFirebaseDb()
+    if (!db) return {}
+
+    const transactionsRef = collection(db, 'users', userId, 'goals', goalId, 'addons', 'finance', 'transactions')
+    const q = query(
+      transactionsRef,
+      where('__name__', '>=', startDate),
+      where('__name__', '<=', endDate)
+    )
+    
+    const snapshot = await getDocs(q)
+    
+    const result: Record<string, FinanceTransactionData> = {}
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data()
+      result[docSnap.id] = {
+        expenses: data.expenses || [],
+        income: data.income || []
+      }
+    })
+
+    return result
+  } catch (error) {
+    logger.error('Failed to load finance transactions', error)
+    return {}
+  }
+}
+
+/**
+ * Save finance transaction data for a specific day
+ */
+export async function saveFinanceTransaction(
+  userId: string,
+  goalId: string,
+  date: string,
+  data: Partial<FinanceTransactionData>
+): Promise<boolean> {
+  logger.progress('Saving transaction...')
+
+  if (!isFirebaseAvailable() || !getFirebaseDb()) {
+    logger.error('Save failed')
+    return false
+  }
+
+  try {
+    const db = getFirebaseDb()
+    if (!db) {
+      logger.error('Save failed')
+      return false
+    }
+
+    const docRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'finance', 'transactions', date)
+    
+    // Get existing data
+    const docSnap = await getDoc(docRef)
+    let existingData: FinanceTransactionData = { expenses: [], income: [] }
+    
+    if (docSnap.exists()) {
+      existingData = docSnap.data() as FinanceTransactionData
+    }
+
+    const updatedData: FinanceTransactionData = {
+      expenses: data.expenses !== undefined ? data.expenses : existingData.expenses,
+      income: data.income !== undefined ? data.income : existingData.income
+    }
+
+    await setDoc(docRef, {
+      ...updatedData,
+      updatedAt: new Date().toISOString()
+    })
+
+    logger.success('Transaction saved')
+    return true
+  } catch (error) {
+    logger.error('Save failed', error)
     return false
   }
 }

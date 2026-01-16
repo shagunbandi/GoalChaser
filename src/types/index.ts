@@ -3,6 +3,57 @@
 // Productivity score: 1-10 scale (1-3: Low, 4-6: OK, 7-10: High)
 export type DayStatus = number | null
 
+// ============ Add-on-Specific Day Data Types ============
+
+// Calendar add-on day data
+export interface CalendarDayData {
+  note: string
+  agendaItems: AgendaItem[]
+}
+
+// Productivity add-on day data
+export interface ProductivityDayData {
+  status: DayStatus
+  areas?: AreaEntry[]
+}
+
+// Area entry with multiple topics (similar to SubjectEntry for Hours)
+export interface AreaEntry {
+  area: string
+  topics: string[]
+}
+
+// Hours add-on day data
+export interface HoursDayData {
+  subjects: SubjectEntry[]
+  directHours: number
+}
+
+// Hours add-on config data
+export interface HoursConfig {
+  subjects: SubjectConfig[]
+}
+
+// Productivity add-on config data
+export interface ProductivityConfig {
+  areas: AreaConfig[]
+}
+
+// Area config (equivalent to SubjectConfig for Productivity)
+export interface AreaConfig {
+  id: string
+  name: string
+  topics: string[]
+  hasTopics?: boolean // If false, area doesn't need topics (default: true)
+  color?: string
+}
+
+// Finance add-on transaction data (daily expenses and income)
+export interface FinanceTransactionData {
+  expenses: Expense[]
+  income: Income[]
+}
+
 // Subject entry with multiple topics and hours
 export interface SubjectEntry {
   subject: string
@@ -17,7 +68,7 @@ export interface RepeatRule {
   days?: string[] // Weekday codes e.g. ['mon','wed','fri']
 }
 
-// Renamed from PlannedItem to AgendaItem to avoid confusion with TravelPlan
+// Agenda item for planning daily activities
 export interface AgendaItem {
   id: string
   title: string
@@ -32,10 +83,6 @@ export interface AgendaItem {
   recurrenceStart?: string
   recurrenceEnd?: string
 }
-
-// For backward compatibility - will be removed in future
-/** @deprecated Use AgendaItem instead */
-export type PlannedItem = AgendaItem
 
 // ============ Travel Types ============
 
@@ -128,26 +175,27 @@ export interface Income {
   occurrenceIndex?: number // Which occurrence (0 = first, 1 = second, etc.)
 }
 
+// Aggregated day details (for in-memory use after loading from add-ons)
 export interface DayDetails {
+  // Productivity add-on
   status: DayStatus
-  // Legacy single subject/topic (for backward compatibility)
+  areas?: AreaEntry[]
+  
+  // Hours add-on
+  subjects?: SubjectEntry[]
+  directHours?: number
   subject: string
   topic: string
-  // New multi-subject support
-  subjects?: SubjectEntry[]
+  
+  // Calendar add-on
   note: string
-  // Direct hours input (used when not tracking via subjects)
-  directHours?: number
-  // Agenda items for the day (renamed from plannedItems)
   agendaItems?: AgendaItem[]
-  // For backward compatibility - will be removed in future
-  /** @deprecated Use agendaItems instead */
-  plannedItems?: AgendaItem[]
-  // Travel plans (multiple allowed)
+  
+  // Travel add-on
   travelPlans?: TravelPlan[]
-  // Daily expenses tracked against budgets
+  
+  // Finance add-on
   expenses?: Expense[]
-  // Daily income/credits (opposite of expenses)
   income?: Income[]
 }
 

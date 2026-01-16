@@ -21,9 +21,18 @@ export default function ProductivityPage() {
     isLoading,
     todayISO,
     dayDetails,
+    areaConfigs,
     handleUpdateDetails,
+    handleAddArea,
+    handleRemoveArea,
+    handleUpdateArea,
+    handleToggleAreaHasTopics,
+    handleAddAreaTopic,
+    handleRemoveAreaTopic,
+    handleUpdateAreaTopic,
+    isAreaTopicInUse,
     pushStatus,
-  } = useGoalData(goalId)
+  } = useGoalData(goalId, year)
 
   const { enabledAddons, saveAddons } = useAddonsConfig(user?.uid, goalId)
   const [showAddonsManager, setShowAddonsManager] = useState(false)
@@ -80,7 +89,16 @@ export default function ProductivityPage() {
           year={year}
           todayISO={todayISO}
           dayDetails={dayDetails}
+          areaConfigs={areaConfigs}
           onUpdateDay={handleUpdateDetails}
+          onAddArea={handleAddArea}
+          onRemoveArea={handleRemoveArea}
+          onUpdateArea={handleUpdateArea}
+          onToggleHasTopics={handleToggleAreaHasTopics}
+          onAddTopic={handleAddAreaTopic}
+          onRemoveTopic={handleRemoveAreaTopic}
+          onUpdateTopic={handleUpdateAreaTopic}
+          isTopicInUse={isAreaTopicInUse}
           onJumpToDay={handleJumpToDay}
           initialSelectedDay={initialSelectedDay}
           onPrevYear={() => {

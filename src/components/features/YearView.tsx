@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { DayDetails, TravelPlan, ButtonConfig } from '@/types'
+import type { DayDetails, TravelPlan, ButtonConfig, AgendaItem } from '@/types'
 import type { YearViewConfig } from '@/types/year-view-config'
 import { Modal } from '@/components/ui'
 import { GenericYearView } from './year-view/GenericYearView'
@@ -239,10 +239,9 @@ export function YearView({
   const removePlannedItem = async (iso: string, planId: string) => {
     setRemovingPlanId(planId)
     try {
-      const items =
-        dayDetails[iso]?.agendaItems || dayDetails[iso]?.plannedItems || []
-      const filtered = items.filter((item) => item.id !== planId)
-      await onUpdateDay(iso, { agendaItems: filtered, plannedItems: filtered })
+      const items = dayDetails[iso]?.agendaItems || []
+      const filtered = items.filter((item: { id: string }) => item.id !== planId)
+      await onUpdateDay(iso, { agendaItems: filtered })
     } finally {
       setRemovingPlanId(null)
     }
@@ -312,8 +311,7 @@ export function YearView({
       modal: {
         getSections: (date: string) => {
           const travels = dayDetails[date]?.travelPlans || []
-          const agendaItems =
-            dayDetails[date]?.agendaItems || dayDetails[date]?.plannedItems || []
+          const agendaItems = dayDetails[date]?.agendaItems || []
 
           const sections = []
 
@@ -398,7 +396,7 @@ export function YearView({
                 </div>
                 {agendaItems.length ? (
                   <ul className="space-y-1 text-xs text-white/80">
-                    {agendaItems.map((item) => (
+                    {agendaItems.map((item: AgendaItem) => (
                       <li
                         key={item.id}
                         className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/3 px-3 py-2"

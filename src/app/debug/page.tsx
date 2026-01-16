@@ -20,12 +20,46 @@ export default function DebugPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">
-            🔧 Firebase Debug Dashboard
+            🔧 Debug Dashboard
           </h1>
           <p className="text-white/60">
-            Check your Firebase authentication and Firestore access
+            Backup and restore your data
           </p>
         </div>
+
+        {/* Data Management Tools */}
+        {user && (
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Data Management</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <a
+                href="/debug/backup"
+                className="p-6 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-center transition-colors group"
+              >
+                <div className="text-4xl mb-2">💾</div>
+                <h3 className="text-lg font-semibold text-white group-hover:text-blue-400 mb-1">
+                  Download Backup
+                </h3>
+                <p className="text-sm text-white/60">
+                  Export all your data to JSON
+                </p>
+              </a>
+              
+              <a
+                href="/debug/restore"
+                className="p-6 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 rounded-lg text-center transition-colors group"
+              >
+                <div className="text-4xl mb-2">📤</div>
+                <h3 className="text-lg font-semibold text-white group-hover:text-green-400 mb-1">
+                  Upload & Restore
+                </h3>
+                <p className="text-sm text-white/60">
+                  Restore data from JSON backup
+                </p>
+              </a>
+            </div>
+          </Card>
+        )}
 
         {/* Auth Status Card */}
         <Card className="p-6">

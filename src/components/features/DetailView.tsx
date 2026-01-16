@@ -184,10 +184,9 @@ export function DetailView({
   const currentNote = details?.note || ''
   const [noteDraft, setNoteDraft] = useState(currentNote)
   const currentSubjects: SubjectEntry[] = details?.subjects || []
-  // Support both old (plannedItems) and new (agendaItems) field names for backward compatibility
   const agendaItems = useMemo(
-    () => details?.agendaItems || details?.plannedItems || [],
-    [details?.agendaItems, details?.plannedItems],
+    () => details?.agendaItems || [],
+    [details?.agendaItems],
   )
 
   const flushPendingNoteSave = useCallback(async () => {

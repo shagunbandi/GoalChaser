@@ -111,7 +111,6 @@ export default function GoalPage() {
     () => initialDate.getMonth() + 1,
   )
 
-  // Derive dayStatuses from dayDetails for backward compatibility
   const dayStatuses = useMemo(() => {
     const statuses: Record<string, DayStatus> = {}
     Object.entries(dayDetails).forEach(([iso, details]) => {

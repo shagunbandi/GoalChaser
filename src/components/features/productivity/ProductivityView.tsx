@@ -1,20 +1,31 @@
 'use client'
 
-import { useMemo } from 'react'
-import type { DayDetails } from '@/types'
+import { useMemo, useState } from 'react'
+import type { DayDetails, AreaConfig, AreaEntry } from '@/types'
 import type { YearViewConfig } from '@/types/year-view-config'
 import { Card } from '@/components/ui'
 import { GenericYearView } from '../year-view/GenericYearView'
 import { StatusSelector } from '../StatusSelector'
+import { AreaEntries } from './AreaEntries'
+import { AreaManager } from './AreaManager'
 import { computeMonthInfo } from '@/utils'
 
 interface ProductivityViewProps {
   year: number
   todayISO: string
   dayDetails: Record<string, DayDetails>
+  areaConfigs: AreaConfig[]
   onPrevYear: () => void
   onNextYear: () => void
   onUpdateDay: (iso: string, updates: Partial<DayDetails>) => Promise<void>
+  onAddArea: (name: string) => void
+  onRemoveArea: (id: string) => void
+  onUpdateArea: (id: string, name: string) => void
+  onToggleHasTopics: (id: string) => void
+  onAddTopic: (areaId: string, topic: string) => void
+  onRemoveTopic: (areaId: string, topic: string) => void
+  onUpdateTopic: (areaId: string, oldTopic: string, newTopic: string) => void
+  isTopicInUse: (areaId: string, topic: string) => boolean
   onJumpToDay?: (iso: string) => void
   initialSelectedDay?: string | null
 }
@@ -23,12 +34,22 @@ export function ProductivityView({
   year,
   todayISO,
   dayDetails,
+  areaConfigs,
   onPrevYear,
   onNextYear,
   onUpdateDay,
+  onAddArea,
+  onRemoveArea,
+  onUpdateArea,
+  onToggleHasTopics,
+  onAddTopic,
+  onRemoveTopic,
+  onUpdateTopic,
+  isTopicInUse,
   onJumpToDay,
   initialSelectedDay,
 }: ProductivityViewProps) {
+  const [showAreaManager, setShowAreaManager] = useState(false)
   const yearPrefix = `${year}-`
 
   const months = useMemo(
@@ -112,7 +133,14 @@ export function ProductivityView({
           { label: 'OK (4-6)', color: 'rgb(255, 149, 0)' },
           { label: 'Low (1-3)', color: 'rgb(255, 69, 58)' },
         ],
-        actions: [],
+        actions: [
+          {
+            id: 'manage-areas',
+            label: 'Manage Areas',
+            icon: '⚙️',
+            onClick: () => setShowAreaManager(true),
+          },
+        ],
       },
       months: months.map((month) => {
         const stats = monthlyStats[month.month]
@@ -150,7 +178,13 @@ export function ProductivityView({
       }),
       modal: {
         getSections: (date: string) => {
-          const details = dayDetails[date] || { status: null, subject: '', topic: '', note: '' }
+          const details = dayDetails[date] || { 
+            status: null, 
+            areas: [], 
+            subject: '', 
+            topic: '', 
+            note: '' 
+          }
 
           return [
             {
@@ -163,6 +197,33 @@ export function ProductivityView({
                     await onUpdateDay(date, { status: newStatus })
                   }}
                 />
+              ),
+            },
+            {
+              id: 'areas',
+              type: 'custom' as const,
+              content: (
+                <div className="space-y-3">
+                  <AreaEntries
+                    currentAreas={details.areas || []}
+                    areaConfigs={areaConfigs}
+                    availableAreas={areaConfigs.map((a) => a.name)}
+                    selectedDate={date}
+                    onUpdateAreas={async (newAreas) => {
+                      await onUpdateDay(date, { areas: newAreas })
+                    }}
+                    onAddArea={onAddArea}
+                    onAddTopic={onAddTopic}
+                    isTopicInUse={isTopicInUse}
+                  />
+                  <button
+                    onClick={() => setShowAreaManager(true)}
+                    className="w-full px-4 py-2.5 rounded-xl text-sm bg-white/[0.02] text-white/60 hover:bg-white/[0.05] hover:text-white/80 border border-dashed border-white/[0.1] hover:border-white/[0.2] transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    <span>⚙️</span>
+                    <span>Manage Areas & Topics</span>
+                  </button>
+                </div>
               ),
             },
             {
@@ -199,8 +260,28 @@ export function ProductivityView({
       onPrevYear,
       onNextYear,
     }),
-    [year, todayISO, yearStats, monthlyStats, months, dayDetails, onUpdateDay, onPrevYear, onNextYear, onJumpToDay],
+    [year, todayISO, yearStats, monthlyStats, months, dayDetails, areaConfigs, onUpdateDay, onAddArea, onAddTopic, isTopicInUse, onPrevYear, onNextYear, onJumpToDay],
   )
 
-  return <GenericYearView config={config} initialSelectedDay={initialSelectedDay} />
+  return (
+    <>
+      <GenericYearView config={config} initialSelectedDay={initialSelectedDay} />
+      
+      {/* Area Manager Modal */}
+      {showAreaManager && (
+        <AreaManager
+          areaConfigs={areaConfigs}
+          onAddArea={onAddArea}
+          onRemoveArea={onRemoveArea}
+          onUpdateArea={onUpdateArea}
+          onToggleHasTopics={onToggleHasTopics}
+          onAddTopic={onAddTopic}
+          onRemoveTopic={onRemoveTopic}
+          onUpdateTopic={onUpdateTopic}
+          isTopicInUse={isTopicInUse}
+          onClose={() => setShowAreaManager(false)}
+        />
+      )}
+    </>
+  )
 }

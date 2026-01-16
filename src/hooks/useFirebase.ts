@@ -60,31 +60,16 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
   ): Record<string, DayDetails> => {
     const normalized: Record<string, DayDetails> = {}
     Object.entries(record).forEach(([iso, details]) => {
-      const legacyTravel = (details as unknown as Record<string, unknown>).travel
-      const travelPlans = details.travelPlans
-        ? [...details.travelPlans]
-        : legacyTravel
-        ? Array.isArray(legacyTravel)
-          ? legacyTravel
-          : [legacyTravel]
-        : []
-
-      // Support both agendaItems and plannedItems for backward compatibility
-      const agendaSource = details.agendaItems || details.plannedItems || []
-      const normalizedAgenda =
-        agendaSource.map((item) => ({
-          ...item,
-          subjects: item.subjects || [],
-          completed: item.completed || false,
-          sequenceId: item.sequenceId || item.recurrenceId || item.id,
-        }))
+      const normalizedAgenda = (details.agendaItems || []).map((item) => ({
+        ...item,
+        subjects: item.subjects || [],
+        completed: item.completed || false,
+        sequenceId: item.sequenceId || item.recurrenceId || item.id,
+      }))
 
       normalized[iso] = {
         ...details,
-        travelPlans,
         agendaItems: normalizedAgenda,
-        // Keep plannedItems for backward compatibility
-        plannedItems: normalizedAgenda,
       }
     })
     return normalized
@@ -164,7 +149,6 @@ export function useFirebase(goalId: string): UseFirebaseReturn {
           note: '',
           directHours: 0,
           agendaItems: [],
-          plannedItems: [], // backward compatibility
           travelPlans: [],
         }
 

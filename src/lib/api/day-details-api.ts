@@ -62,17 +62,7 @@ export async function loadDayDetailsFromFirebase(
     
     querySnapshot.forEach((doc) => {
       const data = doc.data()
-      const legacyTravel = data.travel
-      const travelPlans = data.travelPlans
-        ? data.travelPlans
-        : legacyTravel
-        ? Array.isArray(legacyTravel)
-          ? legacyTravel
-          : [legacyTravel]
-        : []
-
-      // Support both old (plannedItems) and new (agendaItems) field names
-      const agendaItems = data.agendaItems || data.plannedItems || []
+      const agendaItems = data.agendaItems || []
       
       result[doc.id] = {
         status: data.status || null,
@@ -86,13 +76,7 @@ export async function loadDayDetailsFromFirebase(
           subjects: item.subjects || [],
           completed: item.completed || false,
         })),
-        // Keep plannedItems for backward compatibility
-        plannedItems: agendaItems.map((item: AgendaItem) => ({
-          ...item,
-          subjects: item.subjects || [],
-          completed: item.completed || false,
-        })),
-        travelPlans,
+        travelPlans: data.travelPlans || [],
         expenses: data.expenses || [],
         income: data.income || [],
       }

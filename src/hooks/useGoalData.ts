@@ -1,54 +1,63 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from './useAuth'
-import { useFirebase } from './useFirebase'
 import { useGoals } from './useGoals'
-import type { BudgetPlan, SIPPlan, DayDetails, TravelPlan } from '@/types'
-import {
-  setFirebaseDb,
-  loadBudgetsFromFirebase,
-  saveBudgetToFirebase,
-  deleteBudgetFromFirebase,
-  loadSIPsFromFirebase,
-  saveSIPToFirebase,
-  deleteSIPFromFirebase,
-} from '@/lib/api/budget-api'
-import { getFirestore } from 'firebase/firestore'
-import { getFirebaseApp } from '@/lib/firebase-service'
+import { useGoalDataLoader } from './useGoalDataLoader'
+import type { TravelPlan } from '@/types'
 import { toISODateString, getMsUntilMidnight, enumerateDateRange } from '@/utils'
 
-export function useGoalData(goalId: string) {
+/**
+ * Main hook for goal data management
+ * Now uses the new add-on-specific data loader architecture
+ */
+export function useGoalData(goalId: string, year?: number) {
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
   const { getGoal, isLoading: goalsLoading } = useGoals()
   const goal = getGoal(goalId)
 
-  // Firebase hook for data persistence
+  // Today's date
+  const [todayISO, setTodayISO] = useState(() => toISODateString(new Date()))
+
+  // Calculate date range for data loading
+  // Load data for the specified year plus buffer for adjacent months
+  const currentYear = year || new Date().getFullYear()
+  // Load 2 months before and after to handle cross-year navigation
+  const startDate = `${currentYear - 1}-11-01`
+  const endDate = `${currentYear + 1}-02-28`
+
+  // Only use data loader when user is available
+  const shouldLoad = !!user?.uid
+  
+  // Use new data loader hook
   const {
     dayDetails,
     subjectConfigs,
-    isLoading: firebaseLoading,
-    error: firebaseError,
-    updateDayDetails,
-    addSubjectConfig,
-    removeSubjectConfig,
-    updateSubjectConfig,
-    toggleSubjectHasTopics,
-    addTopicToSubject,
-    removeTopicFromSubject,
-    updateTopicInSubject,
-    isTopicInUse,
-  } = useFirebase(goalId)
-
-  // Budgeting data
-  const [budgets, setBudgets] = useState<BudgetPlan[]>([])
-  const [sips, setSips] = useState<SIPPlan[]>([])
-  const [budgetingLoading, setBudgetingLoading] = useState(true)
-
-  // Today's date
-  const [todayISO, setTodayISO] = useState(() => toISODateString(new Date()))
+    areaConfigs,
+    budgets,
+    sips,
+    travelPlans,
+    loading: dataLoading,
+    error: dataError,
+    updateDay,
+    updateSubjectConfigs,
+    updateAreaConfigs,
+    saveBudget,
+    deleteBudget: deleteBudgetHandler,
+    saveSIP,
+    deleteSIP: deleteSIPHandler,
+    saveTravelPlan,
+    deleteTravelPlan: deleteTravelPlanHandler,
+    reload
+  } = useGoalDataLoader({
+    userId: user?.uid || '',
+    goalId,
+    startDate,
+    endDate,
+    enabled: shouldLoad
+  })
 
   // Status bar state
   const [statusText, setStatusText] = useState('Ready')
@@ -77,34 +86,137 @@ export function useGoalData(goalId: string) {
     return () => clearTimeout(timeoutId)
   }, [])
 
-  // Load budgets and SIPs from Firebase
-  useEffect(() => {
-    if (!user) return
-
-    const loadBudgetingData = async () => {
-      try {
-        const app = getFirebaseApp()
-        if (!app) return
-
-        const db = getFirestore(app)
-        setFirebaseDb(db)
-
-        const [loadedBudgets, loadedSIPs] = await Promise.all([
-          loadBudgetsFromFirebase(user.uid, goalId),
-          loadSIPsFromFirebase(user.uid, goalId),
-        ])
-
-        setBudgets(loadedBudgets)
-        setSips(loadedSIPs)
-      } catch (error) {
-        console.error('Failed to load budgeting data:', error)
-      } finally {
-        setBudgetingLoading(false)
-      }
+  // Subject management helpers
+  const addSubjectConfig = useCallback(async (name: string) => {
+    const newConfig = {
+      id: `subject_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      name,
+      topics: [],
+      hasTopics: true
     }
+    await updateSubjectConfigs([...subjectConfigs, newConfig])
+  }, [subjectConfigs, updateSubjectConfigs])
 
-    loadBudgetingData()
-  }, [user, goalId])
+  const removeSubjectConfig = useCallback(async (id: string) => {
+    await updateSubjectConfigs(subjectConfigs.filter(s => s.id !== id))
+  }, [subjectConfigs, updateSubjectConfigs])
+
+  const updateSubjectConfig = useCallback(async (id: string, name: string) => {
+    await updateSubjectConfigs(
+      subjectConfigs.map(s => s.id === id ? { ...s, name } : s)
+    )
+  }, [subjectConfigs, updateSubjectConfigs])
+
+  const toggleSubjectHasTopics = useCallback(async (id: string) => {
+    await updateSubjectConfigs(
+      subjectConfigs.map(s => s.id === id ? { ...s, hasTopics: !(s.hasTopics ?? true) } : s)
+    )
+  }, [subjectConfigs, updateSubjectConfigs])
+
+  const addTopicToSubject = useCallback(async (subjectId: string, topic: string) => {
+    await updateSubjectConfigs(
+      subjectConfigs.map(s => 
+        s.id === subjectId 
+          ? { ...s, topics: [...s.topics, topic] }
+          : s
+      )
+    )
+  }, [subjectConfigs, updateSubjectConfigs])
+
+  const removeTopicFromSubject = useCallback(async (subjectId: string, topic: string) => {
+    await updateSubjectConfigs(
+      subjectConfigs.map(s => 
+        s.id === subjectId 
+          ? { ...s, topics: s.topics.filter(t => t !== topic) }
+          : s
+      )
+    )
+  }, [subjectConfigs, updateSubjectConfigs])
+
+  const updateTopicInSubject = useCallback(async (subjectId: string, oldTopic: string, newTopic: string) => {
+    await updateSubjectConfigs(
+      subjectConfigs.map(s => 
+        s.id === subjectId 
+          ? { ...s, topics: s.topics.map(t => t === oldTopic ? newTopic : t) }
+          : s
+      )
+    )
+  }, [subjectConfigs, updateSubjectConfigs])
+
+  const isTopicInUse = useCallback((subjectId: string, topic: string): boolean => {
+    return Object.values(dayDetails).some(day =>
+      day.subjects?.some(entry =>
+        subjectConfigs.find(s => s.id === subjectId)?.name === entry.subject &&
+        entry.topics.includes(topic)
+      )
+    )
+  }, [dayDetails, subjectConfigs])
+
+  // Area management helpers (for productivity)
+  const addAreaConfig = useCallback(async (name: string) => {
+    const newConfig = {
+      id: `area_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      name,
+      topics: [],
+      hasTopics: true
+    }
+    await updateAreaConfigs([...areaConfigs, newConfig])
+  }, [areaConfigs, updateAreaConfigs])
+
+  const removeAreaConfig = useCallback(async (id: string) => {
+    await updateAreaConfigs(areaConfigs.filter(a => a.id !== id))
+  }, [areaConfigs, updateAreaConfigs])
+
+  const updateAreaConfig = useCallback(async (id: string, name: string) => {
+    await updateAreaConfigs(
+      areaConfigs.map(a => a.id === id ? { ...a, name } : a)
+    )
+  }, [areaConfigs, updateAreaConfigs])
+
+  const toggleAreaHasTopics = useCallback(async (id: string) => {
+    await updateAreaConfigs(
+      areaConfigs.map(a => a.id === id ? { ...a, hasTopics: !(a.hasTopics ?? true) } : a)
+    )
+  }, [areaConfigs, updateAreaConfigs])
+
+  const addTopicToArea = useCallback(async (areaId: string, topic: string) => {
+    await updateAreaConfigs(
+      areaConfigs.map(a =>
+        a.id === areaId
+          ? { ...a, topics: [...a.topics, topic] }
+          : a
+      )
+    )
+  }, [areaConfigs, updateAreaConfigs])
+
+  const removeTopicFromArea = useCallback(async (areaId: string, topic: string) => {
+    await updateAreaConfigs(
+      areaConfigs.map(a =>
+        a.id === areaId
+          ? { ...a, topics: a.topics.filter(t => t !== topic) }
+          : a
+      )
+    )
+  }, [areaConfigs, updateAreaConfigs])
+
+  const updateTopicInArea = useCallback(async (areaId: string, oldTopic: string, newTopic: string) => {
+    await updateAreaConfigs(
+      areaConfigs.map(a =>
+        a.id === areaId
+          ? { ...a, topics: a.topics.map(t => t === oldTopic ? newTopic : t) }
+          : a
+      )
+    )
+  }, [areaConfigs, updateAreaConfigs])
+
+  const isAreaTopicInUse = useCallback((areaId: string, topic: string): boolean => {
+    return Object.values(dayDetails).some(day =>
+      day.areas?.some(entry =>
+        areaConfigs.find(a => a.id === areaId)?.name === entry.area &&
+        entry.topics.includes(topic)
+      )
+    )
+  }, [dayDetails, areaConfigs])
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -114,7 +226,7 @@ export function useGoalData(goalId: string) {
   }, [authLoading, user, router])
 
   // Travel handler
-  const handleAddTravel = async (travel: Omit<TravelPlan, 'id'>) => {
+  const handleAddTravel = useCallback(async (travel: Omit<TravelPlan, 'id'>) => {
     pushStatus({ text: 'Saving travel…', tone: 'progress' })
 
     try {
@@ -123,106 +235,39 @@ export function useGoalData(goalId: string) {
         id: `travel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       }
 
-      const dates = enumerateDateRange(plan.startDate, plan.endDate)
+      await saveTravelPlan(plan)
 
       pushStatus({
-        text: `Saving travel to ${dates.length} day${
-          dates.length === 1 ? '' : 's'
-        }...`,
-        tone: 'progress',
+        text: 'Travel saved',
+        tone: 'success',
       })
-
-      const results = await Promise.all(
-        dates.map(async (iso) => {
-          const existing = dayDetails[iso]?.travelPlans || []
-          const filtered = existing.filter((t) => t.id !== plan.id)
-          const updatedPlans = [...filtered, plan]
-
-          try {
-            await updateDayDetails(iso, { travelPlans: updatedPlans })
-            return { success: true, iso }
-          } catch (error) {
-            console.error(`Failed to save to ${iso}:`, error)
-            return { success: false, iso, error }
-          }
-        }),
-      )
-
-      const successCount = results.filter((r) => r.success).length
-      const failCount = results.length - successCount
-
-      if (failCount > 0) {
-        pushStatus({
-          text: `Travel saved to ${successCount}/${dates.length} days (${failCount} failed)`,
-          tone: 'error',
-        })
-      } else {
-        pushStatus({
-          text: `Travel saved to ${dates.length} day${
-            dates.length === 1 ? '' : 's'
-          }`,
-          tone: 'success',
-        })
-      }
     } catch (err) {
       console.error('Failed to save travel:', err)
       pushStatus({ text: 'Failed to save travel', tone: 'error' })
     }
-  }
+  }, [saveTravelPlan, pushStatus])
 
-  // Budget handlers
-  const handleSaveBudget = async (budget: BudgetPlan) => {
+  // Budget handlers  
+  const handleSaveBudget = useCallback(async (budget: any) => {
     if (!user) return
+    await saveBudget(budget)
+  }, [user, saveBudget])
 
-    const success = await saveBudgetToFirebase(user.uid, goalId, budget)
-    if (success) {
-      setBudgets((prev) => {
-        const existing = prev.findIndex((b) => b.id === budget.id)
-        if (existing >= 0) {
-          const updated = [...prev]
-          updated[existing] = budget
-          return updated
-        }
-        return [...prev, budget]
-      })
-    }
-  }
-
-  const handleDeleteBudget = async (budgetId: string) => {
+  const handleDeleteBudget = useCallback(async (budgetId: string) => {
     if (!user) return
-
-    const success = await deleteBudgetFromFirebase(user.uid, goalId, budgetId)
-    if (success) {
-      setBudgets((prev) => prev.filter((b) => b.id !== budgetId))
-    }
-  }
+    await deleteBudgetHandler(budgetId)
+  }, [user, deleteBudgetHandler])
 
   // SIP handlers
-  const handleSaveSIP = async (sip: SIPPlan) => {
+  const handleSaveSIP = useCallback(async (sip: any) => {
     if (!user) return
+    await saveSIP(sip)
+  }, [user, saveSIP])
 
-    const success = await saveSIPToFirebase(user.uid, goalId, sip)
-    if (success) {
-      setSips((prev) => {
-        const existing = prev.findIndex((s) => s.id === sip.id)
-        if (existing >= 0) {
-          const updated = [...prev]
-          updated[existing] = sip
-          return updated
-        }
-        return [...prev, sip]
-      })
-    }
-  }
-
-  const handleDeleteSIP = async (sipId: string) => {
+  const handleDeleteSIP = useCallback(async (sipId: string) => {
     if (!user) return
-
-    const success = await deleteSIPFromFirebase(user.uid, goalId, sipId)
-    if (success) {
-      setSips((prev) => prev.filter((s) => s.id !== sipId))
-    }
-  }
+    await deleteSIPHandler(sipId)
+  }, [user, deleteSIPHandler])
 
   return {
     // Goal data
@@ -231,12 +276,12 @@ export function useGoalData(goalId: string) {
     user,
     
     // Loading states
-    isLoading: authLoading || goalsLoading || firebaseLoading || budgetingLoading,
+    isLoading: authLoading || goalsLoading || dataLoading,
     authLoading,
     goalsLoading,
-    firebaseLoading,
-    budgetingLoading,
-    firebaseError,
+    firebaseLoading: dataLoading,
+    budgetingLoading: dataLoading,
+    firebaseError: dataError,
     
     // Date state
     todayISO,
@@ -244,10 +289,12 @@ export function useGoalData(goalId: string) {
     // Data
     dayDetails,
     subjectConfigs,
+    areaConfigs,
     budgets,
     sips,
-    
-    // Subject handlers
+    travelPlans,
+
+    // Subject handlers (for hours)
     handleAddSubject: addSubjectConfig,
     handleRemoveSubject: removeSubjectConfig,
     handleUpdateSubject: updateSubjectConfig,
@@ -256,9 +303,19 @@ export function useGoalData(goalId: string) {
     handleRemoveTopic: removeTopicFromSubject,
     handleUpdateTopic: updateTopicInSubject,
     isTopicInUse,
-    
+
+    // Area handlers (for productivity)
+    handleAddArea: addAreaConfig,
+    handleRemoveArea: removeAreaConfig,
+    handleUpdateArea: updateAreaConfig,
+    handleToggleAreaHasTopics: toggleAreaHasTopics,
+    handleAddAreaTopic: addTopicToArea,
+    handleRemoveAreaTopic: removeTopicFromArea,
+    handleUpdateAreaTopic: updateTopicInArea,
+    isAreaTopicInUse,
+
     // Day details handler
-    handleUpdateDetails: updateDayDetails,
+    handleUpdateDetails: updateDay,
     
     // Travel handlers
     handleAddTravel,
@@ -273,5 +330,8 @@ export function useGoalData(goalId: string) {
     pushStatus,
     statusText,
     statusTone,
+    
+    // Additional methods
+    reload
   }
 }

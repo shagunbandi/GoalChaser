@@ -30,7 +30,6 @@ export async function seedDayDetails(options: SeedDayDetailsOptions): Promise<Da
     note: options.note || '',
     directHours: options.directHours || 0,
     agendaItems: options.agendaItems || [],
-    plannedItems: options.agendaItems || [], // For backward compatibility
   }
 
   // If subjects with topics are provided, also create subject configs
@@ -124,7 +123,6 @@ export async function getDayDetailsFromDb(
     note: data.note || '',
     directHours: data.directHours || 0,
     agendaItems: data.agendaItems || [],
-    plannedItems: data.plannedItems || [],
   }
 }
 
