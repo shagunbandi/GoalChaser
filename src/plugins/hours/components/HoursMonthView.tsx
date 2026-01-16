@@ -70,29 +70,34 @@ export function HoursMonthView({
 
     if (totalHours === 0) return null
 
-    // Color based on hours: 0-4 (red), 4-8 (orange), 8+ (green)
-    const getHoursColor = (hours: number) => {
-      if (hours >= 8) return { bg: 'bg-green-500/20', color: '#00FF00' }
-      if (hours >= 4) return { bg: 'bg-orange-500/20', color: '#FFA500' }
-      return { bg: 'bg-red-500/20', color: '#FF6B6B' }
+    // Use VIBGYOR color based on progress (same as progress bar)
+    const { getVibgyorColors } = require('@/utils')
+    const vibgyorColors = getVibgyorColors()
+    
+    const ratio = Math.min(totalHours / maxHours, 1)
+    const colorIndex = Math.min(
+      Math.floor(ratio * vibgyorColors.length),
+      vibgyorColors.length - 1
+    )
+    const color = vibgyorColors[colorIndex].color
+
+    // Format hours
+    const formatHours = (hours: number) => {
+      const totalMinutes = Math.round(hours * 60)
+      const h = Math.floor(totalMinutes / 60)
+      const m = totalMinutes % 60
+      if (m === 0) return `${h}h`
+      return `${h}h ${m}m`
     }
 
-    const { bg, color } = getHoursColor(totalHours)
-
     return {
-      backgroundColor: bg,
+      backgroundColor: `${color}20`, // Use color with opacity (hex format)
       content: (
-        <div className="text-[10px] text-white/60 mt-1">
-          {totalHours.toFixed(1)}h
+        <div className="text-[10px] text-white/90 mt-1 font-medium">
+          {formatHours(totalHours)}
         </div>
       ),
-      indicators: [
-        {
-          id: 'hours',
-          label: `${totalHours.toFixed(1)} hours`,
-          color,
-        },
-      ],
+      indicators: [], // Remove dots since we're filling the background
     }
   }
 

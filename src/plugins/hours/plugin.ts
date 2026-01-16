@@ -49,10 +49,19 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
         return null
       }
 
+      // Format hours to h/m
+      const formatHours = (hours: number) => {
+        const totalMinutes = Math.round(hours * 60)
+        const h = Math.floor(totalMinutes / 60)
+        const m = totalMinutes % 60
+        if (m === 0) return `${h}h`
+        return `${h}h ${m}m`
+      }
+
       // Format hours breakdown
       const breakdown = data.subjects && data.subjects.length > 0
-        ? data.subjects.map(s => `${s.subject}: ${s.hours}h`).join(', ')
-        : `${totalHours}h tracked`
+        ? data.subjects.map(s => `${s.subject}: ${formatHours(s.hours)}`).join(', ')
+        : `${formatHours(totalHours)} tracked`
 
       // Build navigation URL
       const dateObj = new Date(date)
@@ -72,7 +81,7 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
         summary: {
           type: 'chip',
           title: 'Hours',
-          content: `${totalHours}h`,
+          content: formatHours(totalHours),
           icon: '⏱️',
           actions: [
             {

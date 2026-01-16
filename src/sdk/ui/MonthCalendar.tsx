@@ -235,6 +235,11 @@ export function MonthCalendar({
           const isInRange = isDateInRange(day.iso)
           const customization = dayCustomizations[day.iso]
 
+          // Check if backgroundColor is a hex color (starts with #) or a Tailwind class
+          const isHexColor = customization?.backgroundColor?.startsWith('#')
+          const bgClass = isHexColor ? 'bg-white/[0.02]' : (customization?.backgroundColor || 'bg-white/[0.02]')
+          const bgStyle = isHexColor ? { backgroundColor: customization?.backgroundColor } : {}
+
           return (
             <div
               key={day.iso}
@@ -250,8 +255,9 @@ export function MonthCalendar({
                 isToday,
                 isSelected,
                 isInRange,
-                customization,
+                { ...customization, backgroundColor: bgClass },
               )}
+              style={bgStyle}
             >
               <span className="text-sm font-medium">{day.dayOfMonth}</span>
               {customization?.content}

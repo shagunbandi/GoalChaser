@@ -152,7 +152,9 @@ export function SubjectEntries({
           Subjects
         </label>
         {totalHours > 0 && (
-          <span className="text-xs text-[#32D4DE]">Total: {totalHours}h</span>
+          <span className="text-xs text-[#32D4DE]">
+            Total: {hoursToParts(totalHours).hours}h {hoursToParts(totalHours).minutes}m
+          </span>
         )}
       </div>
 

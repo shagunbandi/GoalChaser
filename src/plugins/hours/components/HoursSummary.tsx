@@ -54,6 +54,15 @@ export function HoursSummary({
     handleBarClick(e)
   }
 
+  // Format hours to h/m
+  const formatHours = (hours: number) => {
+    const totalMinutes = Math.round(hours * 60)
+    const h = Math.floor(totalMinutes / 60)
+    const m = totalMinutes % 60
+    if (m === 0) return `${h}h`
+    return `${h}h ${m}m`
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -67,7 +76,7 @@ export function HoursSummary({
                 className="text-2xl font-bold"
                 style={{ color: progressColor }}
               >
-                {totalHours}h
+                {formatHours(totalHours)}
               </span>
               <span className="text-white/40">/ {maxHours}h</span>
               <span
@@ -137,15 +146,15 @@ export function HoursSummary({
           {hasSubjectHours ? (
             <span className="text-xs text-white/40 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#30D158]" />
-              From subjects ({subjectHours}h)
+              From subjects ({formatHours(subjectHours)})
               {directHours > 0 && (
-                <span className="text-white/30 line-through">bar: {directHours}h ignored</span>
+                <span className="text-white/30 line-through">bar: {formatHours(directHours)} ignored</span>
               )}
             </span>
           ) : directHours > 0 ? (
             <span className="text-xs text-white/40 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#5856D6]" />
-              From bar ({directHours}h)
+              From bar ({formatHours(directHours)})
             </span>
           ) : (
             <span className="text-xs text-white/30">
