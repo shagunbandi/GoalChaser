@@ -13,6 +13,9 @@ export { ActivityCard } from './ActivityCard'
 export { GroupedTabBar } from './GroupedTabBar'
 export { AddonsManagerModal } from './AddonsManagerModal'
 
+// Calendar components
+export * from './calendar'
+
 // Generic Year View Components
 export { GenericYearView } from './year-view/GenericYearView'
 
@@ -34,3 +37,8 @@ export * from './productivity'
 
 // Hours components
 export * from './hours'
+
+// Agenda components
+export { AgendaView } from './agenda/AgendaView'
+export { AgendaDayModal } from './agenda/AgendaDayModal'
+export { AgendaStats } from './agenda/AgendaStats'

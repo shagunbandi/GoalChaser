@@ -41,6 +41,14 @@ export const ADDON_REGISTRY: Record<AddonId, AddonDefinition> = {
     route: (goalId, year) => `/goal/${goalId}/travel/${year || new Date().getFullYear()}`,
     isPrimary: false,
   },
+  agenda: {
+    id: 'agenda',
+    name: 'Agenda',
+    icon: '📋',
+    description: 'Plan and track daily agenda items',
+    route: (goalId, year) => `/goal/${goalId}/agenda/${year || new Date().getFullYear()}`,
+    isPrimary: false,
+  },
   analytics: {
     id: 'analytics',
     name: 'Analytics',

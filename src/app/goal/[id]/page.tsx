@@ -2,14 +2,13 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 
 import { useFirebase } from '@/hooks/useFirebase'
 import { useGoals } from '@/hooks/useGoals'
 import { useAuth } from '@/hooks/useAuth'
 
 import { Card, Navbar } from '@/components/ui'
-import { Calendar, GroupedTabBar, AddonsManagerModal } from '@/components/features'
+import { Calendar, GroupedTabBar, AddonsManagerModal, CalendarDetailPanel } from '@/components/features'
 import { useAddonsConfig } from '@/hooks/useAddonsConfig'
 
 import {
@@ -38,6 +37,7 @@ export default function GoalPage() {
   // Firebase hook for data persistence (scoped to this goal)
   const {
     dayDetails,
+    subjectConfigs,
     isLoading,
     error,
     updateDayDetails,
@@ -221,13 +221,6 @@ export default function GoalPage() {
     )
   }
 
-  const selectedDetails = dayDetails[selectedDate] || {
-    status: null,
-    subject: '',
-    topic: '',
-    note: '',
-  }
-
   return (
     <div className="min-h-screen">
       {/* Glass Background */}
@@ -305,122 +298,17 @@ export default function GoalPage() {
                   noCard
                 />
 
-                {/* Day Details (Simple Notes) - Bottom on mobile, Right on desktop */}
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-white/90">
-                      {new Date(selectedDate).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </h2>
-                    {selectedDate === todayISO && (
-                      <span className="text-xs px-2 py-1 bg-[#007AFF]/20 text-[#007AFF] rounded-full border border-[#007AFF]/30">
-                        Today
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Notes */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-white/60">
-                      Notes
-                    </label>
-                    <textarea
-                      value={selectedDetails.note || ''}
-                      onChange={(e) => {
-                        handleUpdateDetails(selectedDate, { note: e.target.value })
-                      }}
-                      placeholder="Write notes for this day..."
-                      className="
-                        w-full min-h-[200px] px-4 py-3
-                        bg-white/5 border border-white/10
-                        rounded-xl text-white placeholder-white/30
-                        focus:outline-none focus:ring-2 focus:ring-[#007AFF]/50
-                        resize-none
-                      "
-                    />
-                  </div>
-
-                  {/* Quick Links */}
-                  <div className="space-y-2 pt-4 border-t border-white/10">
-                    <div className="text-sm font-medium text-white/60 mb-3">
-                      Track this day:
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {enabledAddons.includes('productivity') && (
-                        <Link
-                          href={`/goal/${goalId}/productivity/${currentYear}?date=${selectedDate}`}
-                          className="
-                            px-4 py-3 rounded-xl
-                            bg-white/5 hover:bg-white/10
-                            border border-white/10
-                            text-white/80 hover:text-white
-                            text-sm font-medium
-                            transition-all duration-150
-                            flex items-center gap-2
-                          "
-                        >
-                          <span>📊</span>
-                          <span>Productivity</span>
-                        </Link>
-                      )}
-                      {enabledAddons.includes('hours') && (
-                        <Link
-                          href={`/goal/${goalId}/hours/${currentYear}?date=${selectedDate}`}
-                          className="
-                            px-4 py-3 rounded-xl
-                            bg-white/5 hover:bg-white/10
-                            border border-white/10
-                            text-white/80 hover:text-white
-                            text-sm font-medium
-                            transition-all duration-150
-                            flex items-center gap-2
-                          "
-                        >
-                          <span>⏱️</span>
-                          <span>Hours</span>
-                        </Link>
-                      )}
-                      {enabledAddons.includes('finance') && (
-                        <Link
-                          href={`/goal/${goalId}/finance/${currentYear}?date=${selectedDate}`}
-                          className="
-                            px-4 py-3 rounded-xl
-                            bg-white/5 hover:bg-white/10
-                            border border-white/10
-                            text-white/80 hover:text-white
-                            text-sm font-medium
-                            transition-all duration-150
-                            flex items-center gap-2
-                          "
-                        >
-                          <span>💰</span>
-                          <span>Finance</span>
-                        </Link>
-                      )}
-                      {enabledAddons.includes('travel') && (
-                        <Link
-                          href={`/goal/${goalId}/travel/${currentYear}?date=${selectedDate}`}
-                          className="
-                            px-4 py-3 rounded-xl
-                            bg-white/5 hover:bg-white/10
-                            border border-white/10
-                            text-white/80 hover:text-white
-                            text-sm font-medium
-                            transition-all duration-150
-                            flex items-center gap-2
-                          "
-                        >
-                          <span>✈️</span>
-                          <span>Travel</span>
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                {/* Day Details with Addon Summaries - Bottom on mobile, Right on desktop */}
+                <CalendarDetailPanel
+                  selectedDate={selectedDate}
+                  todayISO={todayISO}
+                  goalId={goalId}
+                  currentYear={currentYear}
+                  dayDetails={dayDetails}
+                  subjectConfigs={subjectConfigs}
+                  enabledAddons={enabledAddons}
+                  onUpdateDetails={handleUpdateDetails}
+                />
               </div>
             </Card>
         </div>

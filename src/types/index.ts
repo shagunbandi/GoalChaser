@@ -303,3 +303,15 @@ export type {
   GoalAddonsConfig,
   AddonDefinition,
 } from './addon-config'
+
+// ============ Calendar Summary Types ============
+
+export type {
+  AddonSummaryData,
+  ProductivitySummaryData,
+  HoursSummaryData,
+  FinanceSummaryData,
+  TravelSummaryData,
+  AgendaSummaryData,
+  AnySummaryData,
+} from './calendar-summary'
