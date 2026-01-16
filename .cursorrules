@@ -1,47 +1,753 @@
 # Cursor Rules for Goal Chaser
 
-## Code Organization Principles
+## Plugin Architecture Overview
 
-### 1. Single Responsibility - One File, One Purpose
-- **Components**: Each React component should have its own dedicated file
-- **Types/Interfaces**: Keep in dedicated `types/` or `types.ts` files
-- **Constants**: Store in dedicated `constants/` or `constants.ts` files
-- **Utilities**: Helper functions go in `utils/` or `lib/` directory
-- **API calls**: All API/Firebase calls should be in dedicated files under `lib/` or `api/`
-- **Hooks**: Custom hooks should each have their own file in `hooks/`
+Goal Chaser uses a **plugin-based architecture** for complete feature isolation. The core app provides infrastructure (authentication, database, UI components, SDK) while plugins add specific functionality (productivity tracking, hours tracking, finance, travel, etc.).
 
-### 2. File Structure Convention
+### Key Principles
+
+1. **Complete Isolation**: Core never imports from plugins
+2. **SDK Communication**: Plugins only interact with core via the SDK
+3. **Self-Contained**: Each plugin has its own components, types, APIs, and utilities
+4. **Generic Core**: Core provides reusable components and utilities that plugins can use
+
+### Directory Structure
+
 ```
 src/
-├── app/                    # Next.js app router pages
-│   └── [route]/
-│       └── page.tsx        # Page component (minimal, imports from components)
+├── app/                          # Next.js routes
+│   ├── goal/[id]/[[...plugin]]/ # Dynamic plugin routes
+│   └── goal/[id]/analytics/     # Core analytics route
 ├── components/
-│   ├── ui/                 # Reusable UI primitives (Card, Button, Tabs, etc.)
-│   └── features/           # Feature-specific components (Calendar, DetailView, etc.)
-├── hooks/                  # Custom React hooks
-├── lib/                    # Utilities, API clients, Firebase helpers
-├── types/                  # TypeScript type definitions
-└── constants/              # App-wide constants
+│   ├── ui/                       # Generic UI primitives (Card, Modal, Tabs)
+│   └── features/                 # Core features (Calendar, Analytics)
+├── hooks/                        # Core data hooks
+├── lib/                          # Firebase, API clients
+├── sdk/                          # Plugin SDK (interfaces, services, types, UI)
+├── core/
+│   └── plugin-registry/          # Plugin registration and discovery
+├── plugins/                      # Plugin implementations
+│   ├── productivity/
+│   ├── hours/
+│   ├── finance/
+│   ├── travel/
+│   └── agenda/
+├── types/                        # Core types only
+└── utils/                        # Generic utilities (no plugin dependencies)
 ```
 
-### 3. File Size and Component Guidelines
+---
+
+## Plugin Terminology
+
+### Core Concepts
+
+- **Plugin**: A self-contained feature module with its own UI, data management, and business logic
+- **SDK (Software Development Kit)**: The interface between plugins and core (types, services, UI components)
+- **Plugin Registry**: Central system that discovers and manages all plugins
+- **Data Provider**: Plugin class that handles loading/saving plugin-specific data
+- **Detail Provider**: Optional plugin class that renders detail view content
+- **Plugin Context**: Scoped access to core services (Firestore, Logger) for a plugin
+
+### Data Flow
+
+```
+User Action → Component → useGoalData → useGoalDataLoader 
+  → Plugin Registry → Data Provider → Firestore → Component
+```
+
+---
+
+## How to Add a New Plugin
+
+### Step 1: Create Plugin Directory Structure
+
+```
+src/plugins/my-plugin/
+├── components/          # Plugin-specific UI components
+│   ├── MyPluginView.tsx
+│   ├── MyComponent.tsx
+│   └── index.ts
+├── pages/              # Optional: Full-page views
+│   └── MyPluginPage.tsx
+├── utils/              # Plugin-specific utilities
+│   └── my-utils.ts
+├── api.ts              # Firebase API calls for this plugin
+├── data-provider.ts    # Data loading/saving logic
+├── detail-provider.tsx # Optional: Detail panel rendering
+├── plugin.ts           # Plugin definition and exports
+└── types.ts            # Plugin-specific types
+```
+
+### Step 2: Define Plugin Types
+
+**`types.ts`** - Extend SDK base types:
+
+```typescript
+import type { PluginDayData, PluginConfigData, ActivityItem } from '@/sdk'
+
+// Day-level data (stored per date)
+export interface MyPluginDayData extends PluginDayData {
+  items: MyItem[]
+  notes?: string
+}
+
+// Configuration data (stored once per goal)
+export interface MyPluginConfig extends PluginConfigData {
+  settings: MySetting[]
+}
+
+// Activity items (for summaries/lists)
+export interface MyItem extends ActivityItem {
+  name: string
+  value: number
+  date: string
+}
+```
+
+**Key Rules:**
+- Always extend `PluginDayData`, `PluginConfigData`, or `ActivityItem` from SDK
+- Never define types that core needs to know about in plugin types
+- Keep types self-contained within the plugin
+
+### Step 3: Create Data Provider
+
+**`data-provider.ts`** - Handle data persistence:
+
+```typescript
+import type { PluginDataProvider, PluginContext } from '@/sdk'
+import type { MyPluginDayData, MyPluginConfig } from './types'
+import { loadMyData, saveMyData, loadMyConfig, saveMyConfig } from './api'
+
+export class MyPluginDataProvider implements PluginDataProvider<MyPluginDayData, MyPluginConfig> {
+  async loadDayData(
+    date: string,
+    context: PluginContext
+  ): Promise<MyPluginDayData | null> {
+    return await loadMyData(date, context)
+  }
+
+  async saveDayData(
+    date: string,
+    data: Partial<MyPluginDayData>,
+    context: PluginContext
+  ): Promise<void> {
+    await saveMyData(date, data, context)
+  }
+
+  async loadDateRange(
+    startDate: string,
+    endDate: string,
+    context: PluginContext
+  ): Promise<Record<string, MyPluginDayData>> {
+    // Batch load for date range
+    const dates: Record<string, MyPluginDayData> = {}
+    // ... load logic
+    return dates
+  }
+
+  async loadConfig(context: PluginContext): Promise<MyPluginConfig | null> {
+    return await loadMyConfig(context)
+  }
+
+  async saveConfig(
+    config: Partial<MyPluginConfig>,
+    context: PluginContext
+  ): Promise<void> {
+    await saveMyConfig(config, context)
+  }
+}
+```
+
+**Key Rules:**
+- Never access Firestore directly - use PluginContext
+- Handle errors gracefully
+- Return null for missing data
+- Use partial updates for saves
+
+### Step 4: Create API Layer
+
+**`api.ts`** - Firestore operations:
+
+```typescript
+import type { PluginContext } from '@/sdk'
+import type { MyPluginDayData, MyPluginConfig } from './types'
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore'
+
+export async function loadMyData(
+  date: string,
+  context: PluginContext
+): Promise<MyPluginDayData | null> {
+  const { db, userId, goalId } = context
+  
+  const docRef = doc(db, `users/${userId}/goals/${goalId}/myPlugin/${date}`)
+  const docSnap = await getDoc(docRef)
+  
+  if (!docSnap.exists()) return null
+  
+  return docSnap.data() as MyPluginDayData
+}
+
+export async function saveMyData(
+  date: string,
+  data: Partial<MyPluginDayData>,
+  context: PluginContext
+): Promise<void> {
+  const { db, userId, goalId } = context
+  
+  const docRef = doc(db, `users/${userId}/goals/${goalId}/myPlugin/${date}`)
+  
+  // Filter out undefined values (Firestore doesn't accept them)
+  const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
+    if (value !== undefined) acc[key] = value
+    return acc
+  }, {} as Record<string, any>)
+  
+  await setDoc(docRef, cleanData, { merge: true })
+}
+
+export async function loadMyConfig(
+  context: PluginContext
+): Promise<MyPluginConfig | null> {
+  const { db, userId, goalId } = context
+  
+  const docRef = doc(db, `users/${userId}/goals/${goalId}/myPluginConfig/config`)
+  const docSnap = await getDoc(docRef)
+  
+  if (!docSnap.exists()) return null
+  
+  return docSnap.data() as MyPluginConfig
+}
+
+export async function saveMyConfig(
+  config: Partial<MyPluginConfig>,
+  context: PluginContext
+): Promise<void> {
+  const { db, userId, goalId } = context
+  
+  const docRef = doc(db, `users/${userId}/goals/${goalId}/myPluginConfig/config`)
+  
+  const cleanConfig = Object.entries(config).reduce((acc, [key, value]) => {
+    if (value !== undefined) acc[key] = value
+    return acc
+  }, {} as Record<string, any>)
+  
+  await setDoc(docRef, cleanConfig, { merge: true })
+}
+```
+
+**Key Rules:**
+- Always use PluginContext for database access
+- Filter out `undefined` values before saving
+- Use `{ merge: true }` for partial updates
+- Never import from other plugins
+- Only import from SDK
+
+### Step 5: Define Plugin
+
+**`plugin.ts`** - Register the plugin:
+
+```typescript
+import type { Plugin } from '@/sdk'
+import type { MyPluginDayData, MyPluginConfig } from './types'
+import { MyPluginDataProvider } from './data-provider'
+
+export const MyPlugin: Plugin<MyPluginDayData, MyPluginConfig> = {
+  id: 'my-plugin',
+  
+  metadata: {
+    name: 'My Plugin',
+    description: 'Description of what this plugin does',
+    version: '1.0.0',
+    author: 'Your Name',
+  },
+  
+  // Optional: Full-page routes
+  routes: [
+    {
+      path: 'my-plugin',
+      title: 'My Plugin',
+      icon: '🔥',
+    },
+  ],
+  
+  // Required: Data provider
+  dataProvider: new MyPluginDataProvider(),
+  
+  // Optional: Calendar integration
+  calendar: {
+    // Provide day indicators (colored dots)
+    getDayIndicator: (date: string, data: MyPluginDayData | null) => {
+      if (!data || data.items.length === 0) {
+        return { color: '#666', label: 'No data' }
+      }
+      return { color: '#00FF00', label: `${data.items.length} items` }
+    },
+    
+    // Provide day summary (shown in detail panel)
+    getDaySummary: (date: string, data: MyPluginDayData | null) => {
+      if (!data || data.items.length === 0) {
+        return { hasData: false, summary: null }
+      }
+      
+      return {
+        hasData: true,
+        color: '#00FF00',
+        summary: {
+          title: 'My Plugin Items',
+          items: data.items.map(item => ({
+            label: item.name,
+            value: `${item.value}`,
+          })),
+        },
+      }
+    },
+  },
+  
+  // Optional: Analytics integration
+  analytics: {
+    getAnalyticsData: (startDate, endDate, data) => {
+      // Return chart data for analytics page
+      return [
+        {
+          chartType: 'line',
+          title: 'My Plugin Trend',
+          data: {
+            labels: Object.keys(data),
+            datasets: [{
+              label: 'Items',
+              data: Object.values(data).map(d => d.items?.length || 0),
+              color: '#00FF00',
+            }],
+          },
+        },
+      ]
+    },
+  },
+}
+```
+
+**Key Rules:**
+- Plugin `id` must be unique and lowercase-hyphenated
+- Must provide a `dataProvider`
+- Calendar integration is optional but recommended
+- Analytics integration is optional
+
+### Step 6: Register Plugin
+
+**`src/core/plugin-registry/manifest.ts`** - Add to registry:
+
+```typescript
+import { MyPlugin } from '@/plugins/my-plugin/plugin'
+
+export const PLUGIN_MANIFEST: Plugin[] = [
+  // ... existing plugins
+  MyPlugin,
+]
+```
+
+### Step 7: Create Plugin Page (Optional)
+
+**`pages/MyPluginPage.tsx`** - Full-page view using SDK hook:
+
+```typescript
+'use client'
+
+import type { PluginPageProps } from '@/sdk'
+import { usePluginPage, LoadingState, NotFoundState } from '@/sdk'
+import { MyPluginView } from '../components'
+import type { MyPluginDayData, MyPluginConfig } from '../types'
+
+export default function MyPluginPage({ params, year }: PluginPageProps) {
+  const {
+    goal,
+    isLoading,
+    todayISO,
+    pluginDayData,
+    pluginConfig,
+    initialSelectedDay,
+    updateDayData,
+    updateConfig,
+    navigateToPrevYear,
+    navigateToNextYear,
+    jumpToDay,
+    year: currentYear,
+  } = usePluginPage<MyPluginDayData, MyPluginConfig>({
+    pluginId: 'my-plugin',
+    params,
+    year,
+  })
+  
+  if (isLoading) return <LoadingState />
+  if (!goal) return <NotFoundState />
+  
+  return (
+    <main className="container mx-auto px-4 py-6">
+      <MyPluginView
+        year={currentYear}
+        todayISO={todayISO}
+        data={pluginDayData}
+        config={pluginConfig}
+        onUpdate={updateDayData}
+        onConfigUpdate={updateConfig}
+        onPrevYear={navigateToPrevYear}
+        onNextYear={navigateToNextYear}
+        onJumpToDay={jumpToDay}
+        initialSelectedDay={initialSelectedDay}
+      />
+    </main>
+  )
+}
+```
+
+**Key Rules:**
+- **Use `usePluginPage` hook** - Eliminates all boilerplate for data loading, routing, and navigation
+- **Use `LoadingState` and `NotFoundState`** - Standard components for loading/error states
+- **Type the hook** - Pass your plugin's types as generics: `usePluginPage<DayData, Config>`
+- All common functionality is provided: data extraction, update wrappers, navigation helpers
+
+### Step 8: Export Components
+
+**`components/index.ts`** - Clean exports:
+
+```typescript
+export { MyPluginView } from './MyPluginView'
+export { MyComponent } from './MyComponent'
+```
+
+---
+
+---
+
+## SDK Utilities Reference
+
+The SDK provides common utilities to eliminate boilerplate code in plugins.
+
+### Hooks
+
+#### `usePluginPage`
+Eliminates all page setup boilerplate. Provides:
+- Data loading and extraction
+- Update wrappers
+- Navigation helpers
+- Loading states
+
+```typescript
+import { usePluginPage } from '@/sdk'
+
+const {
+  goal,           // Goal object
+  goalId,         // Goal ID
+  isLoading,      // Loading state
+  todayISO,       // Today's date in ISO format
+  year,           // Current year
+  
+  pluginDayData,  // Plugin's day data (typed)
+  pluginConfig,   // Plugin's config (typed)
+  
+  router,         // Next.js router
+  initialSelectedDay, // Date from URL query param
+  
+  updateDayData,  // Update day data wrapper
+  updateConfig,   // Update config wrapper
+  
+  navigateToPrevYear, // Navigate to previous year
+  navigateToNextYear, // Navigate to next year
+  jumpToDay,      // Jump to specific date
+} = usePluginPage<DayData, Config>({
+  pluginId: 'my-plugin',
+  params,
+  year,
+})
+```
+
+### Components
+
+#### `LoadingState`
+Standard loading indicator for plugin pages.
+
+```typescript
+import { LoadingState } from '@/sdk'
+
+if (isLoading) return <LoadingState />
+// or with custom message
+return <LoadingState message="Loading data..." fullScreen={false} />
+```
+
+#### `NotFoundState`
+Standard not found indicator for plugin pages.
+
+```typescript
+import { NotFoundState } from '@/sdk'
+
+if (!goal) return <NotFoundState />
+// or with custom message
+return <NotFoundState message="Data not found" fullScreen={false} />
+```
+
+### Firestore Utilities
+
+Common Firestore operations to reduce API boilerplate.
+
+```typescript
+import {
+  loadDocument,
+  saveDocument,
+  deleteDocument,
+  loadCollection,
+  loadDateRange,
+  removeUndefinedFields,
+  buildPluginPath,
+  buildPluginDayPath,
+  buildPluginConfigPath,
+} from '@/sdk'
+
+// Load a single document
+const data = await loadDocument<MyData>(db, ['users', userId, 'goals', goalId, 'data'])
+
+// Save a document (automatically removes undefined fields)
+await saveDocument(db, ['users', userId, 'goals', goalId, 'data'], myData)
+
+// Load a collection
+const items = await loadCollection<MyItem>(db, ['users', userId, 'items'])
+
+// Load date range (for plugin day data)
+const dateData = await loadDateRange<MyDayData>(
+  db,
+  ['users', userId, 'goals', goalId, 'addons', 'my-plugin', 'days'],
+  '2024-01-01',
+  '2024-12-31'
+)
+
+// Build plugin paths
+const dayPath = buildPluginDayPath(userId, goalId, 'my-plugin', '2024-01-01')
+// Returns: ['users', userId, 'goals', goalId, 'addons', 'my-plugin', 'days', '2024-01-01']
+
+const configPath = buildPluginConfigPath(userId, goalId, 'my-plugin')
+// Returns: ['users', userId, 'goals', goalId, 'addons', 'my-plugin', 'settings', 'config']
+```
+
+**Benefits:**
+- Automatic `undefined` value filtering (Firestore requirement)
+- Consistent error handling
+- Type-safe operations
+- Reduced boilerplate
+
+---
+
+## Plugin Development Best Practices
+
+### Data Management
+
+1. **Save/Cancel Pattern**: Use local state with explicit save/cancel buttons
+```typescript
+const [draftData, setDraftData] = useState(data)
+
+const handleSave = async () => {
+  await onUpdate(date, draftData)
+}
+
+const handleCancel = () => {
+  setDraftData(data) // Reset to original
+}
+```
+
+2. **Filter Undefined Values**: Before saving to Firestore
+```typescript
+const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
+  if (value !== undefined) acc[key] = value
+  return acc
+}, {})
+```
+
+3. **Optimistic Updates**: Update local state immediately, then sync
+```typescript
+setLocalData(newData) // Instant UI update
+await onUpdate(date, newData) // Background sync
+```
+
+### UI Components
+
+1. **Reuse Core Components**: Use components from `@/components/ui` and `@/sdk/ui`
+```typescript
+import { Card, Modal, Tabs } from '@/components/ui'
+import { LineChart, BarChart } from '@/sdk/ui'
+```
+
+2. **Responsive Design**: Use Tailwind responsive classes
+```typescript
+<div className="flex flex-col md:grid md:grid-cols-2">
+  {/* Components */}
+</div>
+```
+
+3. **Consistent Styling**: Follow the app's dark glassmorphism theme
+```typescript
+className="
+  bg-white/[0.02] backdrop-blur-sm
+  rounded-2xl p-6
+  border border-white/[0.08]
+  hover:bg-white/[0.04]
+  transition-all duration-200
+"
+```
+
+### Type Safety
+
+1. **Extend SDK Types**: Never create standalone types
+```typescript
+// ✅ Good
+export interface MyData extends PluginDayData {
+  items: Item[]
+}
+
+// ❌ Bad
+export interface MyData {
+  items: Item[]
+}
+```
+
+2. **Use Type Imports**: For type-only imports
+```typescript
+import type { MyData } from './types'
+```
+
+3. **Avoid `any`**: Define proper types or use generics
+```typescript
+// ❌ Bad
+const data: any = {}
+
+// ✅ Good
+const data: Record<string, PluginDayData> = {}
+```
+
+### Common Patterns
+
+#### Loading Date Range Data
+```typescript
+async loadDateRange(startDate: string, endDate: string, context: PluginContext) {
+  const { db, userId, goalId } = context
+  
+  const collectionRef = collection(db, `users/${userId}/goals/${goalId}/myPlugin`)
+  const q = query(
+    collectionRef,
+    where('date', '>=', startDate),
+    where('date', '<=', endDate)
+  )
+  
+  const snapshot = await getDocs(q)
+  const data: Record<string, MyPluginDayData> = {}
+  
+  snapshot.forEach(doc => {
+    data[doc.id] = doc.data() as MyPluginDayData
+  })
+  
+  return data
+}
+```
+
+#### Batch Operations
+```typescript
+// Save multiple days at once
+const batch = writeBatch(db)
+dates.forEach(date => {
+  const docRef = doc(db, `users/${userId}/goals/${goalId}/myPlugin/${date}`)
+  batch.set(docRef, data[date], { merge: true })
+})
+await batch.commit()
+```
+
+#### Error Handling
+```typescript
+try {
+  await saveMyData(date, data, context)
+  context.logger.info('Data saved successfully')
+} catch (error) {
+  context.logger.error('Failed to save data', error)
+  throw error // Re-throw for UI to handle
+}
+```
+
+---
+
+## Prohibited Patterns
+
+### ❌ Core Importing from Plugins
+```typescript
+// ❌ BAD - Core file importing from plugin
+import { MyType } from '@/plugins/my-plugin/types'
+```
+
+### ❌ Plugin-to-Plugin Dependencies
+```typescript
+// ❌ BAD - One plugin importing from another
+import { HoursData } from '@/plugins/hours/types'
+```
+
+### ❌ Direct Firestore Access
+```typescript
+// ❌ BAD - Direct Firestore import
+import { getFirestore } from 'firebase/firestore'
+const db = getFirestore()
+
+// ✅ GOOD - Use PluginContext
+const { db } = context
+```
+
+### ❌ Global State in Plugins
+```typescript
+// ❌ BAD - Global state
+let pluginCache = {}
+
+// ✅ GOOD - Use React state or context
+const [cache, setCache] = useState({})
+```
+
+---
+
+## Checklist for New Plugin
+
+- [ ] Created plugin directory with correct structure
+- [ ] Defined types extending SDK base types
+- [ ] Implemented DataProvider with all required methods
+- [ ] Created API layer using PluginContext
+- [ ] Defined Plugin object in plugin.ts
+- [ ] Added plugin to manifest
+- [ ] Created UI components (if needed)
+- [ ] Added page route (if needed)
+- [ ] Implemented calendar integration (optional)
+- [ ] Implemented analytics integration (optional)
+- [ ] Added proper error handling
+- [ ] Used save/cancel pattern for data entry
+- [ ] Filtered undefined values before saving
+- [ ] Tested data loading and saving
+- [ ] Verified no imports from other plugins
+- [ ] Verified no core imports from this plugin
+- [ ] Added proper TypeScript types
+- [ ] Followed naming conventions
+- [ ] Used reusable UI components
+- [ ] Build passes without errors
+
+---
+
+## File Size and Component Guidelines
+
 - **General Rule**: Keep files focused and under 200 lines when possible
 - **Components**: Aim for under 150 lines; if exceeding 200 lines, consider splitting
-- **Utils/Helpers**: Each function/utility should have its own file if it's substantial (>50 lines)
-- **Test Files**: Keep test files focused on one feature/component; split into multiple files if testing different aspects
+- **Utils/Helpers**: Each function/utility should have its own file if substantial (>50 lines)
 - Extract repeated JSX patterns into reusable components
 - Use composition over large monolithic components
-- If a file serves multiple purposes, split it into separate files with single responsibilities
 
-### 4. Naming Conventions
-- **Components**: PascalCase (`Calendar.tsx`, `DetailView.tsx`)
-- **Hooks**: camelCase with `use` prefix (`useFirebase.ts`, `useGoals.ts`)
-- **Utils**: camelCase (`dateUtils.ts`, `formatters.ts`)
-- **Types**: PascalCase for types, interfaces (`DayDetails`, `GoalProps`)
-- **Constants**: SCREAMING_SNAKE_CASE for values (`WEEKDAY_LABELS`, `MONTH_NAMES`)
+## Naming Conventions
 
-### 5. Import Organization
+- **Components**: PascalCase (`MyPluginView.tsx`, `ItemCard.tsx`)
+- **Hooks**: camelCase with `use` prefix (`useMyData.ts`)
+- **Utils**: camelCase (`myUtils.ts`, `formatters.ts`)
+- **Types**: PascalCase for types, interfaces (`MyPluginData`, `ItemConfig`)
+- **Constants**: SCREAMING_SNAKE_CASE for values (`MAX_ITEMS`, `DEFAULT_COLOR`)
+
+## Import Organization
+
 ```typescript
 // 1. React/Next imports
 import { useState, useEffect } from 'react'
@@ -50,168 +756,23 @@ import { useRouter } from 'next/navigation'
 // 2. Third-party libraries
 import { motion } from 'framer-motion'
 
-// 3. Internal absolute imports (components, hooks, utils)
-import { Card } from '@/components/ui/Card'
-import { useGoals } from '@/hooks/useGoals'
-import { formatDate } from '@/lib/dateUtils'
+// 3. SDK imports
+import type { PluginContext, PluginDayData } from '@/sdk'
+import { Card, Modal } from '@/components/ui'
 
-// 4. Types
-import type { DayDetails, GoalProps } from '@/types'
-
-// 5. Relative imports (if any)
-import { LocalComponent } from './LocalComponent'
+// 4. Plugin-relative imports
+import type { MyPluginData } from './types'
+import { loadMyData } from './api'
 ```
 
-### 6. Export Guidelines
-- Use named exports for components (easier to refactor)
-- Default exports only for page components (Next.js requirement)
-- Re-export from index files for cleaner imports
+## Don'ts
 
-### 7. Don'ts
-- ❌ Don't put multiple components in one file (unless tightly coupled and small)
-- ❌ Don't mix API logic with component logic
-- ❌ Don't inline large constant arrays in components
-- ❌ Don't duplicate types across files
-- ❌ Don't write helper functions inside components if they can be pure utilities
-- ❌ **Don't duplicate components with CSS visibility toggling** (see Responsive Design section below)
-- ❌ **Don't create documentation files (*.md)** unless explicitly requested by the user
-
-### 8. Responsive Design Guidelines
-
-**NEVER duplicate components for responsive layouts!** Instead, use responsive Tailwind classes on a single instance.
-
-#### ❌ BAD - Component Duplication:
-```tsx
-{/* Mobile View */}
-<div className="md:hidden">
-  <Calendar {...props} />
-  <DetailView {...props} />
-</div>
-
-{/* Desktop View */}
-<div className="hidden md:block">
-  <Calendar {...props} />
-  <DetailView {...props} />
-</div>
-```
-
-**Problems:**
-- Doubles DOM size (performance impact)
-- Creates duplicate `data-testid` elements (breaks tests)
-- Harder to maintain (changes needed in two places)
-- Wastes memory and processing
-
-#### ✅ GOOD - Single Component with Responsive Layout:
-```tsx
-<div className="
-  flex flex-col              /* Mobile: stack vertically */
-  md:grid md:grid-cols-2     /* Desktop: side-by-side */
-  divide-y md:divide-y-0     /* Mobile: horizontal divider */
-  md:divide-x                /* Desktop: vertical divider */
-">
-  <Calendar {...props} />
-  <DetailView {...props} />
-</div>
-```
-
-**Benefits:**
-- Single instance in DOM
-- Better performance
-- Tests work reliably (no `.first()` or `.last()` needed)
-- Easier to maintain
-
-**Key Principle:** Use responsive **layout** classes (`flex`, `grid`, `divide-*`) to change arrangement, not visibility classes (`hidden`, `md:hidden`) to duplicate.
-
-### 9. Testing Guidelines
-
-#### Test Structure
-- **No Test Documentation**: Do NOT create README.md, documentation, or guide files in `__tests__/` folders
-- **Keep Tests Simple**: Write minimal, focused tests - avoid unnecessary complexity
-- **No Over-Engineering**: Only add helpers/fixtures that are actually needed for the tests
-- **Fixed Credentials**: Use fixed test credentials instead of generating them dynamically
-- **Direct Setup**: Use database helpers to set up test data, avoid UI interactions for setup
-
-#### Test Organization
-Tests are organized into three categories:
-
-**1. Seeds** (`__tests__/seeds/`)
-- Database operations that create data directly (bypassing UI)
-- Naming: Prefix all functions with `seed` (e.g., `seedUser()`, `seedGoal()`)
-- Purpose: Fast test data setup without UI interactions
-- Examples:
-  ```typescript
-  await seedUser({ email, password })
-  await seedGoal({ userId, name })
-  await seedDayDetails({ userId, goalId, date, status })
-  ```
-
-**2. Fixtures** (`__tests__/fixtures/`)
-- UI interactions via Playwright (clicks, fills, navigation)
-- Naming: No prefix needed - the action name is sufficient (e.g., `signIn()`, `clickDay()`)
-- Purpose: Reusable UI interaction helpers
-- Examples:
-  ```typescript
-  await signIn(page, credentials)
-  await navigateToGoal(page, goalId)
-  await clickDay(page, 15)
-  ```
-
-**3. Validators** (`__tests__/fixtures/validators.fixture.ts`)
-- Reusable page and element assertions
-- Naming: Prefix all functions with `expect` (e.g., `expectHomePage()`, `expectVisible()`)
-- Purpose: Consistent, maintainable assertions across tests
-- Always use `data-testid` for selectors (not text or CSS classes)
-- Examples:
-  ```typescript
-  await expectHomePage(page)
-  await expectGoalPage(page)
-  await expectDaySelected(page, 15)
-  ```
-
-#### Test ID Convention
-- **Always use `data-testid`** (not `data-test-id` with hyphen)
-- Add `data-testid` attributes to all testable UI elements
-- Use semantic, descriptive IDs: `create-goal-button`, `calendar-day-15`, `dashboard-greeting`
-- Access in tests via: `page.getByTestId('element-id')`
-- Never use text-based selectors (`text=Click here`) or CSS classes for assertions
-
-#### Example Test Pattern
-```typescript
-test('should complete user flow', async ({ page }) => {
-  // 1. Seed data (database)
-  const { user, credentials } = await seedUser()
-  const goal = await seedGoal({ userId: user.uid })
-  
-  // 2. UI interactions (fixtures)
-  await signIn(page, credentials)
-  await navigateToGoal(page, goal.id)
-  await clickDay(page, 15)
-  
-  // 3. Assertions (validators)
-  await expectGoalPage(page)
-  await expectDaySelected(page, 15)
-})
-```
-
-#### When to Create New Helpers
-
-**Create a new seed** when:
-- You need to create data in the database
-- The operation doesn't require UI interaction
-- It can be reused across multiple tests
-
-**Create a new fixture** when:
-- You need to interact with the UI (click, fill, navigate)
-- The action is reusable across tests
-- It's a common user flow
-
-**Create a new validator** when:
-- You're checking the same thing in multiple tests
-- It involves complex assertions or multiple checks
-- It validates page state or element visibility
-
-**Don't create helpers** for:
-- One-off assertions specific to a single test
-- Operations that are already covered by existing helpers
-- Trivial checks that are clearer inline
-
+- ❌ Don't import from other plugins
+- ❌ Don't let core import from your plugin (except manifest)
+- ❌ Don't access Firestore directly
+- ❌ Don't save `undefined` values to Firestore
+- ❌ Don't create global state
+- ❌ Don't duplicate components for responsive layouts
+- ❌ Don't create documentation files unless requested
+- ❌ Don't use `any` types
+- ❌ Don't put multiple unrelated components in one file

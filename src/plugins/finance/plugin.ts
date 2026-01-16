@@ -3,6 +3,7 @@ import { FinanceDataProvider } from './data-provider'
 import { FinanceDetailProviderImpl } from './detail-provider'
 import FinancePage from './pages/FinancePage'
 import type { FinanceTransactionData } from './types'
+import { buildPluginUrl } from '@/lib/plugin-url-utils'
 
 export const FinancePlugin: Plugin<FinanceTransactionData> = {
   id: 'finance',
@@ -29,7 +30,7 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
 
   // Calendar integration
   calendar: {
-    getDaySummary: (date, data) => {
+    getDaySummary: (date, data, context) => {
       if (!data || (!data.expenses?.length && !data.income?.length)) {
         return null
       }
@@ -57,6 +58,18 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
         transactions['Net'] = `₹${netAmount.toLocaleString('en-IN')}`
       }
 
+      // Build navigation URL
+      const dateObj = new Date(date)
+      const year = dateObj.getFullYear()
+      const url = context?.goalId
+        ? buildPluginUrl({
+            goalId: context.goalId,
+            pluginId: 'finance',
+            year,
+            date,
+          })
+        : undefined
+
       return {
         color: netAmount >= 0 ? '#34C759' : '#FF3B30', // Green for positive, red for negative
         hasData: true,
@@ -68,9 +81,7 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
           actions: [
             {
               label: 'Add transaction',
-              onClick: () => {
-                console.log('Navigate to finance for', date)
-              },
+              url,
               variant: 'primary',
             },
           ],

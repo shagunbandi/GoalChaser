@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react'
 import type { TravelPlan, TravelPlanInput } from '../types'
-import type { AgendaItem } from '@/plugins/agenda/types'
 import type { ButtonConfig } from '@/types'
 import type { YearViewConfig } from '@/types/year-view-config'
 import { Modal } from '@/components/ui'
@@ -41,7 +40,6 @@ export function YearView({
   const [showTravelModal, setShowTravelModal] = useState(false)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
-  const [removingPlanId, setRemovingPlanId] = useState<string | null>(null)
   const [editingTravel, setEditingTravel] = useState<TravelPlan | null>(null)
   const [isSavingTravel, setIsSavingTravel] = useState(false)
   const [prefilledDates, setPrefilledDates] = useState<{
@@ -238,16 +236,6 @@ export function YearView({
     }
   }
 
-  const removePlannedItem = async (iso: string, planId: string) => {
-    setRemovingPlanId(planId)
-    try {
-      const items = dayDetails[iso]?.agendaItems || []
-      const filtered = items.filter((item: { id: string }) => item.id !== planId)
-      await onUpdateDay(iso, { agendaItems: filtered })
-    } finally {
-      setRemovingPlanId(null)
-    }
-  }
 
   // Build year view configuration
   const config: YearViewConfig = useMemo(
@@ -313,7 +301,6 @@ export function YearView({
       modal: {
         getSections: (date: string) => {
           const travels = dayDetails[date]?.travelPlans || []
-          const agendaItems = dayDetails[date]?.agendaItems || []
 
           const sections = []
 
@@ -387,54 +374,6 @@ export function YearView({
             })
           }
 
-          // Agenda items section
-          sections.push({
-            id: 'agenda-items',
-            type: 'custom' as const,
-            content: (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-sm font-semibold text-white mb-2">
-                  Agenda items
-                </div>
-                {agendaItems.length ? (
-                  <ul className="space-y-1 text-xs text-white/80">
-                    {agendaItems.map((item: AgendaItem) => (
-                      <li
-                        key={item.id}
-                        className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/3 px-3 py-2"
-                      >
-                        <span className="h-2 w-2 rounded-full bg-white/70" />
-                        <div className="flex-1">
-                          <div className="font-medium text-white">
-                            {item.title}
-                          </div>
-                          {(item.startTime || item.endTime || item.note) && (
-                            <div className="text-[11px] text-white/60">
-                              {item.startTime && item.endTime
-                                ? `${item.startTime}–${item.endTime}`
-                                : item.startTime || item.endTime || ''}
-                              {item.note ? ` • ${item.note}` : ''}
-                            </div>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => removePlannedItem(date, item.id)}
-                          disabled={removingPlanId === item.id}
-                          className="text-white/60 hover:text-white text-[11px] px-2 py-1 rounded-lg hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {removingPlanId === item.id ? 'Removing…' : 'Remove'}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-xs text-white/60">
-                    No plans for this day.
-                  </div>
-                )}
-              </div>
-            ),
-          })
 
           return sections
         },
@@ -480,7 +419,6 @@ export function YearView({
       travelCountByMonth,
       dayDetails,
       isUpdating,
-      removingPlanId,
       onPrevYear,
       onNextYear,
       onJumpToDay,

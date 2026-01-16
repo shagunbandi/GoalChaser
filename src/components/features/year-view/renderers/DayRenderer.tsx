@@ -20,8 +20,6 @@ export function DayRenderer({ config, isToday }: DayRendererProps) {
         return 'rgb(34,197,94)'
       case 'sip':
         return 'rgb(59,130,246)'
-      case 'agenda':
-        return 'rgba(255,255,255,0.6)'
       default:
         return 'rgba(255,255,255,0.6)'
     }

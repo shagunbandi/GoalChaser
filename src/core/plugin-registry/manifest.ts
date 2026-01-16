@@ -6,7 +6,6 @@ import HoursPlugin from '@/plugins/hours/plugin'
 import ProductivityPlugin from '@/plugins/productivity/plugin'
 import FinancePlugin from '@/plugins/finance/plugin'
 import TravelPlugin from '@/plugins/travel/plugin'
-import AgendaPlugin from '@/plugins/agenda/plugin'
 
 /**
  * Plugin Manifest
@@ -29,5 +28,4 @@ export const AVAILABLE_PLUGINS: PluginManifestEntry[] = [
   { plugin: ProductivityPlugin, enabled: true },
   { plugin: FinancePlugin, enabled: true },
   { plugin: TravelPlugin, enabled: true },
-  { plugin: AgendaPlugin, enabled: true },
 ]

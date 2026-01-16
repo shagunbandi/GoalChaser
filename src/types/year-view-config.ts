@@ -13,7 +13,7 @@ export type ButtonConfig = {
 
 // Day appearance configuration
 export type DayIndicator = {
-  type: 'travel' | 'expense' | 'income' | 'sip' | 'agenda'
+  type: 'travel' | 'expense' | 'income' | 'sip'
   color?: string // optional custom color
   count?: number // for multiple items
 }

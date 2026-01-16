@@ -46,6 +46,15 @@ export { createPluginLogger, createPluginFirestore } from './services'
 // Helper to create plugin context
 export { createPluginContext } from './services/plugin-context.service'
 
+// Hooks
+export { usePluginPage } from './hooks'
+
+// Utilities
+export * from './utils'
+
+// Components
+export { LoadingState, NotFoundState } from './components'
+
 // UI components
 export { 
   Card, 

@@ -5,122 +5,99 @@
 'use client'
 
 import type { PluginPageProps } from '@/sdk'
+import { usePluginPage, LoadingState, NotFoundState } from '@/sdk'
 import { ProductivityView } from '../components'
-import { useGoalData } from '@/hooks/useGoalData'
-import { useRouter } from 'next/navigation'
+import type { ProductivityDayData, ProductivityConfig } from '../types'
 
-export default function ProductivityPage({ context, params, year = new Date().getFullYear() }: PluginPageProps) {
-  const goalId = params.id
-  const router = useRouter()
-
+export default function ProductivityPage({ context, params, year }: PluginPageProps) {
   const {
     goal,
     isLoading,
     todayISO,
-    pluginData,
-    pluginConfigs,
-    handleUpdateData,
+    pluginDayData,
+    pluginConfig,
+    initialSelectedDay,
+    updateDayData,
     updateConfig,
-  } = useGoalData(goalId, year)
+    navigateToPrevYear,
+    navigateToNextYear,
+    jumpToDay,
+    year: currentYear,
+  } = usePluginPage<ProductivityDayData, ProductivityConfig>({
+    pluginId: 'productivity',
+    params,
+    year,
+  })
   
-  // Extract productivity-specific data
-  const dayDetails = pluginData?.['productivity'] || {}
-  const areaConfigs = (pluginConfigs?.['productivity'] as any)?.areas || []
-  
-  // Wrapper functions for productivity-specific updates
-  const handleUpdateDetails = async (iso: string, updates: any) => {
-    await handleUpdateData('productivity', iso, updates)
-  }
+  const areaConfigs = pluginConfig?.areas || []
   
   const handleAddArea = (name: string) => {
     const newArea = { id: `area_${Date.now()}`, name, topics: [], hasTopics: true }
-    const updatedConfig = {
-      areas: [...areaConfigs, newArea]
-    }
-    updateConfig('productivity', updatedConfig)
+    updateConfig({ areas: [...areaConfigs, newArea] })
   }
   
   const handleRemoveArea = (id: string) => {
-    const updatedConfig = {
-      areas: areaConfigs.filter((a: any) => a.id !== id)
-    }
-    updateConfig('productivity', updatedConfig)
+    updateConfig({ areas: areaConfigs.filter((a: any) => a.id !== id) })
   }
   
   const handleUpdateArea = (id: string, name: string) => {
-    const updatedConfig = {
-      areas: areaConfigs.map((a: any) => a.id === id ? { ...a, name } : a)
-    }
-    updateConfig('productivity', updatedConfig)
+    updateConfig({ areas: areaConfigs.map((a: any) => a.id === id ? { ...a, name } : a) })
   }
   
   const handleToggleAreaHasTopics = (id: string) => {
-    const updatedConfig = {
-      areas: areaConfigs.map((a: any) => a.id === id ? { ...a, hasTopics: !(a.hasTopics ?? true) } : a)
-    }
-    updateConfig('productivity', updatedConfig)
+    updateConfig({ 
+      areas: areaConfigs.map((a: any) => a.id === id ? { ...a, hasTopics: !(a.hasTopics ?? true) } : a) 
+    })
   }
   
   const handleAddAreaTopic = (areaId: string, topic: string) => {
-    const updatedConfig = {
+    updateConfig({
       areas: areaConfigs.map((a: any) => 
         a.id === areaId ? { ...a, topics: [...(a.topics || []), topic] } : a
       )
-    }
-    updateConfig('productivity', updatedConfig)
+    })
   }
   
   const handleRemoveAreaTopic = (areaId: string, topic: string) => {
-    const updatedConfig = {
+    updateConfig({
       areas: areaConfigs.map((a: any) => 
         a.id === areaId ? { ...a, topics: (a.topics || []).filter((t: string) => t !== topic) } : a
       )
-    }
-    updateConfig('productivity', updatedConfig)
+    })
   }
   
   const handleUpdateAreaTopic = (areaId: string, oldTopic: string, newTopic: string) => {
-    const updatedConfig = {
+    updateConfig({
       areas: areaConfigs.map((a: any) => 
         a.id === areaId ? { ...a, topics: (a.topics || []).map((t: string) => t === oldTopic ? newTopic : t) } : a
       )
-    }
-    updateConfig('productivity', updatedConfig)
+    })
   }
   
   const isAreaTopicInUse = (areaId: string, topic: string) => {
-    // Check if topic is used in any day's data
-    return Object.values(dayDetails).some((details: any) => 
-      details?.areas?.some((area: any) => area.area === areaConfigs.find((a: any) => a.id === areaId)?.name && area.topics?.includes(topic))
+    return Object.values(pluginDayData).some((details: any) => 
+      details?.areas?.some((area: any) => 
+        area.area === areaConfigs.find((a: any) => a.id === areaId)?.name && 
+        area.topics?.includes(topic)
+      )
     )
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-white/60">Loading...</div>
-      </div>
-    )
-  }
-
-  if (!goal) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-white/60">Goal not found</div>
-      </div>
-    )
-  }
+  if (isLoading) return <LoadingState />
+  if (!goal) return <NotFoundState />
 
   return (
     <main className="container mx-auto px-4 py-6 space-y-4">
       <ProductivityView
-        year={year}
+        year={currentYear}
         todayISO={todayISO}
-        dayDetails={dayDetails}
+        dayDetails={pluginDayData}
         areaConfigs={areaConfigs}
-        onPrevYear={() => router.push(`/goal/${goalId}/productivity/${year - 1}`)}
-        onNextYear={() => router.push(`/goal/${goalId}/productivity/${year + 1}`)}
-        onUpdateDay={handleUpdateDetails}
+        initialSelectedDay={initialSelectedDay}
+        onPrevYear={navigateToPrevYear}
+        onNextYear={navigateToNextYear}
+        onUpdateDay={updateDayData}
+        onJumpToDay={jumpToDay}
         onAddArea={handleAddArea}
         onRemoveArea={handleRemoveArea}
         onUpdateArea={handleUpdateArea}
