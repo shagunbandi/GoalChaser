@@ -244,23 +244,7 @@ export function YearView({
     () => ({
       year,
       todayISO,
-      header: {
-        icon: '✈️',
-        title: 'Travelling Year:',
-        stats: [
-          { label: 'Travel days', value: travelEntries.length },
-          { label: 'Weekdays', value: weekdayTravelCount },
-          { label: 'Weekends', value: weekendTravelCount },
-        ],
-        actions: [
-          {
-            id: 'add-travel',
-            label: '+ Add travel',
-            onClick: handleAddNewTravel,
-            color: 'info' as const,
-          },
-        ],
-      },
+      header: undefined, // Header is rendered separately in TravelPage
       months: months.map((month) => {
         const monthTravel = travelCountByMonth[month.month] || 0
         const monthTravels = getMonthTravels(year, month.month)

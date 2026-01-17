@@ -82,6 +82,7 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
         dayData={pluginDayData}
         onPrevYear={navigateToPrevYear}
         onNextYear={navigateToNextYear}
+        onAddTravel={handleAddTravel}
       />
 
       {/* Content - shows inline loader when switching years */}

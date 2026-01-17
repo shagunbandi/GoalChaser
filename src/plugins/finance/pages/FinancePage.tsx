@@ -97,8 +97,13 @@ export default function FinancePage({
       <FinanceHeader
         year={currentYear}
         dayData={pluginDayData}
+        budgets={budgets}
+        sips={sips}
         onPrevYear={navigateToPrevYear}
         onNextYear={navigateToNextYear}
+        onSaveBudget={handleSaveBudget}
+        onSaveBudgets={handleSaveBudgets}
+        onSaveSIP={handleSaveSIP}
       />
 
       {/* Content - shows inline loader when switching years */}

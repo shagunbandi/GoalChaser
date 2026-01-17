@@ -139,31 +139,7 @@ export function StudyView({
         }
       },
       showDayModal: false, // Don't show modal on day click, navigate to month view instead
-      header: {
-        icon: '📚',
-        title: 'Study Year:',
-        stats: [
-          { label: 'Total hours', value: Math.round(yearStats.totalHours) },
-          { label: 'Days tracked', value: yearStats.daysWithHours },
-          {
-            label: 'Avg/day',
-            value: yearStats.average.toFixed(1) + 'h',
-            color: '#5856D6',
-          },
-        ],
-        legends: [
-          { label: `Target: ${maxHours}h/day`, color: 'rgb(155, 89, 182)' },
-          { label: 'Progress: VIBGYOR scale', color: 'rgb(52, 152, 219)' },
-        ],
-        actions: [
-          {
-            id: 'manage-subjects',
-            label: 'Manage Subjects',
-            icon: '⚙️',
-            onClick: () => setShowSubjectManager(true),
-          },
-        ],
-      },
+      header: undefined, // Header is rendered separately in StudyPage
       months: months.map((month) => {
         const stats = monthlyStats[month.month]
 

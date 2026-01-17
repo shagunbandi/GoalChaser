@@ -593,29 +593,7 @@ export function BudgetingView({
       todayISO,
       onDaySelect: handleDaySelect,
       showDayModal: false, // Don't show modal on day click, navigate to month view instead
-      header: {
-        icon: '💰',
-        title: 'Finance',
-        legends: [
-          { label: 'Income', color: 'rgb(74, 222, 128)' },
-          { label: 'Expense', color: 'rgb(248, 113, 113)' },
-          { label: 'SIP', color: 'rgb(96, 165, 250)' },
-        ],
-        actions: [
-          {
-            id: 'add-sip',
-            label: '+ SIP',
-            onClick: () => setShowAddSIP(true),
-            color: 'info' as const,
-          },
-          {
-            id: 'add-budget',
-            label: '+ Budget Plan',
-            onClick: () => setShowAddBudget(true),
-            color: 'success' as const,
-          },
-        ],
-      },
+      header: undefined, // Header is rendered separately in FinancePage
       months: months.map((month) => {
         const monthBudgets = getMonthBudgets(year, month.month)
         const monthSIPs = getMonthSIPs(year, month.month)

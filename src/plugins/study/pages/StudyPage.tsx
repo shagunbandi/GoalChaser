@@ -146,8 +146,18 @@ export default function StudyPage({
       <StudyHeader
         year={currentYear}
         dayData={pluginDayData}
+        maxHours={maxHours}
+        subjectConfigs={subjectConfigs}
         onPrevYear={navigateToPrevYear}
         onNextYear={navigateToNextYear}
+        onAddSubject={handleAddSubject}
+        onRemoveSubject={handleRemoveSubject}
+        onUpdateSubject={handleUpdateSubject}
+        onToggleHasTopics={handleToggleHasTopics}
+        onAddTopic={handleAddTopic}
+        onRemoveTopic={handleRemoveTopic}
+        onUpdateTopic={handleUpdateTopic}
+        isTopicInUse={isTopicInUse}
       />
 
       {/* Content - shows inline loader when switching years */}
