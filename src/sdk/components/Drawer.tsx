@@ -48,7 +48,7 @@ export function Drawer({
       <div
         className="
           fixed top-0 right-0 bottom-0
-          w-full max-w-2xl h-full
+          w-full max-w-[90vw] md:max-w-[70vw] lg:max-w-3xl h-full
           overflow-hidden flex flex-col
           bg-gradient-to-br from-[#1a1a24] to-[#15151f]
           border-l border-white/10

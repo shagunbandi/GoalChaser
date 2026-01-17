@@ -59,6 +59,63 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
     }
   }
 
+  const handleUpdateTravel = async (updatedTravel: TravelPlan) => {
+    // Find the old travel to get its date range
+    let oldTravel: TravelPlan | null = null
+    for (const data of Object.values(pluginDayData)) {
+      const found = data?.travelPlans?.find((p) => p.id === updatedTravel.id)
+      if (found) {
+        oldTravel = found
+        break
+      }
+    }
+
+    if (!oldTravel) return
+
+    // Remove from old dates
+    const oldDates = enumerateDateRange(oldTravel.startDate, oldTravel.endDate)
+    for (const date of oldDates) {
+      const existing = (pluginDayData[date]?.travelPlans as TravelPlan[]) || []
+      await updateDayData(date, {
+        travelPlans: existing.filter((p) => p.id !== updatedTravel.id),
+      })
+    }
+
+    // Add to new dates
+    const newDates = enumerateDateRange(updatedTravel.startDate, updatedTravel.endDate)
+    for (const date of newDates) {
+      const existing = (pluginDayData[date]?.travelPlans as TravelPlan[]) || []
+      // Filter out any existing with same ID (in case dates overlap)
+      const filtered = existing.filter((p) => p.id !== updatedTravel.id)
+      await updateDayData(date, {
+        travelPlans: [...filtered, updatedTravel],
+      })
+    }
+  }
+
+  const handleDeleteTravel = async (travelId: string) => {
+    // Find the travel to get its date range
+    let travel: TravelPlan | null = null
+    for (const data of Object.values(pluginDayData)) {
+      const found = data?.travelPlans?.find((p) => p.id === travelId)
+      if (found) {
+        travel = found
+        break
+      }
+    }
+
+    if (!travel) return
+
+    // Remove from all dates in the range
+    const dates = enumerateDateRange(travel.startDate, travel.endDate)
+    for (const date of dates) {
+      const existing = (pluginDayData[date]?.travelPlans as TravelPlan[]) || []
+      await updateDayData(date, {
+        travelPlans: existing.filter((p) => p.id !== travelId),
+      })
+    }
+  }
+
   // Check if we have any data yet (for initial load vs navigation)
   const hasData = Object.keys(pluginDayData).length > 0
 
@@ -83,6 +140,8 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
         onPrevYear={navigateToPrevYear}
         onNextYear={navigateToNextYear}
         onAddTravel={handleAddTravel}
+        onUpdateTravel={handleUpdateTravel}
+        onDeleteTravel={handleDeleteTravel}
       />
 
       {/* Content - shows inline loader when switching years */}
@@ -99,6 +158,8 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
           initialSelectedDate={initialSelectedDay}
           onUpdateDay={updateDayData}
           onBackToYear={() => navigateToYear(currentYear)}
+          onEditTravel={handleUpdateTravel}
+          onDeleteTravel={handleDeleteTravel}
         />
       ) : (
         <YearView

@@ -2,9 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { HeaderRenderer } from '@/components/features/year-view/renderers/HeaderRenderer'
-import { Modal } from '@/components/ui'
-import { TravelForm } from './TravelForm'
-import type { TravelDayData, TravelPlanInput } from '../types'
+import { TravelManager } from './TravelManager'
+import type { TravelDayData, TravelPlan, TravelPlanInput } from '../types'
 import { isWeekend } from '@/utils'
 
 interface TravelHeaderProps {
@@ -13,6 +12,8 @@ interface TravelHeaderProps {
   onPrevYear: () => void
   onNextYear: () => void
   onAddTravel?: (travel: TravelPlanInput) => void | Promise<void>
+  onUpdateTravel?: (travel: TravelPlan) => void | Promise<void>
+  onDeleteTravel?: (travelId: string) => void | Promise<void>
 }
 
 export function TravelHeader({
@@ -21,8 +22,10 @@ export function TravelHeader({
   onPrevYear,
   onNextYear,
   onAddTravel,
+  onUpdateTravel,
+  onDeleteTravel,
 }: TravelHeaderProps) {
-  const [showTravelModal, setShowTravelModal] = useState(false)
+  const [showTravelManager, setShowTravelManager] = useState(false)
 
   const headerConfig = useMemo(() => {
     const yearPrefix = `${year}-`
@@ -46,36 +49,15 @@ export function TravelHeader({
       actions: onAddTravel
         ? [
             {
-              id: 'add-travel',
-              label: '+ Add travel',
-              onClick: () => setShowTravelModal(true),
-              color: 'info' as const,
+              id: 'manage-travel',
+              label: 'Manage Travel',
+              icon: '⚙️',
+              onClick: () => setShowTravelManager(true),
             },
           ]
         : [],
     }
   }, [dayData, year, onAddTravel])
-
-  const handleSaveTravel = async (data: {
-    title: string
-    destination: string
-    startDate: string
-    endDate: string
-    color: string
-    note: string
-  }) => {
-    if (onAddTravel) {
-      await onAddTravel({
-        title: data.title,
-        destination: data.destination,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        color: data.color,
-        note: data.note,
-      })
-    }
-    setShowTravelModal(false)
-  }
 
   if (!headerConfig) return null
 
@@ -88,17 +70,17 @@ export function TravelHeader({
         onNextYear={onNextYear}
       />
 
-      {/* Add Travel Modal */}
-      <Modal
-        open={showTravelModal}
-        onClose={() => setShowTravelModal(false)}
-        title="Add Travel Plan"
-      >
-        <TravelForm
-          onSubmit={handleSaveTravel}
-          onCancel={() => setShowTravelModal(false)}
+      {/* Travel Manager Drawer */}
+      {showTravelManager && onAddTravel && onUpdateTravel && onDeleteTravel && (
+        <TravelManager
+          isOpen={showTravelManager}
+          dayData={dayData}
+          onAddTravel={onAddTravel}
+          onUpdateTravel={onUpdateTravel}
+          onDeleteTravel={onDeleteTravel}
+          onClose={() => setShowTravelManager(false)}
         />
-      </Modal>
+      )}
     </>
   )
 }

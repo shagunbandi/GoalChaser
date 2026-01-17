@@ -206,11 +206,22 @@ export function useGoalDataQuery({
       }
       return { pluginId, date, updates }
     },
-    onSuccess: ({ pluginId, date, updates }) => {
-      // Optimistically update the cache
-      queryClient.setQueryData(
+    // Use onMutate for optimistic updates (immediate UI feedback)
+    onMutate: async ({ pluginId, date, updates }) => {
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({
+        queryKey: goalDataKeys.pluginData(userId, goalId, startDate, endDate),
+      })
+
+      // Snapshot the previous value for rollback
+      const previousData = queryClient.getQueryData<GoalDataResult>(
         goalDataKeys.pluginData(userId, goalId, startDate, endDate),
-        (old: GoalDataResult | undefined) => {
+      )
+
+      // Optimistically update the cache immediately
+      queryClient.setQueryData<GoalDataResult>(
+        goalDataKeys.pluginData(userId, goalId, startDate, endDate),
+        (old) => {
           if (!old) return old
           return {
             ...old,
@@ -225,8 +236,19 @@ export function useGoalDataQuery({
               },
             },
           }
-        }
+        },
       )
+
+      return { previousData }
+    },
+    onError: (_err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(
+          goalDataKeys.pluginData(userId, goalId, startDate, endDate),
+          context.previousData,
+        )
+      }
     },
   })
 

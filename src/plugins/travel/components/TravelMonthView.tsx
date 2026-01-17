@@ -3,7 +3,7 @@
 import { PluginMonthView } from '@/sdk'
 import type { DayCustomization } from '@/sdk'
 import { TravelPlugin } from '../plugin'
-import type { TravelDayData } from '../types'
+import type { TravelDayData, TravelPlan } from '../types'
 
 interface TravelMonthViewProps {
   plugin: any
@@ -15,6 +15,8 @@ interface TravelMonthViewProps {
   initialSelectedDate: string | null
   onUpdateDay: (iso: string, updates: Partial<TravelDayData>) => Promise<void>
   onBackToYear: () => void
+  onEditTravel?: (travel: TravelPlan) => void | Promise<void>
+  onDeleteTravel?: (travelId: string) => void | Promise<void>
 }
 
 export function TravelMonthView({
@@ -27,6 +29,8 @@ export function TravelMonthView({
   initialSelectedDate,
   onUpdateDay,
   onBackToYear,
+  onEditTravel,
+  onDeleteTravel,
 }: TravelMonthViewProps) {
   // Build day customizations based on travel plans
   const buildDayCustomization = (
@@ -35,22 +39,16 @@ export function TravelMonthView({
   ): DayCustomization | null => {
     if (!data || !data.travelPlans || data.travelPlans.length === 0) return null
 
-    const travelCount = data.travelPlans.length
+    // Show one dot per travel plan with its color
+    const indicators = data.travelPlans.map((plan, index) => ({
+      id: `travel-${index}`,
+      label: plan.title || 'Travel',
+      color: plan.color || '#007AFF',
+    }))
 
     return {
       backgroundColor: 'bg-blue-500/20',
-      content: (
-        <div className="hidden md:block text-[10px] text-white/60 mt-1">
-          {travelCount} {travelCount === 1 ? 'trip' : 'trips'}
-        </div>
-      ),
-      indicators: [
-        {
-          id: 'travel',
-          label: `${travelCount} travel plan${travelCount !== 1 ? 's' : ''}`,
-          color: '#007AFF',
-        },
-      ],
+      indicators,
     }
   }
 
@@ -66,6 +64,10 @@ export function TravelMonthView({
       onUpdateDay={onUpdateDay}
       onBackToYear={onBackToYear}
       buildDayCustomization={buildDayCustomization}
+      detailContext={{
+        onEditTravel,
+        onDeleteTravel,
+      }}
     />
   )
 }

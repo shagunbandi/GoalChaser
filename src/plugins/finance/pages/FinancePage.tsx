@@ -103,7 +103,9 @@ export default function FinancePage({
         onNextYear={navigateToNextYear}
         onSaveBudget={handleSaveBudget}
         onSaveBudgets={handleSaveBudgets}
+        onDeleteBudget={handleDeleteBudget}
         onSaveSIP={handleSaveSIP}
+        onDeleteSIP={handleDeleteSIP}
       />
 
       {/* Content - shows inline loader when switching years */}
