@@ -1,15 +1,15 @@
 /**
- * Hours Plugin Data Provider
+ * Study Plugin Data Provider
  */
 
 import type { PluginDataProvider, PluginContext } from '@/sdk'
-import type { HoursDayData, HoursConfig, SubjectConfig } from './types'
+import type { StudyDayData, StudyConfig, SubjectConfig } from './types'
 
-export class HoursDataProvider implements PluginDataProvider<HoursDayData, HoursConfig> {
+export class StudyDataProvider implements PluginDataProvider<StudyDayData, StudyConfig> {
   /**
    * Load data for a specific date
    */
-  async loadDayData(context: PluginContext, date: string): Promise<HoursDayData | null> {
+  async loadDayData(context: PluginContext, date: string): Promise<StudyDayData | null> {
     try {
       const docRef = context.firestore.doc(`days/${date}`)
       const docSnap = await context.firestore.getDoc(docRef)
@@ -36,7 +36,7 @@ export class HoursDataProvider implements PluginDataProvider<HoursDayData, Hours
     context: PluginContext,
     startDate: string,
     endDate: string
-  ): Promise<Record<string, HoursDayData>> {
+  ): Promise<Record<string, StudyDayData>> {
     try {
       const daysRef = context.firestore.collection('days')
       const q = context.firestore.query(
@@ -47,7 +47,7 @@ export class HoursDataProvider implements PluginDataProvider<HoursDayData, Hours
 
       const snapshot = await context.firestore.getDocs(q)
 
-      const result: Record<string, HoursDayData> = {}
+      const result: Record<string, StudyDayData> = {}
       snapshot.forEach((docSnap: any) => {
         const data = docSnap.data()
         result[docSnap.id] = {
@@ -69,22 +69,22 @@ export class HoursDataProvider implements PluginDataProvider<HoursDayData, Hours
   async saveDayData(
     context: PluginContext,
     date: string,
-    data: Partial<HoursDayData>
+    data: Partial<StudyDayData>
   ): Promise<boolean> {
-    context.logger.progress('Saving hours...')
+    context.logger.progress('Saving study hours...')
 
     try {
       const docRef = context.firestore.doc(`days/${date}`)
 
       // Get existing data first
       const docSnap = await context.firestore.getDoc(docRef)
-      let existingData: HoursDayData = { subjects: [], directHours: 0 }
+      let existingData: StudyDayData = { subjects: [], directHours: 0 }
 
       if (docSnap.exists()) {
-        existingData = docSnap.data() as HoursDayData
+        existingData = docSnap.data() as StudyDayData
       }
 
-      const updatedData: HoursDayData = {
+      const updatedData: StudyDayData = {
         subjects: data.subjects !== undefined ? data.subjects : existingData.subjects,
         directHours: data.directHours !== undefined ? data.directHours : existingData.directHours,
       }
@@ -94,7 +94,7 @@ export class HoursDataProvider implements PluginDataProvider<HoursDayData, Hours
         updatedAt: new Date().toISOString(),
       })
 
-      context.logger.success('Hours saved')
+      context.logger.success('Study hours saved')
       return true
     } catch (error) {
       context.logger.error('Save failed', error)
@@ -105,14 +105,14 @@ export class HoursDataProvider implements PluginDataProvider<HoursDayData, Hours
   /**
    * Load plugin configuration (subjects)
    */
-  async loadConfig(context: PluginContext): Promise<HoursConfig | null> {
+  async loadConfig(context: PluginContext): Promise<StudyConfig | null> {
     try {
       // Path needs even segments for document: add 'settings' collection
       const configRef = context.firestore.doc('settings/config')
       const configSnap = await context.firestore.getDoc(configRef)
 
       if (configSnap.exists()) {
-        const data = configSnap.data() as HoursConfig
+        const data = configSnap.data() as StudyConfig
         return {
           subjects: data.subjects || [],
         }
@@ -128,7 +128,7 @@ export class HoursDataProvider implements PluginDataProvider<HoursDayData, Hours
   /**
    * Save plugin configuration (subjects)
    */
-  async saveConfig(context: PluginContext, config: HoursConfig): Promise<boolean> {
+  async saveConfig(context: PluginContext, config: StudyConfig): Promise<boolean> {
     context.logger.progress('Saving subjects...')
 
     try {

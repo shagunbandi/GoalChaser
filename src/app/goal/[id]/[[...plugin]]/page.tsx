@@ -6,7 +6,7 @@
  *
  * Examples:
  * - /goal/abc123 -> Calendar (core, always available)
- * - /goal/abc123/hours/2024 -> Hours plugin for 2024
+ * - /goal/abc123/study/2024 -> Study plugin for 2024
  * - /goal/abc123/productivity/2024 -> Productivity plugin for 2024
  */
 

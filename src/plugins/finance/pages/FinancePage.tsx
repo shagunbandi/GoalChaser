@@ -51,7 +51,7 @@ export default function FinancePage({
       sips,
     })
   }
-  
+
   const handleSaveBudgets = async (newBudgets: any[]) => {
     // Filter out any budgets with IDs that match the new budgets
     const newBudgetIds = new Set(newBudgets.map(b => b.id))

@@ -1,23 +1,23 @@
 /**
- * Hours Plugin
+ * Study Plugin
  * 
- * Track hours spent per day across different subjects and topics.
+ * Track study hours spent per day across different subjects and topics.
  */
 
 import type { Plugin } from '@/sdk'
-import { HoursDataProvider } from './data-provider'
-import { HoursDetailProviderImpl } from './detail-provider'
-import HoursPage from './pages/HoursPage'
-import type { HoursDayData, HoursConfig } from './types'
+import { StudyDataProvider } from './data-provider'
+import { StudyDetailProviderImpl } from './detail-provider'
+import StudyPage from './pages/StudyPage'
+import type { StudyDayData, StudyConfig } from './types'
 import { buildPluginUrl } from '@/lib/plugin-url-utils'
 
-export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
-  id: 'hours',
+export const StudyPlugin: Plugin<StudyDayData, StudyConfig> = {
+  id: 'study',
   
   metadata: {
-    name: 'Hours',
-    icon: '⏱️',
-    description: 'Track hours spent per day',
+    name: 'Study',
+    icon: '📚',
+    description: 'Track study hours per day',
     version: '1.0.0',
     isPrimary: false,
   },
@@ -25,14 +25,14 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
   routes: [
     {
       path: '{year}',
-      component: HoursPage,
+      component: StudyPage,
       requiresYear: true,
     },
   ],
 
-  dataProvider: new HoursDataProvider(),
+  dataProvider: new StudyDataProvider(),
   
-  detailProvider: new HoursDetailProviderImpl(),
+  detailProvider: new StudyDetailProviderImpl(),
 
   // Calendar integration
   calendar: {
@@ -64,7 +64,7 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
       const url = context?.goalId
         ? buildPluginUrl({
             goalId: context.goalId,
-            pluginId: 'hours',
+            pluginId: 'study',
             year,
             date,
           })
@@ -77,15 +77,15 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
           hasData: true,
           summary: {
             type: 'stats',
-            title: 'Hours Tracked',
+            title: 'Study Hours Tracked',
             subtitle: formatHours(totalHours) + ' total',
-            icon: '⏱️',
+            icon: '📚',
             badge: `${data.subjects.length} subject${data.subjects.length !== 1 ? 's' : ''}`,
             gradient: { from: '#A855F7', to: '#8B5CF6' },
             stats: data.subjects.slice(0, 4).map(s => ({
               label: s.subject,
               value: formatHours(s.hours),
-              icon: '📚',
+              icon: '📖',
               color: '#A855F7',
               subtitle: s.topics?.length ? `${s.topics.length} topic${s.topics.length !== 1 ? 's' : ''}` : undefined
             })),
@@ -106,10 +106,10 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
         hasData: true,
         summary: {
           type: 'chip',
-          title: 'Hours',
+          title: 'Study',
           subtitle: 'Direct tracking',
           content: formatHours(totalHours),
-          icon: '⏱️',
+          icon: '📚',
           gradient: { from: '#A855F7', to: '#8B5CF6' },
           actions: [
             {
@@ -143,10 +143,10 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
         return subjectHours > 0 ? subjectHours : (dayData.directHours || 0)
       })
 
-      // Line chart: Hours per day
+      // Line chart: Study hours per day
       charts.push({
         chartType: 'line' as const,
-        title: 'Hours per Day',
+        title: 'Study Hours per Day',
         data: {
           labels: dates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
           datasets: [{
@@ -173,7 +173,7 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
 
         charts.push({
           chartType: 'pie' as const,
-          title: 'Hours by Subject',
+          title: 'Study Hours by Subject',
           data: {
             labels: subjects,
             datasets: [{
@@ -185,7 +185,7 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
         })
       }
 
-      // Heat map: Daily hours
+      // Heat map: Daily study hours
       const heatmapData: Record<string, number> = {}
       dates.forEach((date, index) => {
         heatmapData[date] = dailyHours[index]
@@ -193,7 +193,7 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
 
       charts.push({
         chartType: 'heatmap' as const,
-        title: 'Hours Activity',
+        title: 'Study Hours Activity',
         data: {
           labels: [],
           datasets: [],
@@ -210,4 +210,4 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
   },
 }
 
-export default HoursPlugin
+export default StudyPlugin

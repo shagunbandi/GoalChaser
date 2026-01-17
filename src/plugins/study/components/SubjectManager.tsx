@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Drawer } from '@/sdk'
-import type { SubjectConfig } from '@/plugins/hours/types'
+import type { SubjectConfig } from '@/plugins/study/types'
 
 interface SubjectManagerProps {
   isOpen: boolean

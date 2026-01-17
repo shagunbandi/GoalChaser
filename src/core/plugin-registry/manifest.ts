@@ -2,7 +2,7 @@ import type { Plugin } from '@/sdk'
 
 // Static imports of all plugins
 // Note: Calendar and Analytics are NOT plugins - they're part of the core app
-import HoursPlugin from '@/plugins/hours/plugin'
+import StudyPlugin from '@/plugins/study/plugin'
 import ProductivityPlugin from '@/plugins/productivity/plugin'
 import FinancePlugin from '@/plugins/finance/plugin'
 import TravelPlugin from '@/plugins/travel/plugin'
@@ -24,7 +24,7 @@ export interface PluginManifestEntry {
 }
 
 export const AVAILABLE_PLUGINS: PluginManifestEntry[] = [
-  { plugin: HoursPlugin, enabled: true },
+  { plugin: StudyPlugin, enabled: true },
   { plugin: ProductivityPlugin, enabled: true },
   { plugin: FinancePlugin, enabled: true },
   { plugin: TravelPlugin, enabled: true },

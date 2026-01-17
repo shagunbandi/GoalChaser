@@ -16,7 +16,7 @@ import { useAddonsConfig } from '@/hooks/useAddonsConfig'
 import { useAuth } from '@/hooks/useAuth'
 import { getScoreColorClass } from '@/utils'
 import {
-  getHoursBackgroundColor,
+  getStudyBackgroundColor,
   getFinanceBackgroundColor,
   getTravelBackgroundColor,
 } from '@/utils/plugin-colors'
@@ -170,14 +170,14 @@ export default function CalendarPage({ context }: CalendarPageProps) {
       if (backgroundSource === 'productivity') {
         const status = pluginData?.['productivity']?.[day.iso]?.status || null
         bgColor = getScoreColorClass(status)
-      } else if (backgroundSource === 'hours') {
-        const hoursData = pluginData?.['hours']?.[day.iso]
-        bgColor = getHoursBackgroundColor(hoursData)
+      } else if (backgroundSource === 'study') {
+        const studyData = pluginData?.['study']?.[day.iso] as any
+        bgColor = getStudyBackgroundColor(studyData)
       } else if (backgroundSource === 'finance') {
-        const financeData = pluginData?.['finance']?.[day.iso]
+        const financeData = pluginData?.['finance']?.[day.iso] as any
         bgColor = getFinanceBackgroundColor(financeData)
       } else if (backgroundSource === 'travel') {
-        const travelData = pluginData?.['travel']?.[day.iso]
+        const travelData = pluginData?.['travel']?.[day.iso] as any
         bgColor = getTravelBackgroundColor(travelData)
       }
       // else: backgroundSource is null, no background

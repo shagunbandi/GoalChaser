@@ -1,14 +1,14 @@
-// API layer for hours add-on operations
+// API layer for study add-on operations
 
-import type { HoursDayData, HoursConfig, SubjectConfig } from './types'
+import type { StudyDayData, StudyConfig, SubjectConfig } from './types'
 import { getFirebaseDb, isFirebaseAvailable } from '@/lib/api/firebase-client'
 import { logger } from '@/lib/logger'
 import { collection, doc, getDocs, getDoc, setDoc, query, where } from 'firebase/firestore'
 
 /**
- * Load hours configuration (subjects)
+ * Load study configuration (subjects)
  */
-export async function loadHoursConfig(
+export async function loadStudyConfig(
   userId: string,
   goalId: string
 ): Promise<SubjectConfig[]> {
@@ -21,25 +21,25 @@ export async function loadHoursConfig(
     if (!db) return []
 
     // Path needs even segments for document: add 'settings' collection
-    const configRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'hours', 'settings', 'config')
+    const configRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'study', 'settings', 'config')
     const configSnap = await getDoc(configRef)
 
     if (configSnap.exists()) {
-      const data = configSnap.data() as HoursConfig
+      const data = configSnap.data() as StudyConfig
       return data.subjects || []
     }
 
     return []
   } catch (error) {
-    logger.error('Failed to load hours config', error)
+    logger.error('Failed to load study config', error)
     return []
   }
 }
 
 /**
- * Save hours configuration (subjects)
+ * Save study configuration (subjects)
  */
-export async function saveHoursConfig(
+export async function saveStudyConfig(
   userId: string,
   goalId: string,
   subjects: SubjectConfig[]
@@ -59,7 +59,7 @@ export async function saveHoursConfig(
     }
 
     // Path needs even segments for document: add 'settings' collection
-    const configRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'hours', 'settings', 'config')
+    const configRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'study', 'settings', 'config')
 
     await setDoc(configRef, {
       subjects,
@@ -75,14 +75,14 @@ export async function saveHoursConfig(
 }
 
 /**
- * Load hours data for a date range
+ * Load study data for a date range
  */
-export async function loadHoursDays(
+export async function loadStudyDays(
   userId: string,
   goalId: string,
   startDate: string,
   endDate: string
-): Promise<Record<string, HoursDayData>> {
+): Promise<Record<string, StudyDayData>> {
   if (!isFirebaseAvailable() || !getFirebaseDb()) {
     return {}
   }
@@ -91,7 +91,7 @@ export async function loadHoursDays(
     const db = getFirebaseDb()
     if (!db) return {}
 
-    const daysRef = collection(db, 'users', userId, 'goals', goalId, 'addons', 'hours', 'days')
+    const daysRef = collection(db, 'users', userId, 'goals', goalId, 'addons', 'study', 'days')
     const q = query(
       daysRef,
       where('__name__', '>=', startDate),
@@ -100,7 +100,7 @@ export async function loadHoursDays(
     
     const snapshot = await getDocs(q)
     
-    const result: Record<string, HoursDayData> = {}
+    const result: Record<string, StudyDayData> = {}
     snapshot.forEach((docSnap) => {
       const data = docSnap.data()
       result[docSnap.id] = {
@@ -111,21 +111,21 @@ export async function loadHoursDays(
 
     return result
   } catch (error) {
-    logger.error('Failed to load hours days', error)
+    logger.error('Failed to load study days', error)
     return {}
   }
 }
 
 /**
- * Save hours data for a specific day
+ * Save study data for a specific day
  */
-export async function saveHoursDay(
+export async function saveStudyDay(
   userId: string,
   goalId: string,
   date: string,
-  data: Partial<HoursDayData>
+  data: Partial<StudyDayData>
 ): Promise<boolean> {
-  logger.progress('Saving hours...')
+  logger.progress('Saving study hours...')
 
   if (!isFirebaseAvailable() || !getFirebaseDb()) {
     logger.error('Save failed')
@@ -139,17 +139,17 @@ export async function saveHoursDay(
       return false
     }
 
-    const docRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'hours', 'days', date)
+    const docRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'study', 'days', date)
     
     // Get existing data
     const docSnap = await getDoc(docRef)
-    let existingData: HoursDayData = { subjects: [], directHours: 0 }
+    let existingData: StudyDayData = { subjects: [], directHours: 0 }
     
     if (docSnap.exists()) {
-      existingData = docSnap.data() as HoursDayData
+      existingData = docSnap.data() as StudyDayData
     }
 
-    const updatedData: HoursDayData = {
+    const updatedData: StudyDayData = {
       subjects: data.subjects !== undefined ? data.subjects : existingData.subjects,
       directHours: data.directHours !== undefined ? data.directHours : existingData.directHours
     }
@@ -159,7 +159,7 @@ export async function saveHoursDay(
       updatedAt: new Date().toISOString()
     })
 
-    logger.success('Hours saved')
+    logger.success('Study hours saved')
     return true
   } catch (error) {
     logger.error('Save failed', error)

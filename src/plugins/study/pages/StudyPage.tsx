@@ -1,16 +1,16 @@
 /**
- * Hours Plugin Page
+ * Study Plugin Page
  */
 
 'use client'
 
 import type { PluginPageProps } from '@/sdk'
 import { usePluginPage, LoadingState, NotFoundState } from '@/sdk'
-import { HoursView, HoursMonthView } from '../components'
-import type { HoursDayData, HoursConfig } from '../types'
-import { HoursPlugin } from '../plugin'
+import { StudyView, StudyMonthView } from '../components'
+import type { StudyDayData, StudyConfig } from '../types'
+import { StudyPlugin } from '../plugin'
 
-export default function HoursPage({
+export default function StudyPage({
   context,
   params,
   year,
@@ -33,8 +33,8 @@ export default function HoursPage({
     jumpToDay,
     router,
     year: currentYear,
-  } = usePluginPage<HoursDayData, HoursConfig>({
-    pluginId: 'hours',
+  } = usePluginPage<StudyDayData, StudyConfig>({
+    pluginId: 'study',
     params,
     year,
   })
@@ -145,8 +145,8 @@ export default function HoursPage({
     }
 
     const monthHeaderConfig = {
-      icon: '⏱️',
-      title: `Hours Month:`,
+      icon: '📚',
+      title: `Study Month:`,
       stats: [
         { label: 'Days tracked', value: monthStats.days },
         { label: 'Total hours', value: monthStats.total.toFixed(1) },
@@ -157,8 +157,8 @@ export default function HoursPage({
 
     return (
       <main className="container mx-auto px-4 py-6 space-y-4">
-        <HoursMonthView
-          plugin={HoursPlugin}
+        <StudyMonthView
+          plugin={StudyPlugin}
           month={month}
           year={currentYear}
           goalId={goalId}
@@ -188,7 +188,7 @@ export default function HoursPage({
   // Otherwise show year view
   return (
     <main className="container mx-auto px-4 py-6 space-y-4">
-      <HoursView
+      <StudyView
         year={currentYear}
         todayISO={todayISO}
         dayDetails={pluginDayData}

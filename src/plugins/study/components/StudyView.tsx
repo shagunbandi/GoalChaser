@@ -1,15 +1,15 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { SubjectEntry, SubjectConfig } from '@/plugins/hours/types'
+import type { SubjectEntry, SubjectConfig } from '@/plugins/study/types'
 import type { YearViewConfig } from '@/types/year-view-config'
 import { GenericYearView } from '@/components/features/year-view/GenericYearView'
-import { HoursSummary } from './HoursSummary'
+import { StudySummary } from './StudySummary'
 import { SubjectEntries } from './SubjectEntries'
 import { SubjectManager } from './SubjectManager'
 import { computeMonthInfo } from '@/utils'
 
-interface HoursViewProps {
+interface StudyViewProps {
   year: number
   todayISO: string
   dayDetails: Record<string, any>
@@ -31,7 +31,7 @@ interface HoursViewProps {
   initialSelectedDay?: string | null
 }
 
-export function HoursView({
+export function StudyView({
   year,
   todayISO,
   dayDetails,
@@ -51,7 +51,7 @@ export function HoursView({
   isTopicInUse,
   onJumpToDay,
   initialSelectedDay,
-}: HoursViewProps) {
+}: StudyViewProps) {
   const [showSubjectManager, setShowSubjectManager] = useState(false)
   const yearPrefix = `${year}-`
 
@@ -140,8 +140,8 @@ export function HoursView({
       },
       showDayModal: false, // Don't show modal on day click, navigate to month view instead
       header: {
-        icon: '⏱️',
-        title: 'Hours Year:',
+        icon: '📚',
+        title: 'Study Year:',
         stats: [
           { label: 'Total hours', value: Math.round(yearStats.totalHours) },
           { label: 'Days tracked', value: yearStats.daysWithHours },
@@ -218,10 +218,10 @@ export function HoursView({
 
           return [
             {
-              id: 'hours',
+              id: 'study-hours',
               type: 'custom' as const,
               content: (
-                <HoursSummary
+                <StudySummary
                   totalHours={totalHours}
                   subjectHours={subjectHours}
                   directHours={details.directHours || 0}

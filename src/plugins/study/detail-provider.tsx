@@ -3,18 +3,18 @@
 import type { ReactNode } from 'react'
 import { useState, useEffect } from 'react'
 import type { PluginDetailProvider } from '@/sdk'
-import type { HoursDayData, SubjectEntry, SubjectConfig } from './types'
+import type { StudyDayData, SubjectEntry, SubjectConfig } from './types'
 import { SubjectEntries } from './components/SubjectEntries'
-import { HoursSummary } from './components/HoursSummary'
+import { StudySummary } from './components/StudySummary'
 import { SubjectManager } from './components/SubjectManager'
 
-export class HoursDetailProviderImpl
-  implements PluginDetailProvider<HoursDayData>
+export class StudyDetailProviderImpl
+  implements PluginDetailProvider<StudyDayData>
 {
   renderDetail(
-    data: HoursDayData | null,
+    data: StudyDayData | null,
     date: string,
-    onUpdate: (updates: Partial<HoursDayData>) => Promise<void>,
+    onUpdate: (updates: Partial<StudyDayData>) => Promise<void>,
     context?: {
       subjectConfigs?: SubjectConfig[]
       maxHours?: number
@@ -33,7 +33,7 @@ export class HoursDetailProviderImpl
     },
   ): ReactNode {
     return (
-      <HoursDetailSection
+      <StudyDetailSection
         data={data}
         date={date}
         onUpdate={onUpdate}
@@ -52,10 +52,10 @@ export class HoursDetailProviderImpl
   }
 }
 
-interface HoursDetailSectionProps {
-  data: HoursDayData | null
+interface StudyDetailSectionProps {
+  data: StudyDayData | null
   date: string
-  onUpdate: (updates: Partial<HoursDayData>) => Promise<void>
+  onUpdate: (updates: Partial<StudyDayData>) => Promise<void>
   subjectConfigs: SubjectConfig[]
   maxHours: number
   onAddSubject: (name: string) => void
@@ -68,7 +68,7 @@ interface HoursDetailSectionProps {
   isTopicInUse: (subjectId: string, topic: string) => boolean
 }
 
-function HoursDetailSection({
+function StudyDetailSection({
   data,
   date,
   onUpdate,
@@ -82,7 +82,7 @@ function HoursDetailSection({
   onUpdateSubject,
   onToggleHasTopics,
   isTopicInUse,
-}: HoursDetailSectionProps) {
+}: StudyDetailSectionProps) {
   const [showSubjectManager, setShowSubjectManager] = useState(false)
 
   // Draft state for subjects
@@ -113,8 +113,8 @@ function HoursDetailSection({
 
   return (
     <div className="space-y-6">
-      {/* Hours Summary with Progress Bar */}
-      <HoursSummary
+      {/* Study Hours Summary with Progress Bar */}
+      <StudySummary
         totalHours={totalHours}
         subjectHours={subjectHours}
         directHours={directHours}

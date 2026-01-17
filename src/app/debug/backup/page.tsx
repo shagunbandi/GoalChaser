@@ -58,7 +58,7 @@ export default function BackupPage() {
       return [
         'calendar',
         'productivity',
-        'hours',
+        'study',
         'finance',
         'travel'
       ]
@@ -71,7 +71,7 @@ export default function BackupPage() {
     if (pathStr.includes('/addons/productivity')) {
       return ['days', 'settings']
     }
-    if (pathStr.includes('/addons/hours')) {
+    if (pathStr.includes('/addons/study')) {
       return ['days', 'settings']
     }
     if (pathStr.includes('/addons/finance')) {

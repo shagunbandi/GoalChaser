@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { SubjectEntry, SubjectConfig } from '@/plugins/hours/types'
+import type { SubjectEntry, SubjectConfig } from '@/plugins/study/types'
 
 const hoursToParts = (value: number) => {
   const totalMinutes = Math.round(Math.max(0, value) * 60)

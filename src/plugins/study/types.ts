@@ -1,5 +1,5 @@
 /**
- * Hours Plugin Types
+ * Study Plugin Types
  */
 
 import type { PluginDayData, PluginConfigData } from '@/sdk'
@@ -18,11 +18,11 @@ export interface SubjectConfig {
   color?: string
 }
 
-export interface HoursDayData extends PluginDayData {
+export interface StudyDayData extends PluginDayData {
   subjects: SubjectEntry[]
   directHours: number
 }
 
-export interface HoursConfig extends PluginConfigData {
+export interface StudyConfig extends PluginConfigData {
   subjects: SubjectConfig[]
 }

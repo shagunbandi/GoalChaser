@@ -3,7 +3,7 @@
 import { useRef } from 'react'
 import { getHoursLabel, getVibgyorColors } from '@/utils'
 
-interface HoursSummaryProps {
+interface StudySummaryProps {
   totalHours: number
   subjectHours: number // Hours from subjects
   directHours: number // Hours set directly
@@ -11,13 +11,13 @@ interface HoursSummaryProps {
   onDirectHoursChange: (hours: number) => void
 }
 
-export function HoursSummary({ 
+export function StudySummary({ 
   totalHours, 
   subjectHours,
   directHours,
   maxHours, 
   onDirectHoursChange 
-}: HoursSummaryProps) {
+}: StudySummaryProps) {
   const barRef = useRef<HTMLDivElement>(null)
   const percentage = Math.min((totalHours / maxHours) * 100, 100)
   const vibgyorColors = getVibgyorColors()
@@ -67,7 +67,7 @@ export function HoursSummary({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <label className="block text-sm font-medium text-white/60">
-          Hours Today
+          Study Hours Today
         </label>
         <div className="flex items-center gap-2">
           {totalHours > 0 ? (

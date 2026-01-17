@@ -3,16 +3,16 @@
  * Helper functions to calculate background colors for calendar days based on plugin data
  */
 
-import type { HoursDayData } from '@/plugins/hours/types'
+import type { StudyDayData } from '@/plugins/study/types'
 import type { FinanceTransactionData } from '@/plugins/finance/types'
 import type { TravelDayData } from '@/plugins/travel/types'
 import { getVibgyorColors } from './score-utils'
 
 /**
- * Calculate background color for Hours plugin based on tracked hours
+ * Calculate background color for Study plugin based on tracked hours
  */
-export function getHoursBackgroundColor(
-  data: HoursDayData | null,
+export function getStudyBackgroundColor(
+  data: StudyDayData | null,
   maxHours: number = 14,
 ): string | undefined {
   if (!data) return undefined

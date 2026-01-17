@@ -3,20 +3,20 @@
 import { PluginMonthView } from '@/sdk'
 import type { DayCustomization } from '@/sdk'
 import type { HeaderConfig } from '@/types/year-view-config'
-import { HoursPlugin } from '../plugin'
-import type { HoursDayData } from '../types'
+import { StudyPlugin } from '../plugin'
+import type { StudyDayData } from '../types'
 
-interface HoursMonthViewProps {
+interface StudyMonthViewProps {
   plugin: any
   month: number
   year: number
   goalId: string
   todayISO: string
-  dayData: Record<string, HoursDayData>
+  dayData: Record<string, StudyDayData>
   initialSelectedDate: string | null
   subjectConfigs: any[]
   maxHours: number
-  onUpdateDay: (iso: string, updates: Partial<HoursDayData>) => Promise<void>
+  onUpdateDay: (iso: string, updates: Partial<StudyDayData>) => Promise<void>
   onBackToYear: () => void
   onAddSubject: (name: string) => void
   onAddTopic: (subjectId: string, topic: string) => void
@@ -31,7 +31,7 @@ interface HoursMonthViewProps {
   onNextYear?: () => void
 }
 
-export function HoursMonthView({
+export function StudyMonthView({
   plugin,
   month,
   year,
@@ -54,11 +54,11 @@ export function HoursMonthView({
   headerConfig,
   onPrevYear,
   onNextYear,
-}: HoursMonthViewProps) {
+}: StudyMonthViewProps) {
   // Build day customizations based on hours tracked
   const buildDayCustomization = (
     date: string,
-    data: HoursDayData | null,
+    data: StudyDayData | null,
   ): DayCustomization | null => {
     if (!data) return null
 
