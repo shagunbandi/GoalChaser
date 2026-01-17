@@ -6,6 +6,7 @@ interface BuildPluginUrlOptions {
   goalId: string
   pluginId: string
   year?: number
+  month?: number
   date?: string
   additionalParams?: Record<string, string>
 }
@@ -14,13 +15,14 @@ interface BuildPluginUrlOptions {
  * Build a plugin page URL
  * 
  * @example
- * buildPluginUrl({ goalId: 'abc', pluginId: 'travel', year: 2024, date: '2024-01-15' })
- * // Returns: '/goal/abc/travel/2024?date=2024-01-15'
+ * buildPluginUrl({ goalId: 'abc', pluginId: 'travel', year: 2024, month: 1, date: '2024-01-15' })
+ * // Returns: '/goal/abc/travel/2024/1?date=2024-01-15'
  */
 export function buildPluginUrl({
   goalId,
   pluginId,
   year,
+  month,
   date,
   additionalParams,
 }: BuildPluginUrlOptions): string {
@@ -28,6 +30,10 @@ export function buildPluginUrl({
 
   if (year) {
     url += `/${year}`
+  }
+
+  if (month) {
+    url += `/${month}`
   }
 
   const params = new URLSearchParams()

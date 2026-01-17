@@ -58,11 +58,13 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
       // Build navigation URL
       const dateObj = new Date(date)
       const year = dateObj.getFullYear()
+      const month = dateObj.getMonth() + 1 // 1-indexed
       const url = context?.goalId
         ? buildPluginUrl({
             goalId: context.goalId,
             pluginId: 'productivity',
             year,
+            month,
             date,
           })
         : undefined

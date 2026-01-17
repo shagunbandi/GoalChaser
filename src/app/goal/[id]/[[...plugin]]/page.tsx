@@ -11,7 +11,7 @@
 
 'use client'
 
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useGoals } from '@/hooks/useGoals'
 import { usePluginRegistry } from '@/core/plugin-registry/hooks'
@@ -22,8 +22,10 @@ import CalendarPage from '@/components/features/calendar/CalendarPage'
 
 export default function PluginPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const goalId = params.id as string
   const pluginSegments = (params.plugin as string[]) || []
+  const initialSelectedDate = searchParams.get('date')
 
   const { user } = useAuth()
   const { getGoal } = useGoals()
@@ -86,7 +88,14 @@ export default function PluginPage() {
       firestore: {} as any,
     }
 
-    return <CalendarPage context={context} year={year} />
+    return (
+      <CalendarPage
+        context={context}
+        year={year}
+        month={month}
+        initialSelectedDate={initialSelectedDate}
+      />
+    )
   }
 
   // Load plugin

@@ -50,11 +50,13 @@ export const TravelPlugin: Plugin = {
       // Build navigation URL
       const dateObj = new Date(date)
       const year = dateObj.getFullYear()
+      const month = dateObj.getMonth() + 1 // 1-indexed
       const url = context?.goalId
         ? buildPluginUrl({
             goalId: context.goalId,
             pluginId: 'travel',
             year,
+            month,
             date,
           })
         : undefined

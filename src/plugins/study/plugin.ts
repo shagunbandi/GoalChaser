@@ -61,11 +61,13 @@ export const StudyPlugin: Plugin<StudyDayData, StudyConfig> = {
       // Build navigation URL
       const dateObj = new Date(date)
       const year = dateObj.getFullYear()
+      const month = dateObj.getMonth() + 1 // 1-indexed
       const url = context?.goalId
         ? buildPluginUrl({
             goalId: context.goalId,
             pluginId: 'study',
             year,
+            month,
             date,
           })
         : undefined

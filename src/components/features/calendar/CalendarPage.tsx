@@ -30,9 +30,16 @@ import { Card } from '@/components/ui/Card'
 interface CalendarPageProps {
   context: any // PluginContext from SDK, but calendar is core so we just need minimal info
   year?: number
+  month?: number
+  initialSelectedDate?: string | null
 }
 
-export default function CalendarPage({ context }: CalendarPageProps) {
+export default function CalendarPage({
+  context,
+  year: initialYear,
+  month: initialMonth,
+  initialSelectedDate,
+}: CalendarPageProps) {
   const { user } = useAuth()
   const router = useRouter()
   const goalId = context.goalId
@@ -48,10 +55,10 @@ export default function CalendarPage({ context }: CalendarPageProps) {
 
   // Filter state - initialize all visible
   const [visibleIndicators, setVisibleIndicators] = useState<Set<string>>(
-    () => new Set(plugins.map((p) => p.id))
+    () => new Set(plugins.map((p) => p.id)),
   )
   const [backgroundSource, setBackgroundSource] = useState<string | null>(
-    'productivity'
+    'productivity',
   )
   const [filtersLoaded, setFiltersLoaded] = useState(false)
 
@@ -114,7 +121,11 @@ export default function CalendarPage({ context }: CalendarPageProps) {
     prevMonth,
     nextMonth,
     setSelectedDate,
-  } = useMonthCalendar()
+  } = useMonthCalendar({
+    initialYear,
+    initialMonth,
+    initialSelectedDate,
+  })
 
   // Generate date range for the current month
   const dateRange = useMemo(() => {
