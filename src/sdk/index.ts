@@ -73,8 +73,12 @@ export {
   Select,
   FormActions,
   Section,
-  MonthCalendar
+  MonthCalendar,
+  NotesField
 } from './ui'
+
+// UI component types
+export type { NotesFieldProps } from './ui'
 
 // UI types
 export type {

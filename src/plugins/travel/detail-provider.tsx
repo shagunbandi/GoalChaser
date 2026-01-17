@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { PluginDetailProvider } from '@/sdk'
+import { NotesField } from '@/sdk'
 import type { TravelDayData, TravelPlan, TravelPlanInput } from './types'
 import { TravelForm } from './components/TravelForm'
 
@@ -16,10 +17,14 @@ interface TravelDetailContext {
 // Component for empty state with add travel option
 function EmptyTravelState({
   date,
+  notes,
   onAddTravel,
+  onSaveNotes,
 }: {
   date: string
+  notes: string
   onAddTravel?: (travel: TravelPlanInput) => void | Promise<void>
+  onSaveNotes: (notes: string) => void | Promise<void>
 }) {
   const [isAdding, setIsAdding] = useState(false)
 
@@ -39,37 +44,62 @@ function EmptyTravelState({
 
   if (isAdding) {
     return (
-      <div className="py-4">
-        <h4 className="text-sm font-medium text-white/70 mb-3">Add Travel</h4>
-        <TravelForm
-          initialData={{
-            startDate: date,
-            endDate: date,
-          }}
-          onSubmit={handleSubmit}
-          onCancel={() => setIsAdding(false)}
+      <div className="space-y-4">
+        {/* Notes first */}
+        <NotesField
+          value={notes}
+          onSave={onSaveNotes}
+          label="Travel Notes"
+          placeholder="Notes about your travel day..."
+          icon="📝"
+          accentColor="#F97316"
+          resetKey={date}
         />
+        <div className="py-4">
+          <h4 className="text-sm font-medium text-white/70 mb-3">Add Travel</h4>
+          <TravelForm
+            initialData={{
+              startDate: date,
+              endDate: date,
+            }}
+            onSubmit={handleSubmit}
+            onCancel={() => setIsAdding(false)}
+          />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="text-center text-white/40 py-8">
-      <div className="text-4xl mb-2">✈️</div>
-      <p>No travel plans for this day</p>
-      {onAddTravel && (
-        <button
-          onClick={() => setIsAdding(true)}
-          className="
-            mt-4 px-4 py-2 rounded-xl text-sm font-medium
-            bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
-            text-white hover:shadow-[0_0_20px_rgba(0,122,255,0.3)]
-            transition-all duration-150
-          "
-        >
-          + Add Travel
-        </button>
-      )}
+    <div className="space-y-6">
+      {/* Notes first */}
+      <NotesField
+        value={notes}
+        onSave={onSaveNotes}
+        label="Travel Notes"
+        placeholder="Notes about your travel day..."
+        icon="📝"
+        accentColor="#F97316"
+        resetKey={date}
+      />
+
+      <div className="text-center text-white/40 py-8">
+        <div className="text-4xl mb-2">✈️</div>
+        <p>No travel plans for this day</p>
+        {onAddTravel && (
+          <button
+            onClick={() => setIsAdding(true)}
+            className="
+              mt-4 px-4 py-2 rounded-xl text-sm font-medium
+              bg-gradient-to-r from-[#007AFF] to-[#AF52DE]
+              text-white hover:shadow-[0_0_20px_rgba(0,122,255,0.3)]
+              transition-all duration-150
+            "
+          >
+            + Add Travel
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -320,15 +350,19 @@ function TravelPlanCard({
 function TravelPlansView({
   plans,
   date,
+  notes,
   onEditTravel,
   onDeleteTravel,
   onAddTravel,
+  onSaveNotes,
 }: {
   plans: TravelPlan[]
   date: string
+  notes: string
   onEditTravel?: (travel: TravelPlan) => void | Promise<void>
   onDeleteTravel?: (travelId: string) => void | Promise<void>
   onAddTravel?: (travel: TravelPlanInput) => void | Promise<void>
+  onSaveNotes: (notes: string) => void | Promise<void>
 }) {
   const [isAdding, setIsAdding] = useState(false)
 
@@ -355,9 +389,7 @@ function TravelPlansView({
             ✈️
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white/90">
-              Travel Plans
-            </h3>
+            <h3 className="text-lg font-semibold text-white/90">Travel Plans</h3>
             <p className="text-xs text-white/50">
               {plans.length} trip{plans.length !== 1 ? 's' : ''} on this day
             </p>
@@ -378,6 +410,17 @@ function TravelPlansView({
           </button>
         )}
       </div>
+
+      {/* Day Notes - First */}
+      <NotesField
+        value={notes}
+        onSave={onSaveNotes}
+        label="Travel Notes"
+        placeholder="Notes about your travel day..."
+        icon="📝"
+        accentColor="#F97316"
+        resetKey={date}
+      />
 
       {/* Add Travel Form */}
       {isAdding && (
@@ -420,18 +463,32 @@ export class TravelDetailProviderImpl
     context?: TravelDetailContext,
   ): ReactNode {
     const plans = data?.travelPlans || []
+    const notes = data?.notes || ''
+
+    const handleSaveNotes = async (newNotes: string) => {
+      await onUpdate({ notes: newNotes })
+    }
 
     if (plans.length === 0) {
-      return <EmptyTravelState date={date} onAddTravel={context?.onAddTravel} />
+      return (
+        <EmptyTravelState
+          date={date}
+          notes={notes}
+          onAddTravel={context?.onAddTravel}
+          onSaveNotes={handleSaveNotes}
+        />
+      )
     }
 
     return (
       <TravelPlansView
         plans={plans}
         date={date}
+        notes={notes}
         onEditTravel={context?.onEditTravel}
         onDeleteTravel={context?.onDeleteTravel}
         onAddTravel={context?.onAddTravel}
+        onSaveNotes={handleSaveNotes}
       />
     )
   }

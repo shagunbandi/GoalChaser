@@ -21,6 +21,7 @@ export interface SubjectConfig {
 export interface StudyDayData extends PluginDayData {
   subjects: SubjectEntry[]
   directHours: number
+  notes?: string
 }
 
 export interface StudyConfig extends PluginConfigData {

@@ -54,6 +54,7 @@ export interface Income extends ActivityItem {
 export interface FinanceTransactionData extends PluginDayData {
   expenses: Expense[]
   income: Income[]
+  notes?: string
 }
 
 export type SIPFrequency = 'daily' | 'weekly' | 'monthly'

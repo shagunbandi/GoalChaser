@@ -21,4 +21,5 @@ export interface TravelPlanInput {
 
 export interface TravelDayData extends PluginDayData {
   travelPlans?: TravelPlan[]
+  notes?: string
 }

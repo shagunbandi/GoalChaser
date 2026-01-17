@@ -45,3 +45,6 @@ export {
 
 // Chart components for analytics
 export * from './charts'
+
+// Notes field component
+export { NotesField, type NotesFieldProps } from './NotesField'

@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { useState, useEffect } from 'react'
 import type { PluginDetailProvider } from '@/sdk'
+import { NotesField } from '@/sdk'
 import type { StudyDayData, SubjectEntry, SubjectConfig } from './types'
 import { SubjectEntries } from './components/SubjectEntries'
 import { StudySummary } from './components/StudySummary'
@@ -160,6 +161,17 @@ function StudyDetailSection({
           <span>⚙️</span> Manage Subjects & Topics
         </button>
       </div>
+
+      {/* Notes */}
+      <NotesField
+        value={data?.notes || ''}
+        onSave={async (notes) => await onUpdate({ notes })}
+        label="Study Notes"
+        placeholder="Notes about your study session..."
+        icon="📝"
+        accentColor="#8B5CF6"
+        resetKey={date}
+      />
 
       {/* Subject Manager Modal */}
       {showSubjectManager && (
