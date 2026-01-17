@@ -2,8 +2,6 @@
 
 import { PluginMonthView } from '@/sdk'
 import type { DayCustomization } from '@/sdk'
-import type { HeaderConfig } from '@/types/year-view-config'
-import { StudyPlugin } from '../plugin'
 import type { StudyDayData } from '../types'
 
 interface StudyMonthViewProps {
@@ -26,9 +24,6 @@ interface StudyMonthViewProps {
   onUpdateSubject: (id: string, name: string) => void
   onToggleHasTopics: (id: string) => void
   isTopicInUse: (subjectId: string, topic: string) => boolean
-  headerConfig?: HeaderConfig
-  onPrevYear?: () => void
-  onNextYear?: () => void
 }
 
 export function StudyMonthView({
@@ -51,9 +46,6 @@ export function StudyMonthView({
   onUpdateSubject,
   onToggleHasTopics,
   isTopicInUse,
-  headerConfig,
-  onPrevYear,
-  onNextYear,
 }: StudyMonthViewProps) {
   // Build day customizations based on hours tracked
   const buildDayCustomization = (
@@ -113,9 +105,6 @@ export function StudyMonthView({
       onUpdateDay={onUpdateDay}
       onBackToYear={onBackToYear}
       buildDayCustomization={buildDayCustomization}
-      headerConfig={headerConfig}
-      onPrevYear={onPrevYear}
-      onNextYear={onNextYear}
       detailContext={{
         subjectConfigs,
         maxHours,

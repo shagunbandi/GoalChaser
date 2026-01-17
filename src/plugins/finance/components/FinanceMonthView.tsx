@@ -2,8 +2,6 @@
 
 import { PluginMonthView } from '@/sdk'
 import type { DayCustomization } from '@/sdk'
-import type { HeaderConfig } from '@/types/year-view-config'
-import { FinancePlugin } from '../plugin'
 import type { FinanceTransactionData } from '../types'
 
 interface FinanceMonthViewProps {
@@ -19,9 +17,6 @@ interface FinanceMonthViewProps {
     updates: Partial<FinanceTransactionData>,
   ) => Promise<void>
   onBackToYear: () => void
-  headerConfig?: HeaderConfig
-  onPrevYear?: () => void
-  onNextYear?: () => void
 }
 
 export function FinanceMonthView({
@@ -34,9 +29,6 @@ export function FinanceMonthView({
   initialSelectedDate,
   onUpdateDay,
   onBackToYear,
-  headerConfig,
-  onPrevYear,
-  onNextYear,
 }: FinanceMonthViewProps) {
   // Build day customizations based on financial activity
   const buildDayCustomization = (
@@ -107,9 +99,6 @@ export function FinanceMonthView({
       onUpdateDay={onUpdateDay}
       onBackToYear={onBackToYear}
       buildDayCustomization={buildDayCustomization}
-      headerConfig={headerConfig}
-      onPrevYear={onPrevYear}
-      onNextYear={onNextYear}
     />
   )
 }

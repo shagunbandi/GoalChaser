@@ -1,3 +1,4 @@
+export { FinanceHeader } from './FinanceHeader'
 export { BudgetingView } from './BudgetingView'
 export { FinanceMonthView } from './FinanceMonthView'
 export { BudgetCard } from './BudgetCard'

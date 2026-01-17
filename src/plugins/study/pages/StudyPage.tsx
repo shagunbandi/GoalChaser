@@ -6,20 +6,19 @@
 
 import type { PluginPageProps } from '@/sdk'
 import { usePluginPage, LoadingState, NotFoundState } from '@/sdk'
-import { StudyView, StudyMonthView } from '../components'
+import { StudyHeader, StudyView, StudyMonthView } from '../components'
 import type { StudyDayData, StudyConfig } from '../types'
 import { StudyPlugin } from '../plugin'
 
 export default function StudyPage({
-  context,
   params,
   year,
   month,
 }: PluginPageProps) {
   const {
     goal,
-    goalId,
     isLoading,
+    goalId,
     todayISO,
     pluginDayData,
     pluginConfig,
@@ -30,16 +29,13 @@ export default function StudyPage({
     navigateToNextYear,
     navigateToYear,
     navigateToMonth,
-    jumpToDay,
-    router,
     year: currentYear,
   } = usePluginPage<StudyDayData, StudyConfig>({
     pluginId: 'study',
     params,
     year,
   })
-  
-  // Handler to navigate to month view with selected day
+
   const handleJumpToDay = (iso: string) => {
     const [y, m] = iso.split('-').map(Number)
     navigateToMonth(y, m, iso)
@@ -64,7 +60,9 @@ export default function StudyPage({
 
   const handleUpdateSubject = (id: string, name: string) => {
     updateConfig({
-      subjects: subjectConfigs.map((s: any) => s.id === id ? { ...s, name } : s),
+      subjects: subjectConfigs.map((s: any) =>
+        s.id === id ? { ...s, name } : s,
+      ),
     })
   }
 
@@ -130,33 +128,18 @@ export default function StudyPage({
   if (isLoading) return <LoadingState />
   if (!goal) return <NotFoundState />
 
-  // If month is specified, show month view
-  if (month) {
-    // Calculate month-specific stats
-    const monthData = Object.entries(pluginDayData).filter(([date]) => {
-      const [y, m] = date.split('-').map(Number)
-      return y === currentYear && m === month
-    })
-    const monthStats = {
-      days: monthData.filter(([, data]) => data?.subjects && data.subjects.length > 0).length,
-      total: monthData.reduce((sum, [, data]) => {
-        return sum + (data?.subjects?.reduce((s: number, entry: any) => s + (entry.hours || 0), 0) || 0)
-      }, 0),
-    }
+  return (
+    <div className="space-y-6">
+      {/* Shared Header Component */}
+      <StudyHeader
+        year={currentYear}
+        dayData={pluginDayData}
+        onPrevYear={navigateToPrevYear}
+        onNextYear={navigateToNextYear}
+      />
 
-    const monthHeaderConfig = {
-      icon: '📚',
-      title: `Study Month:`,
-      stats: [
-        { label: 'Days tracked', value: monthStats.days },
-        { label: 'Total hours', value: monthStats.total.toFixed(1) },
-      ],
-      legends: [],
-      actions: [],
-    }
-
-    return (
-      <main className="container mx-auto px-4 py-6 space-y-4">
+      {/* Conditionally render Month or Year view */}
+      {month ? (
         <StudyMonthView
           plugin={StudyPlugin}
           month={month}
@@ -177,38 +160,31 @@ export default function StudyPage({
           onUpdateSubject={handleUpdateSubject}
           onToggleHasTopics={handleToggleHasTopics}
           isTopicInUse={isTopicInUse}
-          headerConfig={monthHeaderConfig}
+        />
+      ) : (
+        <StudyView
+          year={currentYear}
+          todayISO={todayISO}
+          dayDetails={pluginDayData}
+          subjectConfigs={subjectConfigs}
+          maxHours={14}
           onPrevYear={navigateToPrevYear}
           onNextYear={navigateToNextYear}
+          onUpdateDay={updateDayData}
+          onJumpToDay={handleJumpToDay}
+          onMonthClick={navigateToMonth}
+          initialSelectedDay={initialSelectedDay}
+          onAddSubject={handleAddSubject}
+          onRemoveSubject={handleRemoveSubject}
+          onUpdateSubject={handleUpdateSubject}
+          onToggleHasTopics={handleToggleHasTopics}
+          onAddTopic={handleAddTopic}
+          onRemoveTopic={handleRemoveTopic}
+          onUpdateTopic={handleUpdateTopic}
+          isTopicInUse={isTopicInUse}
         />
-      </main>
-    )
-  }
-
-  // Otherwise show year view
-  return (
-    <main className="container mx-auto px-4 py-6 space-y-4">
-      <StudyView
-        year={currentYear}
-        todayISO={todayISO}
-        dayDetails={pluginDayData}
-        subjectConfigs={subjectConfigs}
-        maxHours={14}
-        onPrevYear={navigateToPrevYear}
-        onNextYear={navigateToNextYear}
-        onUpdateDay={updateDayData}
-        onJumpToDay={handleJumpToDay}
-        onMonthClick={navigateToMonth}
-        initialSelectedDay={initialSelectedDay}
-        onAddSubject={handleAddSubject}
-        onRemoveSubject={handleRemoveSubject}
-        onUpdateSubject={handleUpdateSubject}
-        onToggleHasTopics={handleToggleHasTopics}
-        onAddTopic={handleAddTopic}
-        onRemoveTopic={handleRemoveTopic}
-        onUpdateTopic={handleUpdateTopic}
-        isTopicInUse={isTopicInUse}
-      />
-    </main>
+      )}
+    </div>
   )
 }
+

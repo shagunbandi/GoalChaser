@@ -1,4 +1,5 @@
-export { ProductivityView } from './ProductivityView'
+export { ProductivityHeader } from './ProductivityHeader'
+export { ProductivityYearView } from './ProductivityYearView'
 export { ProductivityMonthView } from './ProductivityMonthView'
 export { AreaManager } from './AreaManager'
 export { AreaEntries } from './AreaEntries'

@@ -42,13 +42,15 @@ export function GenericYearView({
 
   return (
     <>
-      {/* Header */}
-      <HeaderRenderer
-        config={config.header}
-        year={config.year}
-        onPrevYear={config.onPrevYear}
-        onNextYear={config.onNextYear}
-      />
+      {/* Header - only render if provided */}
+      {config.header && (
+        <HeaderRenderer
+          config={config.header}
+          year={config.year}
+          onPrevYear={config.onPrevYear}
+          onNextYear={config.onNextYear}
+        />
+      )}
 
       {/* Month Grid */}
       <Card className="p-6">

@@ -2,7 +2,6 @@
 
 import { PluginMonthView } from '@/sdk'
 import type { DayCustomization } from '@/sdk'
-import type { HeaderConfig } from '@/types/year-view-config'
 import { TravelPlugin } from '../plugin'
 import type { TravelDayData } from '../types'
 
@@ -16,9 +15,6 @@ interface TravelMonthViewProps {
   initialSelectedDate: string | null
   onUpdateDay: (iso: string, updates: Partial<TravelDayData>) => Promise<void>
   onBackToYear: () => void
-  headerConfig?: HeaderConfig
-  onPrevYear?: () => void
-  onNextYear?: () => void
 }
 
 export function TravelMonthView({
@@ -31,9 +27,6 @@ export function TravelMonthView({
   initialSelectedDate,
   onUpdateDay,
   onBackToYear,
-  headerConfig,
-  onPrevYear,
-  onNextYear,
 }: TravelMonthViewProps) {
   // Build day customizations based on travel plans
   const buildDayCustomization = (
@@ -47,7 +40,7 @@ export function TravelMonthView({
     return {
       backgroundColor: 'bg-blue-500/20',
       content: (
-        <div className="text-[10px] text-white/60 mt-1">
+        <div className="hidden md:block text-[10px] text-white/60 mt-1">
           {travelCount} {travelCount === 1 ? 'trip' : 'trips'}
         </div>
       ),
@@ -73,9 +66,6 @@ export function TravelMonthView({
       onUpdateDay={onUpdateDay}
       onBackToYear={onBackToYear}
       buildDayCustomization={buildDayCustomization}
-      headerConfig={headerConfig}
-      onPrevYear={onPrevYear}
-      onNextYear={onNextYear}
     />
   )
 }

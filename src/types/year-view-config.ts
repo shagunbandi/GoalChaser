@@ -84,7 +84,7 @@ export type MonthConfig = {
 export type YearViewConfig = {
   year: number
   todayISO: string
-  header: HeaderConfig
+  header?: HeaderConfig // Optional: can be rendered at parent level
   months: MonthConfig[]
   modal: {
     getSections: (date: string) => ModalSection[]

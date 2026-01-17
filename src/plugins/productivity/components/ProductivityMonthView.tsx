@@ -2,7 +2,6 @@
 
 import { PluginMonthView } from '@/sdk'
 import type { DayCustomization } from '@/sdk'
-import type { HeaderConfig } from '@/types/year-view-config'
 import { ProductivityPlugin } from '../plugin'
 import type { ProductivityDayData, AreaConfig } from '../types'
 import { getScoreColorClass } from '@/utils'
@@ -21,9 +20,6 @@ interface ProductivityMonthViewProps {
     updates: Partial<ProductivityDayData>,
   ) => Promise<void>
   onBackToYear: () => void
-  headerConfig?: HeaderConfig
-  onPrevYear?: () => void
-  onNextYear?: () => void
   detailContext?: {
     areaConfigs: AreaConfig[]
     onAddArea: (name: string) => void
@@ -43,9 +39,6 @@ export function ProductivityMonthView({
   areaConfigs,
   onUpdateDay,
   onBackToYear,
-  headerConfig,
-  onPrevYear,
-  onNextYear,
   detailContext,
 }: ProductivityMonthViewProps) {
   // Build day customizations based on productivity status
@@ -93,9 +86,6 @@ export function ProductivityMonthView({
       onUpdateDay={onUpdateDay}
       onBackToYear={onBackToYear}
       buildDayCustomization={buildDayCustomization}
-      headerConfig={headerConfig}
-      onPrevYear={onPrevYear}
-      onNextYear={onNextYear}
       detailContext={detailContext}
     />
   )

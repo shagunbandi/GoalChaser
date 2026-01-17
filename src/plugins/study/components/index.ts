@@ -1,3 +1,4 @@
+export { StudyHeader } from './StudyHeader'
 export { StudyView } from './StudyView'
 export { StudyMonthView } from './StudyMonthView'
 export { StudySummary } from './StudySummary'

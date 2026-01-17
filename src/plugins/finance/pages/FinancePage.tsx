@@ -2,12 +2,11 @@
 
 import type { PluginPageProps } from '@/sdk'
 import { usePluginPage, LoadingState } from '@/sdk'
-import { BudgetingView, FinanceMonthView } from '../components'
+import { FinanceHeader, BudgetingView, FinanceMonthView } from '../components'
 import type { FinanceTransactionData, FinanceConfig } from '../types'
 import { FinancePlugin } from '../plugin'
 
 export default function FinancePage({
-  context,
   params,
   year,
   month,
@@ -26,16 +25,13 @@ export default function FinancePage({
     navigateToNextYear,
     navigateToYear,
     navigateToMonth,
-    jumpToDay,
-    router,
     year: currentYear,
   } = usePluginPage<FinanceTransactionData, FinanceConfig>({
     pluginId: 'finance',
     params,
     year,
   })
-  
-  // Handler to navigate to month view with selected day
+
   const handleJumpToDay = (iso: string) => {
     const [y, m] = iso.split('-').map(Number)
     navigateToMonth(y, m, iso)
@@ -53,8 +49,7 @@ export default function FinancePage({
   }
 
   const handleSaveBudgets = async (newBudgets: any[]) => {
-    // Filter out any budgets with IDs that match the new budgets
-    const newBudgetIds = new Set(newBudgets.map(b => b.id))
+    const newBudgetIds = new Set(newBudgets.map((b) => b.id))
     const existingBudgets = budgets.filter((b: any) => !newBudgetIds.has(b.id))
     await updateConfig({
       budgets: [...existingBudgets, ...newBudgets],
@@ -83,43 +78,18 @@ export default function FinancePage({
 
   if (isLoading) return <LoadingState />
 
-  // If month is specified, show month view
-  if (month) {
-    // Calculate month-specific stats
-    const monthData = Object.entries(pluginDayData).filter(([date]) => {
-      const [y, m] = date.split('-').map(Number)
-      return y === currentYear && m === month
-    })
-    const monthStats = {
-      income: monthData.reduce((sum, [, data]) => {
-        return sum + (data?.income?.reduce((s: number, i: any) => s + (i.amount || 0), 0) || 0)
-      }, 0),
-      expenses: monthData.reduce((sum, [, data]) => {
-        return sum + (data?.expenses?.reduce((s: number, e: any) => s + (e.amount || 0), 0) || 0)
-      }, 0),
-      sips: monthData.reduce((sum, [, data]) => {
-        return sum + (data?.sips?.reduce((s: number, sip: any) => s + (sip.amount || 0), 0) || 0)
-      }, 0),
-    }
+  return (
+    <div className="space-y-6">
+      {/* Shared Header Component */}
+      <FinanceHeader
+        year={currentYear}
+        dayData={pluginDayData}
+        onPrevYear={navigateToPrevYear}
+        onNextYear={navigateToNextYear}
+      />
 
-    const monthHeaderConfig = {
-      icon: '💰',
-      title: `Finance Month:`,
-      stats: [
-        { label: 'Income', value: `₹${monthStats.income.toLocaleString('en-IN')}` },
-        { label: 'Expenses', value: `₹${monthStats.expenses.toLocaleString('en-IN')}` },
-        { label: 'SIP', value: `₹${monthStats.sips.toLocaleString('en-IN')}` },
-      ],
-      legends: [
-        { label: 'Income', color: 'rgb(74, 222, 128)' },
-        { label: 'Expense', color: 'rgb(248, 113, 113)' },
-        { label: 'SIP', color: 'rgb(96, 165, 250)' },
-      ],
-      actions: [],
-    }
-
-    return (
-      <main className="container mx-auto px-4 py-6 space-y-4">
+      {/* Conditionally render Month or Year view */}
+      {month ? (
         <FinanceMonthView
           plugin={FinancePlugin}
           month={month}
@@ -130,35 +100,27 @@ export default function FinancePage({
           initialSelectedDate={initialSelectedDay}
           onUpdateDay={updateDayData}
           onBackToYear={() => navigateToYear(currentYear)}
-          headerConfig={monthHeaderConfig}
+        />
+      ) : (
+        <BudgetingView
+          year={currentYear}
+          todayISO={todayISO}
+          dayDetails={pluginDayData}
+          budgets={budgets}
+          sips={sips}
+          initialSelectedDay={initialSelectedDay}
           onPrevYear={navigateToPrevYear}
           onNextYear={navigateToNextYear}
+          onUpdateDay={updateDayData}
+          onSaveBudget={handleSaveBudget}
+          onSaveBudgets={handleSaveBudgets}
+          onDeleteBudget={handleDeleteBudget}
+          onSaveSIP={handleSaveSIP}
+          onDeleteSIP={handleDeleteSIP}
+          onJumpToDay={handleJumpToDay}
+          onMonthClick={navigateToMonth}
         />
-      </main>
-    )
-  }
-
-  // Otherwise show year view
-  return (
-    <main className="container mx-auto px-4 py-6">
-      <BudgetingView
-        year={currentYear}
-        todayISO={todayISO}
-        dayDetails={pluginDayData}
-        budgets={budgets}
-        sips={sips}
-        initialSelectedDay={initialSelectedDay}
-        onPrevYear={navigateToPrevYear}
-        onNextYear={navigateToNextYear}
-        onUpdateDay={updateDayData}
-        onSaveBudget={handleSaveBudget}
-        onSaveBudgets={handleSaveBudgets}
-        onDeleteBudget={handleDeleteBudget}
-        onSaveSIP={handleSaveSIP}
-        onDeleteSIP={handleDeleteSIP}
-        onJumpToDay={handleJumpToDay}
-        onMonthClick={navigateToMonth}
-      />
-    </main>
+      )}
+    </div>
   )
 }

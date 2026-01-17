@@ -17,6 +17,11 @@ export function HeaderRenderer({
   onPrevYear,
   onNextYear,
 }: HeaderRendererProps) {
+  // Safety check: ensure config has required properties
+  if (!config || !config.title) {
+    return null
+  }
+
   return (
     <Card className="p-6 space-y-6">
       <div className="flex flex-col gap-3">
@@ -36,7 +41,7 @@ export function HeaderRenderer({
               ←
             </button>
             <div className="flex items-center gap-2">
-              <span className="text-xl">{config.icon}</span>
+              {config.icon && <span className="text-xl">{config.icon}</span>}
               <h2 className="text-xl font-semibold text-white/90">
                 {config.title} {year}
               </h2>
@@ -56,7 +61,7 @@ export function HeaderRenderer({
           </div>
 
           {/* Action Buttons on the Right */}
-          {config.actions.length > 0 && (
+          {config.actions && config.actions.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
               {config.actions.map((action) => (
                 <ButtonRenderer key={action.id} config={action} />
@@ -92,8 +97,9 @@ export function HeaderRenderer({
               <div
                 key={index}
                 className="px-3 py-2 rounded-xl border border-white/8 bg-white/3 text-sm text-white/70"
+                style={stat.color ? { color: stat.color } : undefined}
               >
-                {stat.label}: <span className="text-white">{stat.value}</span>
+                {stat.label}: <span className="font-medium">{stat.value}</span>
               </div>
             ))}
           </div>

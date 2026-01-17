@@ -245,8 +245,8 @@ export default function PluginPage() {
         />
       </Navbar>
 
-      <div className="relative z-10 p-4 md:p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="relative z-10">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-6">
           <PluginComponent
             context={context}
             params={params}

@@ -8,8 +8,6 @@ import type { PluginDayData } from '../types'
 import type { DayCustomization } from '../ui/MonthCalendar'
 import { Card } from '@/components/ui/Card'
 import { MONTH_NAMES } from '@/constants'
-import { HeaderRenderer } from '@/components/features/year-view/renderers/HeaderRenderer'
-import type { HeaderConfig } from '@/types/year-view-config'
 
 export interface PluginMonthViewProps<TDayData extends PluginDayData = any> {
   /** The plugin configuration */
@@ -45,13 +43,6 @@ export interface PluginMonthViewProps<TDayData extends PluginDayData = any> {
     data: TDayData | null,
   ) => DayCustomization | null
 
-  /** Optional header configuration to show at the top */
-  headerConfig?: HeaderConfig
-
-  /** Navigation handlers for header */
-  onPrevYear?: () => void
-  onNextYear?: () => void
-
   /** Optional context to pass to detail provider */
   detailContext?: any
 }
@@ -76,9 +67,6 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
   onUpdateDay,
   onBackToYear,
   buildDayCustomization,
-  headerConfig,
-  onPrevYear,
-  onNextYear,
   detailContext,
 }: PluginMonthViewProps<TDayData>) {
   const {
@@ -184,16 +172,6 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
 
   return (
     <div className="space-y-4">
-      {/* Header (if provided) */}
-      {headerConfig && onPrevYear && onNextYear && (
-        <HeaderRenderer
-          config={headerConfig}
-          year={year}
-          onPrevYear={onPrevYear}
-          onNextYear={onNextYear}
-        />
-      )}
-
       {/* Back to Year button */}
       <button
         onClick={onBackToYear}
