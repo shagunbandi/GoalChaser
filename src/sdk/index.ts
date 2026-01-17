@@ -56,7 +56,7 @@ export type { UseMonthCalendarOptions, UseMonthCalendarReturn } from './hooks'
 export * from './utils'
 
 // Components
-export { LoadingState, NotFoundState, PluginMonthView } from './components'
+export { LoadingState, NotFoundState, PluginMonthView, Drawer } from './components'
 export type { PluginMonthViewProps } from './components'
 
 // UI components

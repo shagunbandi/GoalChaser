@@ -51,6 +51,16 @@ export default function FinancePage({
       sips,
     })
   }
+  
+  const handleSaveBudgets = async (newBudgets: any[]) => {
+    // Filter out any budgets with IDs that match the new budgets
+    const newBudgetIds = new Set(newBudgets.map(b => b.id))
+    const existingBudgets = budgets.filter((b: any) => !newBudgetIds.has(b.id))
+    await updateConfig({
+      budgets: [...existingBudgets, ...newBudgets],
+      sips,
+    })
+  }
 
   const handleDeleteBudget = async (budgetId: string) => {
     await updateConfig({
@@ -142,6 +152,7 @@ export default function FinancePage({
         onNextYear={navigateToNextYear}
         onUpdateDay={updateDayData}
         onSaveBudget={handleSaveBudget}
+        onSaveBudgets={handleSaveBudgets}
         onDeleteBudget={handleDeleteBudget}
         onSaveSIP={handleSaveSIP}
         onDeleteSIP={handleDeleteSIP}

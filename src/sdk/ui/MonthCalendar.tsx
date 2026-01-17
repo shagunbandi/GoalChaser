@@ -104,7 +104,7 @@ export function MonthCalendar({
     isInRange: boolean,
     customization?: DayCustomization,
   ): string => {
-    const bg = customization?.backgroundColor || 'bg-white/[0.02]'
+    const bg = customization?.backgroundColor || 'bg-white/[0.15]'
     const border = customization?.borderColor
       ? `border border-[${customization.borderColor}]`
       : 'border border-white/[0.08]'
@@ -237,7 +237,7 @@ export function MonthCalendar({
 
           // Check if backgroundColor is a hex color (starts with #) or a Tailwind class
           const isHexColor = customization?.backgroundColor?.startsWith('#')
-          const bgClass = isHexColor ? 'bg-white/[0.02]' : (customization?.backgroundColor || 'bg-white/[0.02]')
+          const bgClass = isHexColor ? '' : (customization?.backgroundColor || 'bg-white/[0.15]')
           const bgStyle = isHexColor ? { backgroundColor: customization?.backgroundColor } : {}
 
           return (

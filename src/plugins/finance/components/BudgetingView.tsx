@@ -35,6 +35,7 @@ interface BudgetingViewProps {
   onNextYear: () => void
   onUpdateDay: (iso: string, updates: any) => Promise<void>
   onSaveBudget: (budget: BudgetPlan) => Promise<void>
+  onSaveBudgets?: (budgets: BudgetPlan[]) => Promise<void>
   onDeleteBudget: (budgetId: string) => Promise<void>
   onSaveSIP: (sip: SIPPlan) => Promise<void>
   onDeleteSIP: (sipId: string) => Promise<void>
@@ -53,6 +54,7 @@ export function BudgetingView({
   onNextYear,
   onUpdateDay,
   onSaveBudget,
+  onSaveBudgets,
   onDeleteBudget,
   onSaveSIP,
   onDeleteSIP,
@@ -238,6 +240,8 @@ export function BudgetingView({
       let currentYear = data.startYear
       const parentId = `budget_${Date.now()}`
 
+      const newBudgets: BudgetPlan[] = []
+
       for (let i = 0; i < data.repeatCount; i++) {
         // Create ISO dates directly to avoid timezone issues
         const monthIndex = currentMonth + 1 // Convert 0-indexed to 1-indexed
@@ -286,13 +290,25 @@ export function BudgetingView({
           periodIndex: i,
         }
 
-        await onSaveBudget(period)
+        newBudgets.push(period)
 
         // Move to next month
         currentMonth++
         if (currentMonth > 11) {
           currentMonth = 0
           currentYear++
+        }
+      }
+
+      // Save all budgets at once to avoid stale state issues
+      if (onSaveBudgets && newBudgets.length > 1) {
+        await onSaveBudgets(newBudgets)
+      } else if (newBudgets.length === 1) {
+        await onSaveBudget(newBudgets[0])
+      } else {
+        // Fallback to saving one by one if onSaveBudgets is not available
+        for (const budget of newBudgets) {
+          await onSaveBudget(budget)
         }
       }
     }

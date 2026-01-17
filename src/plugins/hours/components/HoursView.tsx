@@ -109,16 +109,23 @@ export function HoursView({
     return stats
   }, [dayDetails, year, months])
 
-  // Get color based on hours
+  // Get color based on hours using VIBGYOR scale (same as month view)
   const getHoursColor = (hours: number) => {
     if (hours === 0) return undefined
-    const ratio = hours / maxHours
-    if (ratio >= 1) return 'rgba(155, 89, 182, 0.8)' // Violet - Full
-    if (ratio >= 0.8) return 'rgba(52, 152, 219, 0.8)' // Blue
-    if (ratio >= 0.6) return 'rgba(46, 204, 113, 0.8)' // Green
-    if (ratio >= 0.4) return 'rgba(241, 196, 15, 0.8)' // Yellow
-    if (ratio >= 0.2) return 'rgba(230, 126, 34, 0.8)' // Orange
-    return 'rgba(231, 76, 60, 0.8)' // Red
+    
+    // Use VIBGYOR color scale
+    const { getVibgyorColors } = require('@/utils')
+    const vibgyorColors = getVibgyorColors()
+    
+    const ratio = Math.min(hours / maxHours, 1)
+    const colorIndex = Math.min(
+      Math.floor(ratio * vibgyorColors.length),
+      vibgyorColors.length - 1
+    )
+    const hexColor = vibgyorColors[colorIndex].color
+    
+    // Return with 80% opacity (CC in hex)
+    return `${hexColor}CC`
   }
 
   const config: YearViewConfig = useMemo(
@@ -332,6 +339,7 @@ export function HoursView({
       />
       {showSubjectManager && (
         <SubjectManager
+          isOpen={showSubjectManager}
           subjectConfigs={subjectConfigs}
           onAddSubject={onAddSubject}
           onRemoveSubject={onRemoveSubject}

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
+import { useState } from 'react'
+import { Drawer } from '@/sdk'
 import type { AreaConfig } from '@/plugins/productivity/types'
 
 interface AreaManagerProps {
+  isOpen: boolean
   areaConfigs: AreaConfig[]
   onAddArea: (name: string) => void
   onRemoveArea: (id: string) => void
@@ -18,6 +19,7 @@ interface AreaManagerProps {
 }
 
 export function AreaManager({
+  isOpen,
   areaConfigs,
   onAddArea,
   onRemoveArea,
@@ -32,18 +34,20 @@ export function AreaManager({
   const [newAreaInput, setNewAreaInput] = useState('')
   const [editingAreaId, setEditingAreaId] = useState<string | null>(null)
   const [editingAreaName, setEditingAreaName] = useState('')
-  const [expandedAreaId, setExpandedAreaId] = useState<string | null>(
-    null,
-  )
+  const [expandedAreaId, setExpandedAreaId] = useState<string | null>(null)
   const [newTopicInput, setNewTopicInput] = useState('')
   const [showAddTopic, setShowAddTopic] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  // Topic editing state
-  const [editingTopic, setEditingTopic] = useState<{ areaId: string; topic: string } | null>(null)
+  const [editingTopic, setEditingTopic] = useState<{
+    areaId: string
+    topic: string
+  } | null>(null)
   const [editingTopicName, setEditingTopicName] = useState('')
-  const [deleteTopicConfirm, setDeleteTopicConfirm] = useState<{ areaId: string; topic: string } | null>(null)
+  const [deleteTopicConfirm, setDeleteTopicConfirm] = useState<{
+    areaId: string
+    topic: string
+  } | null>(null)
 
-  // Add new area
   const handleAddArea = () => {
     if (newAreaInput.trim()) {
       onAddArea(newAreaInput.trim())
@@ -51,13 +55,11 @@ export function AreaManager({
     }
   }
 
-  // Start editing area
   const startEditingArea = (area: AreaConfig) => {
     setEditingAreaId(area.id)
     setEditingAreaName(area.name)
   }
 
-  // Save area edit
   const saveAreaEdit = () => {
     if (editingAreaId && editingAreaName.trim()) {
       onUpdateArea(editingAreaId, editingAreaName.trim())
@@ -66,13 +68,11 @@ export function AreaManager({
     setEditingAreaName('')
   }
 
-  // Cancel area edit
   const cancelAreaEdit = () => {
     setEditingAreaId(null)
     setEditingAreaName('')
   }
 
-  // Delete area
   const handleDeleteArea = (id: string) => {
     onRemoveArea(id)
     setDeleteConfirm(null)
@@ -81,7 +81,6 @@ export function AreaManager({
     }
   }
 
-  // Add topic to area
   const handleAddTopic = (areaId: string) => {
     if (newTopicInput.trim()) {
       onAddTopic(areaId, newTopicInput.trim())
@@ -90,521 +89,520 @@ export function AreaManager({
     }
   }
 
-  // Remove topic from area
   const handleRemoveTopic = (areaId: string, topic: string) => {
     onRemoveTopic(areaId, topic)
     setDeleteTopicConfirm(null)
   }
 
-  // Start editing topic
   const startEditingTopic = (areaId: string, topic: string) => {
     setEditingTopic({ areaId, topic })
     setEditingTopicName(topic)
   }
 
-  // Save topic edit
   const saveTopicEdit = () => {
     if (editingTopic && editingTopicName.trim()) {
-      onUpdateTopic(editingTopic.areaId, editingTopic.topic, editingTopicName.trim())
+      onUpdateTopic(
+        editingTopic.areaId,
+        editingTopic.topic,
+        editingTopicName.trim(),
+      )
     }
     setEditingTopic(null)
     setEditingTopicName('')
   }
 
-  // Cancel topic edit
   const cancelTopicEdit = () => {
     setEditingTopic(null)
     setEditingTopicName('')
   }
 
-  // Portal mounting
-  const [mounted, setMounted] = useState(false)
-  const portalRef = useRef<HTMLElement | null>(null)
-
-  useEffect(() => {
-    portalRef.current = document.body
-    setMounted(true)
-    return () => setMounted(false)
-  }, [])
-
-  const modalContent = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-md"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div
-        className="
-          relative z-10 w-full max-w-lg max-h-[85vh] 
-          overflow-hidden flex flex-col
-          bg-[#1c1c1e] 
-          rounded-3xl 
-          border border-white/[0.1]
-          shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)]
-        "
-      >
-        <div className="p-6 shrink-0">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">⚙️</span>
-              <h2 className="text-xl font-semibold text-white/90">
-                Manage Areas
-              </h2>
-            </div>
-            <button
-              onClick={onClose}
-              className="
-                w-8 h-8 rounded-xl
-                bg-white/[0.05] hover:bg-white/[0.1]
-                text-white/50 hover:text-white
-                flex items-center justify-center
-                transition-all duration-200
-              "
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* Add New Area */}
-          <div className="flex gap-2 mb-6">
-            <input
-              type="text"
-              value={newAreaInput}
-              onChange={(e) => setNewAreaInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleAddArea()
-              }}
-              placeholder="Add new area..."
-              className="
-                flex-1 px-4 py-3
-                bg-white/[0.03] backdrop-blur-xl
-                border border-white/[0.08] rounded-xl
-                text-white placeholder-white/30
-                focus:outline-none focus:border-[#007AFF]/50
-                transition-all duration-200
-              "
-            />
-            <button
-              onClick={handleAddArea}
-              disabled={!newAreaInput.trim()}
-              className="
-                px-5 py-3
-                bg-gradient-to-r from-[#007AFF] to-[#5856D6]
-                hover:from-[#007AFF]/90 hover:to-[#5856D6]/90
-                disabled:from-white/[0.05] disabled:to-white/[0.05]
-                disabled:text-white/30
-                text-white font-medium rounded-xl
-                shadow-[0_0_20px_rgba(0,122,255,0.3)]
-                disabled:shadow-none
-                transition-all duration-200
-              "
-            >
-              + Add
-            </button>
-          </div>
+  return (
+    <Drawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Manage Areas"
+      subtitle={`${areaConfigs.length} ${
+        areaConfigs.length === 1 ? 'area' : 'areas'
+      } configured`}
+      icon="🎯"
+      iconGradient="from-[#30D158] to-[#34C759]"
+    >
+      {/* Add New Area */}
+      <div className="p-6 sm:p-8 border-b border-white/5">
+        <div className="flex gap-3">
+          <input
+            type="text"
+            value={newAreaInput}
+            onChange={(e) => setNewAreaInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddArea()
+            }}
+            placeholder="Add new area (e.g. Health, Career, Relationships)..."
+            className="
+              flex-1 px-5 py-3.5
+              bg-white/5 backdrop-blur-xl
+              border border-white/10 rounded-xl
+              text-white placeholder-white/30
+              focus:outline-none focus:border-[#30D158]/50 focus:bg-white/8
+              transition-all duration-200
+              text-sm
+            "
+          />
+          <button
+            onClick={handleAddArea}
+            disabled={!newAreaInput.trim()}
+            className="
+              px-6 py-3.5
+              bg-gradient-to-r from-[#30D158] to-[#34C759]
+              hover:from-[#30D158]/90 hover:to-[#34C759]/90
+              disabled:from-white/5 disabled:to-white/5
+              disabled:text-white/30
+              text-white font-semibold rounded-xl
+              shadow-lg shadow-[#30D158]/25
+              disabled:shadow-none
+              transition-all duration-200
+              hover:scale-[1.02] active:scale-[0.98]
+              disabled:hover:scale-100
+              text-sm whitespace-nowrap
+            "
+          >
+            + Add
+          </button>
         </div>
+      </div>
 
-        {/* Area List */}
-        <div className="flex-1 overflow-y-auto px-6 pb-6">
-          {areaConfigs.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-4xl mb-4 opacity-60">📚</div>
-              <p className="text-white/40 text-sm">
-                No areas yet. Add your first area above.
-              </p>
+      {/* Area List */}
+      <div className="px-6 sm:px-8 py-6">
+        {areaConfigs.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-white/5 to-white/[0.02] flex items-center justify-center border border-white/10">
+              <span className="text-5xl opacity-50">🎯</span>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {areaConfigs.map((area) => (
-                <div
-                  key={area.id}
-                  className="
-                    bg-white/[0.03] backdrop-blur-sm
-                    border border-white/[0.08] rounded-2xl
-                    overflow-hidden
-                  "
-                >
-                  {/* Area Header */}
-                  <div className="flex items-center justify-between p-4">
-                    {editingAreaId === area.id ? (
-                      <div className="flex-1 flex gap-2 mr-3">
-                        <input
-                          type="text"
-                          value={editingAreaName}
-                          onChange={(e) =>
-                            setEditingAreaName(e.target.value)
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveAreaEdit()
-                            if (e.key === 'Escape') cancelAreaEdit()
-                          }}
-                          className="
-                            flex-1 px-3 py-1.5
-                            bg-white/[0.05] border border-[#007AFF]/50 rounded-lg
-                            text-white text-sm
-                            focus:outline-none
-                          "
-                          autoFocus
-                        />
-                        <button
-                          onClick={saveAreaEdit}
-                          className="px-3 py-1.5 bg-[#30D158] text-white text-xs rounded-lg"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelAreaEdit}
-                          className="px-3 py-1.5 bg-white/[0.1] text-white/60 text-xs rounded-lg"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        className="flex-1 flex items-center gap-3 cursor-pointer"
-                        onClick={() =>
-                          setExpandedAreaId(
-                            expandedAreaId === area.id
-                              ? null
-                              : area.id,
-                          )
-                        }
+            <h3 className="text-lg font-semibold text-white/80 mb-2">
+              No areas yet
+            </h3>
+            <p className="text-sm text-white/40 max-w-xs mx-auto">
+              Add your first productivity area above to start tracking your
+              progress
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {areaConfigs.map((area) => (
+              <div
+                key={area.id}
+                className="
+                  group
+                  bg-white/[0.04] hover:bg-white/[0.06] backdrop-blur-sm
+                  border border-white/10 hover:border-white/15
+                  rounded-2xl
+                  overflow-hidden
+                  transition-all duration-200
+                  hover:shadow-lg hover:shadow-black/20
+                "
+              >
+                {/* Area Header */}
+                <div className="flex items-center justify-between p-4 sm:p-5">
+                  {editingAreaId === area.id ? (
+                    <div className="flex-1 flex gap-2 mr-3">
+                      <input
+                        type="text"
+                        value={editingAreaName}
+                        onChange={(e) => setEditingAreaName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveAreaEdit()
+                          if (e.key === 'Escape') cancelAreaEdit()
+                        }}
+                        className="
+                          flex-1 px-4 py-2
+                          bg-white/10 border border-[#30D158]/50 rounded-xl
+                          text-white text-sm
+                          focus:outline-none focus:border-[#30D158]
+                        "
+                        autoFocus
+                      />
+                      <button
+                        onClick={saveAreaEdit}
+                        className="px-4 py-2 bg-[#30D158] hover:bg-[#30D158]/90 text-white text-sm font-medium rounded-xl transition-all"
                       >
-                        <span className="text-[#007AFF] font-medium text-lg">
+                        ✓ Save
+                      </button>
+                      <button
+                        onClick={cancelAreaEdit}
+                        className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white/70 text-sm rounded-xl transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex-1 flex items-center gap-3 cursor-pointer group/header"
+                      onClick={() =>
+                        setExpandedAreaId(
+                          expandedAreaId === area.id ? null : area.id,
+                        )
+                      }
+                    >
+                      <div className="flex-1 flex items-center gap-3">
+                        <span className="text-lg font-semibold text-white group-hover/header:text-[#30D158] transition-colors">
                           {area.name}
                         </span>
-                        <span className="text-xs text-white/30 bg-white/[0.05] px-2 py-0.5 rounded-full">
-                          {area.topics.length} topic
-                          {area.topics.length !== 1 ? 's' : ''}
-                        </span>
-                        <span className="text-white/30 text-xs ml-auto mr-2">
-                          {expandedAreaId === area.id ? '▲' : '▼'}
+                        <span className="text-xs font-medium text-white/40 bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
+                          {area.topics.length}{' '}
+                          {area.topics.length === 1 ? 'topic' : 'topics'}
                         </span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="text-white/30 text-sm transition-transform duration-200"
+                          style={{
+                            transform:
+                              expandedAreaId === area.id
+                                ? 'rotate(180deg)'
+                                : 'rotate(0deg)',
+                          }}
+                        >
+                          ▼
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
-                    {editingAreaId !== area.id && (
-                      <div className="flex items-center gap-1">
+                  {editingAreaId !== area.id && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          startEditingArea(area)
+                        }}
+                        className="
+                          p-2.5 rounded-xl
+                          text-white/40 hover:text-[#FF9500] hover:bg-[#FF9500]/10
+                          transition-all duration-200
+                        "
+                        title="Edit area"
+                      >
+                        <span className="text-base">✏️</span>
+                      </button>
+                      {deleteConfirm === area.id ? (
+                        <div className="flex items-center gap-1 ml-1">
+                          <button
+                            onClick={() => handleDeleteArea(area.id)}
+                            className="px-3 py-1.5 bg-[#FF3B30] hover:bg-[#FF3B30]/90 text-white text-sm font-medium rounded-lg transition-all"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm(null)}
+                            className="px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white/70 text-sm rounded-lg transition-all"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            startEditingArea(area)
+                            setDeleteConfirm(area.id)
                           }}
                           className="
-                            p-2 rounded-lg
-                            text-white/40 hover:text-[#FF9500] hover:bg-white/[0.05]
+                            p-2.5 rounded-xl
+                            text-white/40 hover:text-[#FF3B30] hover:bg-[#FF3B30]/10
                             transition-all duration-200
                           "
-                          title="Edit area"
+                          title="Delete area"
                         >
-                          ✏️
+                          <span className="text-base">🗑️</span>
                         </button>
-                        {deleteConfirm === area.id ? (
-                          <div className="flex items-center gap-1 ml-1">
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Expanded Topics */}
+                {expandedAreaId === area.id && (
+                  <div className="border-t border-white/5 bg-black/10 p-4 sm:p-5 space-y-5">
+                    {/* Has Topics Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-white/[0.02] rounded-xl border border-white/5">
+                      <div className="flex-1 pr-4">
+                        <label className="text-sm font-medium text-white/80">
+                          Enable Topics
+                        </label>
+                        <p className="text-xs text-white/40 mt-1 leading-relaxed">
+                          {area.hasTopics ?? true
+                            ? 'Track specific topics within this area'
+                            : 'Simple on/off tracking (shows as green when done)'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => onToggleHasTopics(area.id)}
+                        className={`
+                          relative w-14 h-8 rounded-full transition-all duration-300
+                          ${
+                            area.hasTopics ?? true
+                              ? 'bg-[#30D158] shadow-lg shadow-[#30D158]/30'
+                              : 'bg-white/20'
+                          }
+                        `}
+                      >
+                        <span
+                          className={`
+                            absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg
+                            transition-all duration-300
+                            ${area.hasTopics ?? true ? 'left-7' : 'left-1'}
+                          `}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Topics Section */}
+                    {(area.hasTopics ?? true) && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+                            Topics ({area.topics.length})
+                          </label>
+                        </div>
+
+                        {/* Topic List */}
+                        {area.topics.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {area.topics.map((topic) => {
+                              const topicInUse = isTopicInUse(area.id, topic)
+                              const isEditing =
+                                editingTopic?.areaId === area.id &&
+                                editingTopic?.topic === topic
+                              const isConfirmingDelete =
+                                deleteTopicConfirm?.areaId === area.id &&
+                                deleteTopicConfirm?.topic === topic
+
+                              if (isEditing) {
+                                return (
+                                  <div
+                                    key={topic}
+                                    className="flex items-center gap-1.5"
+                                  >
+                                    <input
+                                      type="text"
+                                      value={editingTopicName}
+                                      onChange={(e) =>
+                                        setEditingTopicName(e.target.value)
+                                      }
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') saveTopicEdit()
+                                        if (e.key === 'Escape')
+                                          cancelTopicEdit()
+                                      }}
+                                      className="
+                                        px-3 py-1.5 w-32
+                                        bg-white/10 border border-[#AF52DE]/50 rounded-xl
+                                        text-white text-sm
+                                        focus:outline-none focus:border-[#AF52DE]
+                                      "
+                                      autoFocus
+                                    />
+                                    <button
+                                      onClick={saveTopicEdit}
+                                      className="px-3 py-1.5 bg-[#30D158] hover:bg-[#30D158]/90 text-white text-sm rounded-xl transition-all"
+                                    >
+                                      ✓
+                                    </button>
+                                    <button
+                                      onClick={cancelTopicEdit}
+                                      className="px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white/70 text-sm rounded-xl transition-all"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                )
+                              }
+
+                              return (
+                                <div
+                                  key={topic}
+                                  className="
+                                    group/topic flex items-center gap-2
+                                    px-3.5 py-2 rounded-xl
+                                    bg-[#AF52DE]/15 hover:bg-[#AF52DE]/20
+                                    text-[#AF52DE] border border-[#AF52DE]/30
+                                    transition-all duration-200
+                                  "
+                                >
+                                  <span className="text-sm font-medium">
+                                    {topic}
+                                  </span>
+                                  <div className="flex items-center gap-1 opacity-0 group-hover/topic:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() =>
+                                        startEditingTopic(area.id, topic)
+                                      }
+                                      className="
+                                        w-6 h-6 rounded-lg
+                                        hover:bg-[#FF9500]/20
+                                        text-white/40 hover:text-[#FF9500]
+                                        flex items-center justify-center
+                                        transition-all duration-200
+                                      "
+                                      title="Edit topic"
+                                    >
+                                      <span className="text-xs">✏️</span>
+                                    </button>
+                                    {isConfirmingDelete ? (
+                                      <div className="flex items-center gap-1 ml-1">
+                                        <button
+                                          onClick={() =>
+                                            handleRemoveTopic(area.id, topic)
+                                          }
+                                          className="px-2 py-1 bg-[#FF3B30] hover:bg-[#FF3B30]/90 text-white text-xs font-medium rounded-lg transition-all"
+                                        >
+                                          Delete
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            setDeleteTopicConfirm(null)
+                                          }
+                                          className="px-2 py-1 bg-white/10 hover:bg-white/15 text-white/70 text-xs rounded-lg transition-all"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    ) : topicInUse ? (
+                                      <span
+                                        className="
+                                          w-6 h-6 rounded-lg
+                                          text-white/20
+                                          flex items-center justify-center
+                                          cursor-not-allowed
+                                        "
+                                        title="Cannot delete: topic is in use"
+                                      >
+                                        <span className="text-xs">🔒</span>
+                                      </span>
+                                    ) : (
+                                      <button
+                                        onClick={() =>
+                                          setDeleteTopicConfirm({
+                                            areaId: area.id,
+                                            topic,
+                                          })
+                                        }
+                                        className="
+                                          w-6 h-6 rounded-lg
+                                          hover:bg-[#FF3B30]/20
+                                          text-white/40 hover:text-[#FF3B30]
+                                          flex items-center justify-center
+                                          transition-all duration-200
+                                        "
+                                        title="Delete topic"
+                                      >
+                                        <span className="text-xs">🗑️</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 px-4 rounded-xl bg-white/[0.02] border border-dashed border-white/10">
+                            <p className="text-sm text-white/40">
+                              No topics yet. Add topics to organize this area.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Add Topic */}
+                        {showAddTopic === area.id ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={newTopicInput}
+                              onChange={(e) => setNewTopicInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleAddTopic(area.id)
+                                if (e.key === 'Escape') {
+                                  setShowAddTopic(null)
+                                  setNewTopicInput('')
+                                }
+                              }}
+                              placeholder="Enter topic name..."
+                              className="
+                                flex-1 px-4 py-2.5
+                                bg-white/10 border border-white/15 rounded-xl
+                                text-white text-sm placeholder-white/30
+                                focus:outline-none focus:border-[#AF52DE]/50 focus:bg-white/15
+                              "
+                              autoFocus
+                            />
                             <button
-                              onClick={() => handleDeleteArea(area.id)}
-                              className="px-2 py-1 bg-[#FF3B30] text-white text-xs rounded-lg"
+                              onClick={() => handleAddTopic(area.id)}
+                              disabled={!newTopicInput.trim()}
+                              className="
+                                px-5 py-2.5
+                                bg-[#AF52DE] hover:bg-[#AF52DE]/90
+                                disabled:bg-white/5 disabled:text-white/30
+                                text-white text-sm font-medium rounded-xl
+                                transition-all duration-200
+                                shadow-lg shadow-[#AF52DE]/20
+                                disabled:shadow-none
+                              "
                             >
-                              Delete
+                              Add
                             </button>
                             <button
-                              onClick={() => setDeleteConfirm(null)}
-                              className="px-2 py-1 bg-white/[0.1] text-white/60 text-xs rounded-lg"
+                              onClick={() => {
+                                setShowAddTopic(null)
+                                setNewTopicInput('')
+                              }}
+                              className="
+                                px-5 py-2.5
+                                bg-white/5 hover:bg-white/10
+                                text-white/70 text-sm rounded-xl
+                                transition-all duration-200
+                              "
                             >
                               Cancel
                             </button>
                           </div>
                         ) : (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setDeleteConfirm(area.id)
-                            }}
+                            onClick={() => setShowAddTopic(area.id)}
                             className="
-                              p-2 rounded-lg
-                              text-white/40 hover:text-[#FF3B30] hover:bg-white/[0.05]
+                              w-full px-4 py-3 rounded-xl text-sm font-medium
+                              bg-white/[0.02] hover:bg-white/[0.05] text-white/50 hover:text-white/70
+                              border border-dashed border-white/10 hover:border-[#AF52DE]/30
                               transition-all duration-200
                             "
-                            title="Delete area"
                           >
-                            🗑️
+                            + Add Topic
                           </button>
                         )}
                       </div>
                     )}
                   </div>
-
-                  {/* Expanded Topics */}
-                  {expandedAreaId === area.id && (
-                    <div className="border-t border-white/[0.06] p-4 space-y-4">
-                      {/* Has Topics Toggle */}
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <label className="text-sm text-white/70">
-                            Has Topics
-                          </label>
-                          <p className="text-xs text-white/40 mt-0.5">
-                            {area.hasTopics ?? true
-                              ? 'Select specific topics when tracking'
-                              : 'Just mark as done (shows green)'}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => onToggleHasTopics(area.id)}
-                          className={`
-                            relative w-12 h-7 rounded-full transition-all duration-200
-                            ${
-                              area.hasTopics ?? true
-                                ? 'bg-[#30D158]'
-                                : 'bg-white/20'
-                            }
-                          `}
-                        >
-                          <span
-                            className={`
-                              absolute top-1 w-5 h-5 rounded-full bg-white shadow-md
-                              transition-all duration-200
-                              ${area.hasTopics ?? true ? 'left-6' : 'left-1'}
-                            `}
-                          />
-                        </button>
-                      </div>
-
-                      {/* Only show topics section if hasTopics is true */}
-                      {(area.hasTopics ?? true) && (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs text-white/50 uppercase tracking-wider">
-                              Topics
-                            </label>
-                          </div>
-
-                          {/* Topic List */}
-                          {area.topics.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {area.topics.map((topic) => {
-                                const topicInUse = isTopicInUse(area.id, topic)
-                                const isEditing = editingTopic?.areaId === area.id && editingTopic?.topic === topic
-                                const isConfirmingDelete = deleteTopicConfirm?.areaId === area.id && deleteTopicConfirm?.topic === topic
-
-                                if (isEditing) {
-                                  return (
-                                    <div key={topic} className="flex items-center gap-1">
-                                      <input
-                                        type="text"
-                                        value={editingTopicName}
-                                        onChange={(e) => setEditingTopicName(e.target.value)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') saveTopicEdit()
-                                          if (e.key === 'Escape') cancelTopicEdit()
-                                        }}
-                                        className="
-                                          px-2 py-1 w-28
-                                          bg-white/[0.05] border border-[#AF52DE]/50 rounded-lg
-                                          text-white text-sm
-                                          focus:outline-none
-                                        "
-                                        autoFocus
-                                      />
-                                      <button
-                                        onClick={saveTopicEdit}
-                                        className="px-2 py-1 bg-[#30D158] text-white text-xs rounded-lg"
-                                      >
-                                        ✓
-                                      </button>
-                                      <button
-                                        onClick={cancelTopicEdit}
-                                        className="px-2 py-1 bg-white/[0.1] text-white/60 text-xs rounded-lg"
-                                      >
-                                        ✕
-                                      </button>
-                                    </div>
-                                  )
-                                }
-
-                                return (
-                                  <div
-                                    key={topic}
-                                    className="
-                                      group flex items-center gap-2
-                                      px-3 py-1.5 rounded-lg
-                                      bg-[#AF52DE]/20 text-[#AF52DE]
-                                      border border-[#AF52DE]/30
-                                    "
-                                  >
-                                    <span className="text-sm">{topic}</span>
-                                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      {/* Edit button */}
-                                      <button
-                                        onClick={() => startEditingTopic(area.id, topic)}
-                                        className="
-                                          w-5 h-5 rounded-full
-                                          hover:bg-[#FF9500]/20
-                                          text-white/40 hover:text-[#FF9500]
-                                          flex items-center justify-center
-                                          text-xs
-                                          transition-all duration-200
-                                        "
-                                        title="Edit topic"
-                                      >
-                                        ✏️
-                                      </button>
-                                      {/* Delete button - only show if not in use */}
-                                      {isConfirmingDelete ? (
-                                        <div className="flex items-center gap-0.5 ml-1">
-                                          <button
-                                            onClick={() => handleRemoveTopic(area.id, topic)}
-                                            className="px-1.5 py-0.5 bg-[#FF3B30] text-white text-xs rounded"
-                                          >
-                                            Delete
-                                          </button>
-                                          <button
-                                            onClick={() => setDeleteTopicConfirm(null)}
-                                            className="px-1.5 py-0.5 bg-white/[0.1] text-white/60 text-xs rounded"
-                                          >
-                                            Cancel
-                                          </button>
-                                        </div>
-                                      ) : topicInUse ? (
-                                        <span
-                                          className="
-                                            w-5 h-5 rounded-full
-                                            text-white/20
-                                            flex items-center justify-center
-                                            text-xs cursor-not-allowed
-                                          "
-                                          title="Cannot delete: topic is in use"
-                                        >
-                                          🔒
-                                        </span>
-                                      ) : (
-                                        <button
-                                          onClick={() => setDeleteTopicConfirm({ areaId: area.id, topic })}
-                                          className="
-                                            w-5 h-5 rounded-full
-                                            hover:bg-[#FF3B30]/20
-                                            text-white/40 hover:text-[#FF3B30]
-                                            flex items-center justify-center
-                                            text-xs
-                                            transition-all duration-200
-                                          "
-                                          title="Delete topic"
-                                        >
-                                          🗑️
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-white/30">
-                              No topics yet. Add topics to organize your
-                              learning.
-                            </p>
-                          )}
-
-                          {/* Add Topic */}
-                          {showAddTopic === area.id ? (
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                value={newTopicInput}
-                                onChange={(e) =>
-                                  setNewTopicInput(e.target.value)
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter')
-                                    handleAddTopic(area.id)
-                                  if (e.key === 'Escape') {
-                                    setShowAddTopic(null)
-                                    setNewTopicInput('')
-                                  }
-                                }}
-                                placeholder="New topic..."
-                                className="
-                              flex-1 px-3 py-2
-                              bg-white/[0.05] border border-white/[0.1] rounded-lg
-                              text-white text-sm placeholder-white/30
-                              focus:outline-none focus:border-[#AF52DE]/50
-                            "
-                                autoFocus
-                              />
-                              <button
-                                onClick={() => handleAddTopic(area.id)}
-                                disabled={!newTopicInput.trim()}
-                                className="
-                              px-4 py-2
-                              bg-[#AF52DE] hover:bg-[#AF52DE]/80
-                              disabled:bg-white/[0.05] disabled:text-white/30
-                              text-white text-sm rounded-lg
-                              transition-all duration-200
-                            "
-                              >
-                                Add
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setShowAddTopic(null)
-                                  setNewTopicInput('')
-                                }}
-                                className="
-                              px-4 py-2
-                              bg-white/[0.05] hover:bg-white/[0.1]
-                              text-white/60 text-sm rounded-lg
-                              transition-all duration-200
-                            "
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setShowAddTopic(area.id)}
-                              className="
-                            w-full px-4 py-2.5 rounded-xl text-sm
-                            bg-white/[0.02] text-white/40
-                            hover:bg-white/[0.05] hover:text-white/60
-                            border border-dashed border-white/[0.1] hover:border-white/[0.2]
-                            transition-all duration-200
-                          "
-                            >
-                              + Add Topic
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-white/[0.1] shrink-0 bg-[#1c1c1e]">
-          <button
-            onClick={onClose}
-            className="
-              w-full px-4 py-3
-              bg-white/[0.08] hover:bg-white/[0.12]
-              text-white/80 font-medium rounded-xl
-              transition-all duration-200
-            "
-          >
-            Done
-          </button>
-        </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
-  )
 
-  // Use portal to render at document body level
-  if (!mounted || !portalRef.current) return null
-  return createPortal(modalContent, portalRef.current)
+      {/* Footer */}
+      <div className="p-6 sm:p-8 border-t border-white/5 shrink-0 bg-gradient-to-t from-black/20">
+        <button
+          onClick={onClose}
+          className="
+            w-full px-4 py-3.5
+            bg-white/10 hover:bg-white/15
+            text-white font-semibold rounded-xl
+            transition-all duration-200
+            hover:scale-[1.01] active:scale-[0.99]
+            border border-white/10
+          "
+        >
+          Done
+        </button>
+      </div>
+    </Drawer>
+  )
 }

@@ -10,7 +10,12 @@ interface NavbarProps {
   children?: React.ReactNode
 }
 
-export function Navbar({ goalId, goalName, goalDescription, children }: NavbarProps) {
+export function Navbar({
+  goalId,
+  goalName,
+  goalDescription,
+  children,
+}: NavbarProps) {
   return (
     <nav className="sticky top-0 z-50 glass-navbar">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -45,9 +50,7 @@ export function Navbar({ goalId, goalName, goalDescription, children }: NavbarPr
 
         {/* Tab bar below navbar (children) */}
         {children && (
-          <div className="border-t border-white/5 py-2">
-            {children}
-          </div>
+          <div className="border-t border-white/5 py-2">{children}</div>
         )}
       </div>
     </nav>

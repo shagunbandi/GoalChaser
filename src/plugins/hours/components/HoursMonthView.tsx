@@ -91,7 +91,7 @@ export function HoursMonthView({
     }
 
     return {
-      backgroundColor: `${color}20`, // Use color with opacity (hex format)
+      backgroundColor: `${color}CC`, // 80% opacity (CC in hex)
       content: (
         <div className="text-[10px] text-white/90 mt-1 font-medium">
           {formatHours(totalHours)}

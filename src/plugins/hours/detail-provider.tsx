@@ -164,6 +164,7 @@ function HoursDetailSection({
       {/* Subject Manager Modal */}
       {showSubjectManager && (
         <SubjectManager
+          isOpen={showSubjectManager}
           subjectConfigs={subjectConfigs}
           onClose={() => setShowSubjectManager(false)}
           onAddSubject={onAddSubject}

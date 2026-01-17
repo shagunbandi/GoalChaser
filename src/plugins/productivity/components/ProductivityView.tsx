@@ -353,6 +353,7 @@ export function ProductivityView({
       {/* Area Manager Modal */}
       {showAreaManager && (
         <AreaManager
+          isOpen={showAreaManager}
           areaConfigs={areaConfigs}
           onAddArea={onAddArea}
           onRemoveArea={onRemoveArea}

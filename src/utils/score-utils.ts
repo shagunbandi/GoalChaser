@@ -23,6 +23,20 @@ export function getScoreColorClass(score: DayStatus): string {
   }
 }
 
+export function getScoreColorHex(score: DayStatus): string | null {
+  const category = getScoreCategory(score)
+  switch (category) {
+    case 'high':
+      return '#30D158'
+    case 'ok':
+      return '#FF9500'
+    case 'low':
+      return '#FF453A'
+    default:
+      return null
+  }
+}
+
 export function getScoreLabel(score: number): string {
   if (score >= 7) return 'High'
   if (score >= 4) return 'OK'
