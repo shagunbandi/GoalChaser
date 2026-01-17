@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from './useAuth'
-import { getFirebaseDb, isUsingEmulator } from '@/lib/firebase-service'
+import { getFirebaseDb } from '@/lib/firebase-service'
 import { logger } from '@/lib/logger'
 
 // ============ Types ============
@@ -39,8 +40,14 @@ function saveToStorage<T>(key: string, value: T): void {
   }
 }
 
+// ============ Query Keys ============
+const goalsKeys = {
+  all: ['goals'] as const,
+  list: (userId: string) => [...goalsKeys.all, 'list', userId] as const,
+}
+
 // ============ Firebase Helpers ============
-async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
+async function loadGoalsFromFirebase(userId: string): Promise<Goal[]> {
   try {
     logger.progress('Loading goals...')
     
@@ -66,10 +73,17 @@ async function loadGoalsFromFirebase(userId: string): Promise<Goal[] | null> {
     })
 
     logger.success(`Loaded ${goals.length} goals`)
+    
+    // Cache to localStorage
+    const userStorageKey = `${STORAGE_KEY}_${userId}`
+    saveToStorage(userStorageKey, goals)
+    
     return goals
   } catch (error) {
     logger.error('Load failed', error)
-    return null
+    // Fallback to localStorage
+    const userStorageKey = `${STORAGE_KEY}_${userId}`
+    return loadFromStorage(userStorageKey, [])
   }
 }
 
@@ -136,54 +150,26 @@ interface UseGoalsReturn {
 
 export function useGoals(): UseGoalsReturn {
   const { user, isLoading: authLoading } = useAuth()
-  const [goals, setGoals] = useState<Goal[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isUsingFirebase, setIsUsingFirebase] = useState(false)
+  const queryClient = useQueryClient()
+  const userId = user?.uid || ''
 
-  // Get user ID for storage
-  const userId = user?.uid || 'default_user'
-  const userStorageKey = `${STORAGE_KEY}_${userId}`
+  // Query for goals - cached by React Query
+  const {
+    data: goals = [],
+    isLoading: queryLoading,
+    error: queryError,
+  } = useQuery({
+    queryKey: goalsKeys.list(userId),
+    queryFn: () => loadGoalsFromFirebase(userId),
+    enabled: !!userId && !authLoading,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    placeholderData: (previousData) => previousData, // Keep previous data during refetch
+  })
 
-  // Load initial data
-  useEffect(() => {
-    async function loadData() {
-      if (authLoading) return
-
-      try {
-        setIsLoading(true)
-        setError(null)
-
-        if (user) {
-          const loadedGoals = await loadGoalsFromFirebase(user.uid)
-
-          if (loadedGoals !== null) {
-            setIsUsingFirebase(true)
-            setGoals(loadedGoals)
-            saveToStorage(userStorageKey, loadedGoals)
-          } else {
-            setIsUsingFirebase(false)
-            setGoals(loadFromStorage(userStorageKey, []))
-          }
-        } else {
-          setIsUsingFirebase(false)
-          setGoals([])
-        }
-      } catch (err) {
-        logger.error('Load failed', err)
-        setError('Failed to load goals')
-        setIsUsingFirebase(false)
-        setGoals(loadFromStorage(userStorageKey, []))
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadData()
-  }, [user, authLoading, userStorageKey])
-
-  const createGoal = useCallback(
-    async (options: CreateGoalOptions): Promise<Goal> => {
+  // Create goal mutation
+  const createGoalMutation = useMutation({
+    mutationFn: async (options: CreateGoalOptions): Promise<Goal> => {
       const newGoal: Goal = {
         id: `goal_${Date.now()}`,
         name: options.name.trim(),
@@ -194,18 +180,14 @@ export function useGoals(): UseGoalsReturn {
         endDate: options.endDate,
       }
 
-      const newGoals = [newGoal, ...goals]
-      setGoals(newGoals)
-      saveToStorage(userStorageKey, newGoals)
-
-      if (isUsingFirebase && user) {
-        await saveGoalToFirebase(user.uid, newGoal)
+      if (userId) {
+        await saveGoalToFirebase(userId, newGoal)
         
         // Save addon configuration if provided
         if (options.enabledPlugins && options.enabledPlugins.length > 0) {
           try {
             const { saveGoalAddonsConfig } = await import('@/lib/api/addon-config-api')
-            await saveGoalAddonsConfig(user.uid, newGoal.id, {
+            await saveGoalAddonsConfig(userId, newGoal.id, {
               enabled: options.enabledPlugins as any[],
             })
           } catch (error) {
@@ -216,33 +198,63 @@ export function useGoals(): UseGoalsReturn {
 
       return newGoal
     },
-    [goals, isUsingFirebase, user, userStorageKey],
+    onSuccess: (newGoal) => {
+      // Optimistically update cache
+      queryClient.setQueryData(goalsKeys.list(userId), (old: Goal[] | undefined) => {
+        const updated = [newGoal, ...(old || [])]
+        // Also update localStorage
+        const userStorageKey = `${STORAGE_KEY}_${userId}`
+        saveToStorage(userStorageKey, updated)
+        return updated
+      })
+    },
+  })
+
+  // Delete goal mutation
+  const deleteGoalMutation = useMutation({
+    mutationFn: async (goalId: string) => {
+      if (userId) {
+        await deleteGoalFromFirebase(userId, goalId)
+      }
+      return goalId
+    },
+    onSuccess: (goalId) => {
+      // Optimistically update cache
+      queryClient.setQueryData(goalsKeys.list(userId), (old: Goal[] | undefined) => {
+        const updated = (old || []).filter((g) => g.id !== goalId)
+        // Also update localStorage
+        const userStorageKey = `${STORAGE_KEY}_${userId}`
+        saveToStorage(userStorageKey, updated)
+        return updated
+      })
+    },
+  })
+
+  const createGoal = useCallback(
+    async (options: CreateGoalOptions): Promise<Goal> => {
+      return createGoalMutation.mutateAsync(options)
+    },
+    [createGoalMutation]
   )
 
   const deleteGoal = useCallback(
-    async (id: string) => {
-      const newGoals = goals.filter((g) => g.id !== id)
-      setGoals(newGoals)
-      saveToStorage(userStorageKey, newGoals)
-
-      if (isUsingFirebase && user) {
-        await deleteGoalFromFirebase(user.uid, id)
-      }
+    async (id: string): Promise<void> => {
+      await deleteGoalMutation.mutateAsync(id)
     },
-    [goals, isUsingFirebase, user, userStorageKey],
+    [deleteGoalMutation]
   )
 
   const getGoal = useCallback(
-    (id: string) => {
+    (id: string): Goal | undefined => {
       return goals.find((g) => g.id === id)
     },
-    [goals],
+    [goals]
   )
 
   return {
     goals,
-    isLoading: isLoading || authLoading,
-    error,
+    isLoading: authLoading || (queryLoading && goals.length === 0),
+    error: queryError ? 'Failed to load goals' : null,
     createGoal,
     deleteGoal,
     getGoal,

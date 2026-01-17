@@ -17,13 +17,32 @@ import type { Goal } from '@/types'
 class PluginRegistry {
   private plugins: Map<string, Plugin> = new Map()
   private initialized = false
+  private initPromise: Promise<void> | null = null
+
+  /**
+   * Check if the registry is already initialized
+   */
+  isInitialized(): boolean {
+    return this.initialized
+  }
 
   /**
    * Initialize the registry by loading all plugins from the manifest
+   * Uses promise-based guard to prevent race conditions
    */
   async initialize(): Promise<void> {
+    // If already initialized, return immediately
     if (this.initialized) return
 
+    // If initialization is in progress, wait for it
+    if (this.initPromise) return this.initPromise
+
+    // Start initialization and store the promise
+    this.initPromise = this.doInitialize()
+    return this.initPromise
+  }
+
+  private async doInitialize(): Promise<void> {
     const { AVAILABLE_PLUGINS } = await import('./manifest')
     
     for (const entry of AVAILABLE_PLUGINS) {
@@ -45,6 +64,7 @@ class PluginRegistry {
     }
 
     this.initialized = true
+    console.log('[PluginRegistry] Initialization complete')
   }
 
   /**

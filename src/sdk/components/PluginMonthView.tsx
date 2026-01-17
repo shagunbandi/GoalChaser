@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { MonthCalendar } from '../ui/MonthCalendar'
 import { useMonthCalendar } from '../hooks/useMonthCalendar'
 import type { Plugin } from '../interfaces/plugin.interface'
@@ -69,6 +70,8 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
   buildDayCustomization,
   detailContext,
 }: PluginMonthViewProps<TDayData>) {
+  const router = useRouter()
+
   const {
     year,
     month,
@@ -82,6 +85,20 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
     initialMonth,
     initialSelectedDate, // Pass the initial selected date
   })
+
+  // Handle day click - update both local state AND URL
+  const handleDayClick = useCallback(
+    (date: string) => {
+      console.log('[PluginMonthView] Day clicked:', date)
+      setSelectedDate(date)
+      // Update URL without causing navigation/reload
+      const currentPath = window.location.pathname
+      const newUrl = `${currentPath}?date=${date}`
+      console.log('[PluginMonthView] Updating URL to:', newUrl)
+      router.replace(newUrl, { scroll: false })
+    },
+    [setSelectedDate, router],
+  )
 
   // Build day customizations using plugin data
   const dayCustomizations = useMemo(() => {
@@ -200,7 +217,7 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
             dayCustomizations={dayCustomizations}
             onPrevMonth={prevMonth}
             onNextMonth={nextMonth}
-            onDayClick={setSelectedDate}
+            onDayClick={handleDayClick}
             testIdPrefix={`${plugin.id}-month`}
           />
         </div>

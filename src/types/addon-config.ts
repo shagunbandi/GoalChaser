@@ -5,6 +5,7 @@ export type AddonCategory = {
   name: string
   icon: string
   isPrimary: boolean
+  route?: string // Main route for this addon
   subItems?: AddonSubItem[]
 }
 

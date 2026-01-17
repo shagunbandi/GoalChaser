@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { AddonId } from '@/types'
 import { loadCalendarDays, saveCalendarDay } from '@/components/features/calendar/api'
 // Exception: Finance and Travel APIs are imported directly for non-day-based data
@@ -87,6 +87,12 @@ export function useGoalDataLoader({
   const [error, setError] = useState<Error | null>(null)
   const [enabledAddons, setEnabledAddons] = useState<AddonId[]>(['calendar'])
   
+  // Track if we've done the initial load - use ref to avoid re-triggering loadData
+  const hasInitiallyLoadedRef = useRef(false)
+  
+  // Track if addons config has been loaded - prevents double data loading
+  const [addonsConfigLoaded, setAddonsConfigLoaded] = useState(false)
+  
   // Get plugin registry
   const { registry, initialized: registryInitialized } = usePluginRegistry()
 
@@ -119,6 +125,8 @@ export function useGoalDataLoader({
         setEnabledAddons(config.enabled)
       } catch (err) {
         console.error('Failed to load add-ons config:', err)
+      } finally {
+        setAddonsConfigLoaded(true)
       }
     }
     
@@ -127,13 +135,26 @@ export function useGoalDataLoader({
 
   // Main data loading function
   const loadData = useCallback(async () => {
-    // Don't load if not enabled or userId is missing or registry not initialized
-    if (!enabled || !userId || !registryInitialized) {
-      setLoading(false)
+    console.log('[useGoalDataLoader] loadData called', { 
+      enabled, userId, registryInitialized, addonsConfigLoaded, 
+      enabledAddonsCount: enabledAddons.length 
+    })
+    
+    // Don't load if not enabled, userId is missing, registry not initialized, or addons config not loaded
+    if (!enabled || !userId || !registryInitialized || !addonsConfigLoaded) {
+      // Only set loading to false if we're not waiting for something
+      if (!enabled) {
+        setLoading(false)
+      }
       return
     }
 
-    setLoading(true)
+    // Only show loading state on INITIAL load, not subsequent loads
+    // This prevents the UI from flashing loading state when switching years
+    if (!hasInitiallyLoadedRef.current) {
+      console.log('[useGoalDataLoader] Setting loading = true (initial load)')
+      setLoading(true)
+    }
     setError(null)
 
     try {
@@ -175,6 +196,11 @@ export function useGoalDataLoader({
       // Note: Travel data is now loaded via the plugin's data provider (day-based storage)
       // No need to load from the old plans collection
 
+      console.log('[useGoalDataLoader] Data loaded', { 
+        pluginDataKeys: Object.keys(newPluginData), 
+        configKeys: Object.keys(newPluginConfigs) 
+      })
+      
       setPluginData(newPluginData)
       setPluginConfigs(newPluginConfigs)
       setBudgets(budgetsData)
@@ -185,8 +211,9 @@ export function useGoalDataLoader({
       setError(err as Error)
     } finally {
       setLoading(false)
+      hasInitiallyLoadedRef.current = true
     }
-  }, [userId, goalId, startDate, endDate, enabledAddons, enabled, registryInitialized, registry])
+  }, [userId, goalId, startDate, endDate, enabledAddons, enabled, registryInitialized, registry, addonsConfigLoaded])
 
   // Load data on mount and when params change
   useEffect(() => {

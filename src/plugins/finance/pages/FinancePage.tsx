@@ -1,7 +1,7 @@
 'use client'
 
 import type { PluginPageProps } from '@/sdk'
-import { usePluginPage, LoadingState } from '@/sdk'
+import { usePluginPage, LoadingState, NotFoundState } from '@/sdk'
 import { FinanceHeader, BudgetingView, FinanceMonthView } from '../components'
 import type { FinanceTransactionData, FinanceConfig } from '../types'
 import { FinancePlugin } from '../plugin'
@@ -76,11 +76,24 @@ export default function FinancePage({
     })
   }
 
-  if (isLoading) return <LoadingState />
+  // Check if we have any data yet (for initial load vs navigation)
+  const hasData = Object.keys(pluginDayData).length > 0 || pluginConfig !== null
+
+  // Only show full-page loading on TRUE initial load (no goal AND no cached data)
+  // This prevents the header from disappearing during navigation
+  if (!goal && isLoading && !hasData) return <LoadingState />
+  if (!goal && !isLoading) return <NotFoundState />
+
+  // Content loading indicator (shown inline when switching years)
+  const ContentLoader = () => (
+    <div className="flex items-center justify-center py-20">
+      <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
 
   return (
     <div className="space-y-6">
-      {/* Shared Header Component */}
+      {/* Header - ALWAYS rendered, never unmounted */}
       <FinanceHeader
         year={currentYear}
         dayData={pluginDayData}
@@ -88,8 +101,10 @@ export default function FinancePage({
         onNextYear={navigateToNextYear}
       />
 
-      {/* Conditionally render Month or Year view */}
-      {month ? (
+      {/* Content - shows inline loader when switching years */}
+      {isLoading && !hasData ? (
+        <ContentLoader />
+      ) : month ? (
         <FinanceMonthView
           plugin={FinancePlugin}
           month={month}

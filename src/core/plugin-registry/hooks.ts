@@ -11,12 +11,21 @@ import type { Plugin } from '@/sdk'
 /**
  * Hook to use the plugin registry
  * Automatically initializes the registry on first use
+ * Uses registry's actual state as initial value to avoid unnecessary re-renders
  */
 export function usePluginRegistry() {
-  const [initialized, setInitialized] = useState(false)
-  const [loading, setLoading] = useState(true)
+  // Use the actual registry state as initial value - prevents re-renders on navigation
+  const [initialized, setInitialized] = useState(() => pluginRegistry.isInitialized())
+  const [loading, setLoading] = useState(() => !pluginRegistry.isInitialized())
 
   useEffect(() => {
+    // If already initialized, no need to do anything
+    if (pluginRegistry.isInitialized()) {
+      setInitialized(true)
+      setLoading(false)
+      return
+    }
+
     async function init() {
       try {
         await pluginRegistry.initialize()

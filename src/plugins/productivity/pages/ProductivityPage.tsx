@@ -19,6 +19,8 @@ export default function ProductivityPage({
   year,
   month,
 }: PluginPageProps) {
+  console.log('[ProductivityPage] RENDER', { year, month, params })
+
   const {
     goal,
     goalId,
@@ -38,6 +40,13 @@ export default function ProductivityPage({
     pluginId: 'productivity',
     params,
     year,
+  })
+
+  console.log('[ProductivityPage] usePluginPage result', {
+    isLoading,
+    hasGoal: !!goal,
+    dataCount: Object.keys(pluginDayData).length,
+    currentYear,
   })
 
   const handleJumpToDay = (iso: string) => {
@@ -126,12 +135,24 @@ export default function ProductivityPage({
     )
   }
 
-  if (isLoading) return <LoadingState />
-  if (!goal) return <NotFoundState />
+  // Check if we have any data yet (for initial load vs navigation)
+  const hasData = Object.keys(pluginDayData).length > 0 || pluginConfig !== null
+
+  // Only show full-page loading on TRUE initial load (no goal AND no cached data)
+  // This prevents the header from disappearing during navigation
+  if (!goal && isLoading && !hasData) return <LoadingState />
+  if (!goal && !isLoading) return <NotFoundState />
+
+  // Content loading indicator (shown inline when switching years)
+  const ContentLoader = () => (
+    <div className="flex items-center justify-center py-20">
+      <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
 
   return (
     <div className="space-y-6">
-      {/* Shared Header Component */}
+      {/* Header - ALWAYS rendered, never unmounted */}
       <ProductivityHeader
         year={currentYear}
         dayData={pluginDayData}
@@ -148,8 +169,10 @@ export default function ProductivityPage({
         isTopicInUse={isAreaTopicInUse}
       />
 
-      {/* Conditionally render Month or Year view */}
-      {month ? (
+      {/* Content - shows inline loader when switching years */}
+      {isLoading && !hasData ? (
+        <ContentLoader />
+      ) : month ? (
         <ProductivityMonthView
           plugin={ProductivityPlugin}
           month={month}

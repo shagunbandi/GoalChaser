@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from './useAuth'
 import { useGoals } from './useGoals'
-import { useGoalDataLoader } from './useGoalDataLoader'
+import { useGoalDataQuery } from './useGoalDataQuery'
 import { toISODateString, getMsUntilMidnight } from '@/utils'
 import type { PluginConfigData, PluginDayData } from '@/sdk'
 import type { TravelPlan } from '@/plugins/travel/types'
@@ -12,7 +12,7 @@ import type { BudgetPlan, SIPPlan } from '@/plugins/finance/types'
 
 /**
  * Main hook for goal data management
- * Now uses the new generic plugin data architecture
+ * Uses React Query for efficient data fetching and caching
  */
 export function useGoalData(goalId: string, year?: number) {
   const router = useRouter()
@@ -32,8 +32,8 @@ export function useGoalData(goalId: string, year?: number) {
 
   // Only use data loader when user is available
   const shouldLoad = !!user?.uid
-  
-  // Use new data loader hook
+
+  // Use React Query based data loader
   const {
     pluginData,
     pluginConfigs,
@@ -50,13 +50,13 @@ export function useGoalData(goalId: string, year?: number) {
     deleteSIP: deleteSIPHandler,
     saveTravelPlan,
     deleteTravelPlan: deleteTravelPlanHandler,
-    reload
-  } = useGoalDataLoader({
+    reload,
+  } = useGoalDataQuery({
     userId: user?.uid || '',
     goalId,
     startDate,
     endDate,
-    enabled: shouldLoad
+    enabled: shouldLoad,
   })
 
   // Status bar state
@@ -87,14 +87,20 @@ export function useGoalData(goalId: string, year?: number) {
   }, [])
 
   // Generic config management helpers
-  const updateConfig = useCallback(async (pluginId: string, config: PluginConfigData) => {
-    await updatePluginConfig(pluginId, config)
-  }, [updatePluginConfig])
+  const updateConfig = useCallback(
+    async (pluginId: string, config: PluginConfigData) => {
+      await updatePluginConfig(pluginId, config)
+    },
+    [updatePluginConfig]
+  )
 
   // Generic data update helper
-  const handleUpdateData = useCallback(async (pluginId: string, date: string, updates: Partial<PluginDayData>) => {
-    await updatePluginData(pluginId, date, updates)
-  }, [updatePluginData])
+  const handleUpdateData = useCallback(
+    async (pluginId: string, date: string, updates: Partial<PluginDayData>) => {
+      await updatePluginData(pluginId, date, updates)
+    },
+    [updatePluginData]
+  )
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -104,55 +110,70 @@ export function useGoalData(goalId: string, year?: number) {
   }, [authLoading, user, router])
 
   // Travel handler
-  const handleAddTravel = useCallback(async (travel: Omit<TravelPlan, 'id'>) => {
-    pushStatus({ text: 'Saving travel…', tone: 'progress' })
+  const handleAddTravel = useCallback(
+    async (travel: Omit<TravelPlan, 'id'>) => {
+      pushStatus({ text: 'Saving travel…', tone: 'progress' })
 
-    try {
-      const plan = {
-        ...travel,
-        id: `travel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      } as TravelPlan
+      try {
+        const plan = {
+          ...travel,
+          id: `travel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        } as TravelPlan
 
-      await saveTravelPlan(plan)
+        await saveTravelPlan(plan)
 
-      pushStatus({
-        text: 'Travel saved',
-        tone: 'success',
-      })
-    } catch (err) {
-      console.error('Failed to save travel:', err)
-      pushStatus({ text: 'Failed to save travel', tone: 'error' })
-    }
-  }, [saveTravelPlan, pushStatus])
+        pushStatus({
+          text: 'Travel saved',
+          tone: 'success',
+        })
+      } catch (err) {
+        console.error('Failed to save travel:', err)
+        pushStatus({ text: 'Failed to save travel', tone: 'error' })
+      }
+    },
+    [saveTravelPlan]
+  )
 
-  // Budget handlers  
-  const handleSaveBudget = useCallback(async (budget: BudgetPlan) => {
-    if (!user) return
-    await saveBudget(budget)
-  }, [user, saveBudget])
+  // Budget handlers
+  const handleSaveBudget = useCallback(
+    async (budget: BudgetPlan) => {
+      if (!user) return
+      await saveBudget(budget)
+    },
+    [user, saveBudget]
+  )
 
-  const handleDeleteBudget = useCallback(async (budgetId: string) => {
-    if (!user) return
-    await deleteBudgetHandler(budgetId)
-  }, [user, deleteBudgetHandler])
+  const handleDeleteBudget = useCallback(
+    async (budgetId: string) => {
+      if (!user) return
+      await deleteBudgetHandler(budgetId)
+    },
+    [user, deleteBudgetHandler]
+  )
 
   // SIP handlers
-  const handleSaveSIP = useCallback(async (sip: SIPPlan) => {
-    if (!user) return
-    await saveSIP(sip)
-  }, [user, saveSIP])
+  const handleSaveSIP = useCallback(
+    async (sip: SIPPlan) => {
+      if (!user) return
+      await saveSIP(sip)
+    },
+    [user, saveSIP]
+  )
 
-  const handleDeleteSIP = useCallback(async (sipId: string) => {
-    if (!user) return
-    await deleteSIPHandler(sipId)
-  }, [user, deleteSIPHandler])
+  const handleDeleteSIP = useCallback(
+    async (sipId: string) => {
+      if (!user) return
+      await deleteSIPHandler(sipId)
+    },
+    [user, deleteSIPHandler]
+  )
 
   return {
     // Goal data
     goal,
     goalId,
     user,
-    
+
     // Loading states
     isLoading: authLoading || goalsLoading || dataLoading,
     authLoading,
@@ -160,14 +181,14 @@ export function useGoalData(goalId: string, year?: number) {
     firebaseLoading: dataLoading,
     budgetingLoading: dataLoading,
     firebaseError: dataError,
-    
+
     // Date state
     todayISO,
-    
+
     // Generic plugin data
     pluginData,
     pluginConfigs,
-    
+
     // Non-day-based data
     budgets,
     sips,
@@ -176,22 +197,22 @@ export function useGoalData(goalId: string, year?: number) {
     // Generic handlers
     handleUpdateData,
     updateConfig,
-    
+
     // Travel handlers
     handleAddTravel,
-    
+
     // Budget handlers
     handleSaveBudget,
     handleDeleteBudget,
     handleSaveSIP,
     handleDeleteSIP,
-    
+
     // Status
     pushStatus,
     statusText,
     statusTone,
-    
+
     // Additional methods
-    reload
+    reload,
   }
 }

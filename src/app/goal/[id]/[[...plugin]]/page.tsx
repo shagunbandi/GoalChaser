@@ -1,268 +1,141 @@
 /**
- * Dynamic Route Handler for Goal Pages
+ * Dynamic Route Handler for Goal Plugin Pages
  *
- * This page handles both the core calendar view and plugin routes.
  * Route: /goal/[id]/[[...plugin]]
  *
  * Examples:
- * - /goal/abc123 -> Calendar (core, always available)
+ * - /goal/abc123 -> Calendar
  * - /goal/abc123/study/2024 -> Study plugin for 2024
- * - /goal/abc123/productivity/2024 -> Productivity plugin for 2024
+ * - /goal/abc123/productivity/2024/3 -> Productivity plugin for March 2024
  */
 
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useGoals } from '@/hooks/useGoals'
 import { usePluginRegistry } from '@/core/plugin-registry/hooks'
-import { useAddonsConfig } from '@/hooks/useAddonsConfig'
-import { Navbar } from '@/components/ui'
-import { GroupedTabBar, AddonsManagerModal } from '@/components/features'
-import type { Plugin, PluginContext } from '@/sdk'
+import type { PluginContext } from '@/sdk'
 
-// Core Calendar components (not a plugin)
+// Core Calendar page
 import CalendarPage from '@/components/features/calendar/CalendarPage'
 
 export default function PluginPage() {
   const params = useParams()
-  const router = useRouter()
   const goalId = params.id as string
   const pluginSegments = (params.plugin as string[]) || []
-  // Create a stable string representation to avoid array comparison issues
-  const pluginPath = pluginSegments.join('/')
 
-  const { user, isLoading: authLoading } = useAuth()
-  const { getGoal, isLoading: goalsLoading } = useGoals()
+  const { user } = useAuth()
+  const { getGoal } = useGoals()
   const goal = getGoal(goalId)
+  const { registry, loading: registryLoading } = usePluginRegistry()
 
-  const { enabledAddons, saveAddons } = useAddonsConfig(user?.uid, goalId)
-  const [showAddonsManager, setShowAddonsManager] = useState(false)
+  // Parse URL segments directly
+  const pluginId = pluginSegments[0] || 'calendar'
 
-  const [plugin, setPlugin] = useState<Plugin | null>(null)
-  const [PluginComponent, setPluginComponent] =
-    useState<React.ComponentType<any> | null>(null)
-  const [context, setContext] = useState<PluginContext | null>(null)
-  const [year, setYear] = useState<number | undefined>(undefined)
-  const [month, setMonth] = useState<number | undefined>(undefined)
-
-  // Use the registry hook instead of initializing directly
-  const { registry: pluginReg, loading: registryLoading } = usePluginRegistry()
-
-  // Resolve plugin route once registry is loaded
-  useEffect(() => {
-    if (registryLoading) return
-
-    async function resolveRoute() {
-      try {
-        // If no plugin segments, show Calendar (core feature, not a plugin)
-        if (pluginSegments.length === 0) {
-          setPlugin(null) // null indicates core calendar
-          setPluginComponent(() => CalendarPage)
-          setYear(undefined)
-
-          // Create a minimal context for calendar
-          if (user) {
-            const ctx: PluginContext = {
-              userId: user.uid,
-              goalId,
-              goal,
-              logger: {
-                info: (msg: string) => console.log(`[Calendar] ${msg}`),
-                error: (msg: string, err?: unknown) =>
-                  console.error(`[Calendar] ${msg}`, err),
-                warn: (msg: string) => console.warn(`[Calendar] ${msg}`),
-                success: (msg: string) => console.log(`[Calendar] ✓ ${msg}`),
-                progress: (msg: string) => console.log(`[Calendar] ... ${msg}`),
-              },
-              firestore: {} as any, // Not used by calendar
-            }
-            setContext(ctx)
-          }
-          return
-        }
-
-        // Otherwise, load a plugin
-        const pluginId = pluginSegments[0]
-        let yearParam: number | undefined
-        let monthParam: number | undefined
-
-        // Parse URL segments: /goal/[id]/[pluginId]/[year]/[month]
-        // If there's a second segment and it's a number, it's the year
-        if (pluginSegments.length > 1) {
-          const parsedYear = parseInt(pluginSegments[1])
-          if (!isNaN(parsedYear)) {
-            yearParam = parsedYear
-          }
-        }
-
-        // If there's a third segment and it's a number, it's the month
-        if (pluginSegments.length > 2) {
-          const parsedMonth = parseInt(pluginSegments[2])
-          if (!isNaN(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12) {
-            monthParam = parsedMonth
-          }
-        }
-
-        const loadedPlugin = pluginReg.getPlugin(pluginId)
-
-        if (!loadedPlugin) {
-          console.error(`Plugin not found: ${pluginId}`)
-          return
-        }
-
-        // Find the matching route
-        const route = loadedPlugin.routes.find((r) => {
-          if (r.requiresYear) {
-            return yearParam !== undefined
-          }
-          return true
-        })
-
-        if (!route) {
-          console.error(`No matching route for plugin: ${pluginId}`)
-          return
-        }
-
-        setPlugin(loadedPlugin)
-        setPluginComponent(() => route.component)
-        setYear(yearParam)
-        setMonth(monthParam)
-
-        // Create plugin context
-        if (user) {
-          const ctx = pluginReg.createContext(
-            user.uid,
-            goalId,
-            loadedPlugin.id,
-            goal,
-          )
-          setContext(ctx)
-        }
-      } catch (error) {
-        console.error('Failed to resolve plugin:', error)
-      }
+  // Parse year
+  let year: number | undefined
+  if (pluginSegments.length > 1) {
+    const parsed = parseInt(pluginSegments[1])
+    if (!isNaN(parsed)) {
+      year = parsed
     }
+  }
 
-    resolveRoute()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pluginPath, user?.uid, goalId, registryLoading]) // goal and pluginReg are singletons, don't need to be in deps
-
-  // Redirect to home if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/')
+  // Parse month
+  let month: number | undefined
+  if (pluginSegments.length > 2) {
+    const parsed = parseInt(pluginSegments[2])
+    if (!isNaN(parsed) && parsed >= 1 && parsed <= 12) {
+      month = parsed
     }
-  }, [authLoading, user, router])
+  }
 
   // Loading state
-  if (authLoading || goalsLoading || registryLoading) {
+  if (registryLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="glass-background">
-          <div className="orb-1" />
-          <div className="orb-2" />
-        </div>
-        <div className="noise-overlay" />
-        <div className="relative z-10 text-center">
-          <div className="w-12 h-12 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white/50">Loading...</p>
-        </div>
+      <div className="flex items-center justify-center py-12">
+        <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
-  // Not authenticated
-  if (!user) {
-    return null
-  }
-
-  // Goal not found
-  if (!goal) {
+  // Not ready
+  if (!user || !goal) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="glass-background">
-          <div className="orb-1" />
-          <div className="orb-2" />
-        </div>
-        <div className="noise-overlay" />
-        <div className="relative z-10 text-center">
-          <div className="text-6xl mb-4 opacity-80">🤔</div>
-          <h1 className="text-2xl font-semibold text-white/90 mb-4">
-            Goal Not Found
-          </h1>
-          <p className="text-white/50 mb-6">
-            This goal doesn&apos;t exist or was deleted.
-          </p>
-        </div>
+      <div className="flex items-center justify-center py-12">
+        <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
-  // Component not loaded yet
-  if (!PluginComponent || !context) {
+  // Calendar - default route
+  if (pluginId === 'calendar') {
+    const context: PluginContext = {
+      userId: user.uid,
+      goalId,
+      goal,
+      logger: {
+        info: (msg: string) => console.log(`[Calendar] ${msg}`),
+        error: (msg: string, err?: unknown) =>
+          console.error(`[Calendar] ${msg}`, err),
+        warn: (msg: string) => console.warn(`[Calendar] ${msg}`),
+        success: (msg: string) => console.log(`[Calendar] ✓ ${msg}`),
+        progress: (msg: string) => console.log(`[Calendar] ... ${msg}`),
+      },
+      firestore: {} as any,
+    }
+
+    return <CalendarPage context={context} year={year} />
+  }
+
+  // Load plugin
+  const plugin = registry.getPlugin(pluginId)
+  if (!plugin) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="glass-background">
-          <div className="orb-1" />
-          <div className="orb-2" />
-        </div>
-        <div className="noise-overlay" />
-        <div className="relative z-10 text-center">
-          <div className="text-6xl mb-4 opacity-80">🔌</div>
-          <h1 className="text-2xl font-semibold text-white/90 mb-4">
-            Loading...
-          </h1>
-          <p className="text-white/50 mb-6">Please wait...</p>
-        </div>
+      <div className="text-center py-12">
+        <div className="text-6xl mb-4 opacity-80">🔌</div>
+        <h2 className="text-xl font-semibold text-white/90 mb-2">
+          Plugin Not Found
+        </h2>
+        <p className="text-white/50">
+          Plugin &quot;{pluginId}&quot; doesn&apos;t exist or isn&apos;t
+          enabled.
+        </p>
       </div>
     )
   }
 
-  // Get current year for tab navigation
-  const currentYear = year || new Date().getFullYear()
+  // Find route
+  const route = plugin.routes.find((r) => {
+    if (r.requiresYear) {
+      return year !== undefined
+    }
+    return true
+  })
+
+  if (!route) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-6xl mb-4 opacity-80">🔌</div>
+        <h2 className="text-xl font-semibold text-white/90 mb-2">
+          No Route Found
+        </h2>
+        <p className="text-white/50">No matching route for this plugin.</p>
+      </div>
+    )
+  }
+
+  // Create context
+  const context = registry.createContext(user.uid, goalId, plugin.id, goal)
+  const Component = route.component
 
   return (
-    <div className="min-h-screen">
-      <div className="glass-background">
-        <div className="orb-1" />
-        <div className="orb-2" />
-      </div>
-      <div className="noise-overlay" />
-
-      <Navbar
-        goalId={goalId}
-        goalName={goal.name}
-        goalDescription={goal.description}
-      >
-        <GroupedTabBar
-          goalId={goalId}
-          currentAddon={(plugin?.id || 'calendar') as any}
-          currentYear={currentYear}
-          enabledAddons={enabledAddons}
-          onManageAddons={() => setShowAddonsManager(true)}
-        />
-      </Navbar>
-
-      <div className="relative z-10">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-6">
-          <PluginComponent
-            context={context}
-            params={params}
-            year={year}
-            month={month}
-          />
-        </div>
-      </div>
-
-      <AddonsManagerModal
-        open={showAddonsManager}
-        onClose={() => setShowAddonsManager(false)}
-        goalId={goalId}
-        enabledAddons={enabledAddons}
-        onSave={saveAddons}
-      />
-    </div>
+    <Component
+      context={context}
+      params={{ id: goalId, plugin: pluginSegments }}
+      year={year}
+      month={month}
+    />
   )
 }
