@@ -37,53 +37,44 @@ export default function BackupPage() {
 
   /**
    * Get known subcollections based on the current path
+   * Updated for new plugin architecture
    */
   const getKnownSubcollections = (path: string[], docId: string): string[] => {
     const pathStr = path.join('/')
 
     // User's goals collection (path: users/{userId}/goals)
     if (pathStr.match(/^users\/[^/]+\/goals$/)) {
-      return [
-        'days',
-        'settings',
-        'budgets',
-        'sips',
-        'travelPlans',
-        'addons'
-      ]
+      return ['addons']
     }
 
     // Goal's addons collection (path: users/{userId}/goals/{goalId}/addons)
+    // Contains plugin IDs as documents
     if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons$/)) {
       return [
-        'calendar',
         'productivity',
         'study',
         'finance',
-        'travel'
+        'travel',
+        'agenda'
       ]
     }
 
-    // Add-on specific subcollections
-    if (pathStr.includes('/addons/calendar')) {
-      return ['days']
-    }
-    if (pathStr.includes('/addons/productivity')) {
+    // Plugin-specific subcollections (path: users/{userId}/goals/{goalId}/addons/{pluginId})
+    // Each plugin has 'days' for day data and 'settings' for config
+    if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons\/productivity$/)) {
       return ['days', 'settings']
     }
-    if (pathStr.includes('/addons/study')) {
+    if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons\/study$/)) {
       return ['days', 'settings']
     }
-    if (pathStr.includes('/addons/finance')) {
-      return ['budgets', 'sips', 'transactions']
+    if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons\/finance$/)) {
+      return ['days', 'settings']
     }
-    if (pathStr.includes('/addons/travel')) {
-      return ['plans']
+    if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons\/travel$/)) {
+      return ['days', 'settings']
     }
-
-    // Goal's settings collection (path: users/{userId}/goals/{goalId}/settings)
-    if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/settings$/)) {
-      return ['subjectConfigs', 'addonsConfig']
+    if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons\/agenda$/)) {
+      return ['days', 'settings']
     }
 
     return []
@@ -328,7 +319,7 @@ export default function BackupPage() {
           </p>
           <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
             <p className="text-blue-300 text-sm">
-              💡 This will export all your goals, days, configurations, budgets, and more to a JSON file.
+              💡 This will export all your goals and plugin data (productivity, study, finance, travel, agenda) to a JSON file.
               Store it safely for backup or migration purposes.
             </p>
           </div>
@@ -428,17 +419,17 @@ export default function BackupPage() {
           </button>
           
           <button
+            onClick={() => router.push('/debug')}
+            className="px-6 py-3 bg-white/5 text-white hover:bg-white/10 rounded-xl transition-colors"
+          >
+            Go to Debug Dashboard
+          </button>
+
+          <button
             onClick={() => router.push('/debug/restore')}
             className="px-6 py-3 bg-white/5 text-white hover:bg-white/10 rounded-xl transition-colors"
           >
             Go to Restore Tool
-          </button>
-
-          <button
-            onClick={() => router.push('/debug/migrate')}
-            className="px-6 py-3 bg-white/5 text-white hover:bg-white/10 rounded-xl transition-colors"
-          >
-            Go to Migration Tool
           </button>
         </div>
 
@@ -446,7 +437,8 @@ export default function BackupPage() {
         <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-xl text-sm text-white/60">
           <h3 className="text-white font-semibold mb-2">📚 About Backups</h3>
           <ul className="space-y-1 list-disc list-inside">
-            <li>Backups include all your goals, calendar entries, budgets, SIPs, and configurations</li>
+            <li>Backups include all your goals and plugin data (productivity, study, finance, travel, agenda)</li>
+            <li>Each plugin stores day-level data and configuration separately</li>
             <li>The file format is standard JSON and can be inspected with any text editor</li>
             <li>Recommended: Back up before running migrations or major updates</li>
             <li>Store backups securely - they contain your personal data</li>

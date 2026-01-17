@@ -3,6 +3,13 @@
 import { useState } from 'react'
 import type { AreaEntry, AreaConfig } from '@/plugins/productivity/types'
 
+const hoursToParts = (value: number) => {
+  const totalMinutes = Math.round(Math.max(0, value) * 60)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return { hours, minutes }
+}
+
 interface AreaEntriesProps {
   currentAreas: AreaEntry[]
   areaConfigs: AreaConfig[]
@@ -29,6 +36,9 @@ export function AreaEntries({
   const [showAddTopicForArea, setShowAddTopicForArea] = useState<string | null>(null)
   const [newTopicInput, setNewTopicInput] = useState('')
 
+  // Calculate total hours
+  const totalHours = currentAreas.reduce((sum, area) => sum + (area.hours || 0), 0)
+
   // Get topics for an area
   const getTopicsForArea = (areaName: string) => {
     const config = areaConfigs.find((a) => a.name === areaName)
@@ -54,6 +64,7 @@ export function AreaEntries({
     const newEntry: AreaEntry = {
       area: areaName,
       topics: [],
+      hours: 0,
     }
     onUpdateAreas([...currentAreas, newEntry])
     setExpandedAreaIndex(currentAreas.length)
@@ -68,6 +79,25 @@ export function AreaEntries({
     } else if (expandedAreaIndex !== null && expandedAreaIndex > index) {
       setExpandedAreaIndex(expandedAreaIndex - 1)
     }
+  }
+
+  // Update hours for an area entry
+  const handleUpdateHours = (areaIndex: number, hours: number) => {
+    const newAreas = currentAreas.map((a, i) =>
+      i === areaIndex ? { ...a, hours: Math.max(0, hours) } : a,
+    )
+    onUpdateAreas(newAreas)
+  }
+
+  const handleSetHoursParts = (
+    areaIndex: number,
+    hoursPart: number,
+    minutesPart: number,
+  ) => {
+    const safeHours = Math.max(0, Math.floor(hoursPart))
+    const safeMinutes = Math.min(59, Math.max(0, Math.floor(minutesPart)))
+    const totalMinutes = safeHours * 60 + safeMinutes
+    handleUpdateHours(areaIndex, totalMinutes / 60)
   }
 
   // Toggle topic selection for an area entry
@@ -118,6 +148,11 @@ export function AreaEntries({
         <label className="block text-sm font-medium text-white/60">
           Areas
         </label>
+        {totalHours > 0 && (
+          <span className="text-xs text-[#FF9500]">
+            Total: {hoursToParts(totalHours).hours}h {hoursToParts(totalHours).minutes}m
+          </span>
+        )}
       </div>
 
       {/* Added Areas */}
@@ -126,6 +161,9 @@ export function AreaEntries({
           {currentAreas.map((entry, index) => {
             const hasTopics = areaHasTopics(entry.area)
             const isExpanded = expandedAreaIndex === index
+            const { hours: hoursPart, minutes: minutesPart } = hoursToParts(
+              entry.hours || 0,
+            )
 
             return (
               <div
@@ -167,6 +205,11 @@ export function AreaEntries({
                       <span className="text-xs text-white/40">
                         {entry.topics.length} topic
                         {entry.topics.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {hasTopics && (hoursPart > 0 || minutesPart > 0) && (
+                      <span className="text-xs text-[#FF9500] font-medium">
+                        {hoursPart}h {minutesPart}m
                       </span>
                     )}
                   </div>
@@ -262,6 +305,92 @@ export function AreaEntries({
                             + Topic
                           </button>
                         )}
+                      </div>
+                    </div>
+
+                    {/* Hours */}
+                    <div className="space-y-2">
+                      <label className="text-xs text-white/40">
+                        Hours Spent
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() =>
+                            handleUpdateHours(index, (entry.hours || 0) - 0.5)
+                          }
+                          className="
+                            w-8 h-8 rounded-lg
+                            bg-white/[0.05] hover:bg-white/[0.1]
+                            text-white/60 hover:text-white
+                            transition-all duration-200
+                            flex items-center justify-center
+                          "
+                        >
+                          −
+                        </button>
+                        <div className="flex items-center rounded-2xl border border-white/[0.1] bg-black/20 px-3 py-1 text-sm gap-3">
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              aria-label="Hours spent"
+                              data-testid={`hours-input-${entry.area}`}
+                              value={hoursPart}
+                              onChange={(e) =>
+                                handleSetHoursParts(
+                                  index,
+                                  parseInt(e.target.value, 10) || 0,
+                                  minutesPart,
+                                )
+                              }
+                              className="
+                                w-16 min-w-[3.5rem] rounded-xl border border-white/[0.1] bg-white/5 px-3 py-1 text-center text-white text-xs
+                                focus:border-[#FF9500]/50 focus:outline-none
+                              "
+                            />
+                            <span className="text-xs text-white/40">h</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              max="59"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              aria-label="Minutes spent"
+                              value={minutesPart}
+                              onChange={(e) =>
+                                handleSetHoursParts(
+                                  index,
+                                  hoursPart,
+                                  parseInt(e.target.value, 10) || 0,
+                                )
+                              }
+                              className="
+                                w-16 min-w-[3.5rem] rounded-xl border border-white/[0.1] bg-white/5 px-3 py-1 text-center text-white text-xs
+                                focus:border-[#FF9500]/50 focus:outline-none
+                              "
+                            />
+                            <span className="text-xs text-white/40">m</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() =>
+                            handleUpdateHours(index, (entry.hours || 0) + 0.5)
+                          }
+                          className="
+                            w-8 h-8 rounded-lg
+                            bg-white/[0.05] hover:bg-white/[0.1]
+                            text-white/60 hover:text-white
+                            transition-all duration-200
+                            flex items-center justify-center
+                          "
+                        >
+                          +
+                        </button>
+                        <span className="text-xs text-white/40 ml-1">hours</span>
                       </div>
                     </div>
                   </div>

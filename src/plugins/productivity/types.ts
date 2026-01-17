@@ -9,6 +9,7 @@ export type DayStatus = number | null
 export interface AreaEntry {
   area: string
   topics: string[]
+  hours?: number  // Time spent on this area (optional)
 }
 
 export interface AreaConfig {
@@ -22,6 +23,7 @@ export interface AreaConfig {
 export interface ProductivityDayData extends PluginDayData {
   status: DayStatus
   areas?: AreaEntry[]
+  directHours?: number  // Direct hours worked (not tied to specific areas)
   notes?: string  // Productivity-specific notes, separate from calendar notes
 }
 

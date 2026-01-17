@@ -451,17 +451,17 @@ export default function RestorePage() {
           </button>
           
           <button
+            onClick={() => router.push('/debug')}
+            className="px-6 py-3 bg-white/5 text-white hover:bg-white/10 rounded-xl transition-colors"
+          >
+            Go to Debug Dashboard
+          </button>
+          
+          <button
             onClick={() => router.push('/debug/backup')}
             className="px-6 py-3 bg-white/5 text-white hover:bg-white/10 rounded-xl transition-colors"
           >
             Go to Backup Tool
-          </button>
-          
-          <button
-            onClick={() => router.push('/debug/migrate')}
-            className="px-6 py-3 bg-white/5 text-white hover:bg-white/10 rounded-xl transition-colors"
-          >
-            Go to Migration Tool
           </button>
         </div>
 
