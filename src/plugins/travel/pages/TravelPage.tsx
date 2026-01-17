@@ -82,7 +82,10 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
     }
 
     // Add to new dates
-    const newDates = enumerateDateRange(updatedTravel.startDate, updatedTravel.endDate)
+    const newDates = enumerateDateRange(
+      updatedTravel.startDate,
+      updatedTravel.endDate,
+    )
     for (const date of newDates) {
       const existing = (pluginDayData[date]?.travelPlans as TravelPlan[]) || []
       // Filter out any existing with same ID (in case dates overlap)
@@ -160,6 +163,7 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
           onBackToYear={() => navigateToYear(currentYear)}
           onEditTravel={handleUpdateTravel}
           onDeleteTravel={handleDeleteTravel}
+          onAddTravel={handleAddTravel}
         />
       ) : (
         <YearView

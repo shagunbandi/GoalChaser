@@ -3,7 +3,7 @@
 import { PluginMonthView } from '@/sdk'
 import type { DayCustomization } from '@/sdk'
 import { TravelPlugin } from '../plugin'
-import type { TravelDayData, TravelPlan } from '../types'
+import type { TravelDayData, TravelPlan, TravelPlanInput } from '../types'
 
 interface TravelMonthViewProps {
   plugin: any
@@ -17,6 +17,7 @@ interface TravelMonthViewProps {
   onBackToYear: () => void
   onEditTravel?: (travel: TravelPlan) => void | Promise<void>
   onDeleteTravel?: (travelId: string) => void | Promise<void>
+  onAddTravel?: (travel: TravelPlanInput) => void | Promise<void>
 }
 
 export function TravelMonthView({
@@ -31,6 +32,7 @@ export function TravelMonthView({
   onBackToYear,
   onEditTravel,
   onDeleteTravel,
+  onAddTravel,
 }: TravelMonthViewProps) {
   // Build day customizations based on travel plans
   const buildDayCustomization = (
@@ -67,6 +69,7 @@ export function TravelMonthView({
       detailContext={{
         onEditTravel,
         onDeleteTravel,
+        onAddTravel,
       }}
     />
   )
