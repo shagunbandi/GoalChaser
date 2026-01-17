@@ -71,7 +71,7 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
         : undefined
 
       return {
-        color: netAmount >= 0 ? '#34C759' : '#FF3B30', // Green for positive, red for negative
+        color: netAmount >= 0 ? '#22C55E' : '#EF4444', // Bright green for positive, bright red for negative
         hasData: true,
         summary: {
           type: 'accordion',

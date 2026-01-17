@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { MonthCalendar, useMonthCalendar } from '@/sdk'
 import type { DayCustomization, CalendarIndicator } from '@/sdk'
@@ -9,11 +9,22 @@ import {
   PluginSummaryAggregator,
   usePluginIndicators,
 } from './PluginSummaryAggregator'
+import { CalendarFilters } from './CalendarFilters'
 import { useGoalData } from '@/hooks/useGoalData'
 import { usePluginRegistry } from '@/core/plugin-registry/hooks'
 import { useAddonsConfig } from '@/hooks/useAddonsConfig'
 import { useAuth } from '@/hooks/useAuth'
 import { getScoreColorClass } from '@/utils'
+import {
+  getHoursBackgroundColor,
+  getFinanceBackgroundColor,
+  getTravelBackgroundColor,
+} from '@/utils/plugin-colors'
+import {
+  loadCalendarFilters,
+  saveCalendarFilters,
+} from '@/lib/api/calendar-filters-api'
+import { getFirestore } from 'firebase/firestore'
 import { Card } from '@/components/ui/Card'
 
 interface CalendarPageProps {
@@ -34,6 +45,61 @@ export default function CalendarPage({ context }: CalendarPageProps) {
   const { enabledAddons } = useAddonsConfig(user?.uid, goalId)
   const { registry } = usePluginRegistry()
   const plugins = registry.getAllPlugins()
+
+  // Filter state - initialize all visible
+  const [visibleIndicators, setVisibleIndicators] = useState<Set<string>>(
+    () => new Set(plugins.map((p) => p.id))
+  )
+  const [backgroundSource, setBackgroundSource] = useState<string | null>(
+    'productivity'
+  )
+  const [filtersLoaded, setFiltersLoaded] = useState(false)
+
+  // Load filters from Firestore
+  useEffect(() => {
+    if (!user?.uid || !goalId) return
+
+    const loadFilters = async () => {
+      try {
+        const db = getFirestore()
+        const saved = await loadCalendarFilters(db, user.uid, goalId)
+
+        if (saved) {
+          if (Array.isArray(saved.visibleIndicators)) {
+            setVisibleIndicators(new Set(saved.visibleIndicators))
+          }
+          if (saved.backgroundSource !== undefined) {
+            setBackgroundSource(saved.backgroundSource)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load calendar filters:', error)
+      } finally {
+        setFiltersLoaded(true)
+      }
+    }
+
+    loadFilters()
+  }, [user?.uid, goalId])
+
+  // Save filters to Firestore (debounced)
+  useEffect(() => {
+    if (!user?.uid || !goalId || !filtersLoaded) return
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const db = getFirestore()
+        await saveCalendarFilters(db, user.uid, goalId, {
+          visibleIndicators: Array.from(visibleIndicators),
+          backgroundSource,
+        })
+      } catch (error) {
+        console.error('Failed to save calendar filters:', error)
+      }
+    }, 500) // Debounce for 500ms
+
+    return () => clearTimeout(timeoutId)
+  }, [user?.uid, goalId, visibleIndicators, backgroundSource, filtersLoaded])
 
   // Extract calendar-specific data
   const calendarData = pluginData?.['calendar'] || {}
@@ -85,30 +151,53 @@ export default function CalendarPage({ context }: CalendarPageProps) {
   // Build day customizations from productivity status and plugin indicators
   const dayCustomizations = useMemo(() => {
     const customizations: Record<string, DayCustomization> = {}
-    const productivityData = pluginData?.['productivity'] || {}
 
     monthInfo.days.forEach((day) => {
-      const status = productivityData[day.iso]?.status || null
       const indicators = pluginIndicators[day.iso] || []
-      const activeIndicators = indicators.filter((ind) => ind.hasData)
 
-      // Build customization for this day
-      const bgColor = getScoreColorClass(status)
-
-      customizations[day.iso] = {
-        backgroundColor: bgColor,
-        indicators: activeIndicators.map((ind) => ({
+      // Filter indicators based on visibleIndicators state
+      const activeIndicators = indicators
+        .filter((ind) => ind.hasData && visibleIndicators.has(ind.pluginId))
+        .map((ind) => ({
           id: ind.pluginId,
           label: ind.pluginName,
           color: ind.color,
-        })),
+        }))
+
+      // Get background from selected plugin
+      let bgColor: string | undefined = undefined
+
+      if (backgroundSource === 'productivity') {
+        const status = pluginData?.['productivity']?.[day.iso]?.status || null
+        bgColor = getScoreColorClass(status)
+      } else if (backgroundSource === 'hours') {
+        const hoursData = pluginData?.['hours']?.[day.iso]
+        bgColor = getHoursBackgroundColor(hoursData)
+      } else if (backgroundSource === 'finance') {
+        const financeData = pluginData?.['finance']?.[day.iso]
+        bgColor = getFinanceBackgroundColor(financeData)
+      } else if (backgroundSource === 'travel') {
+        const travelData = pluginData?.['travel']?.[day.iso]
+        bgColor = getTravelBackgroundColor(travelData)
+      }
+      // else: backgroundSource is null, no background
+
+      customizations[day.iso] = {
+        backgroundColor: bgColor,
+        indicators: activeIndicators,
       }
     })
 
     return customizations
-  }, [monthInfo.days, pluginData, pluginIndicators])
+  }, [
+    monthInfo.days,
+    pluginData,
+    pluginIndicators,
+    visibleIndicators,
+    backgroundSource,
+  ])
 
-  // Build legend for plugins
+  // Build legend for plugins - filter to only show visible indicators
   const pluginLegend = useMemo(() => {
     const pluginsMap = new Map<
       string,
@@ -117,7 +206,11 @@ export default function CalendarPage({ context }: CalendarPageProps) {
 
     Object.values(pluginIndicators).forEach((dayIndicators) => {
       dayIndicators.forEach((indicator) => {
-        if (indicator.hasData && !pluginsMap.has(indicator.pluginId)) {
+        if (
+          indicator.hasData &&
+          visibleIndicators.has(indicator.pluginId) &&
+          !pluginsMap.has(indicator.pluginId)
+        ) {
           pluginsMap.set(indicator.pluginId, {
             id: indicator.pluginId,
             name: indicator.pluginName,
@@ -128,7 +221,7 @@ export default function CalendarPage({ context }: CalendarPageProps) {
     })
 
     return Array.from(pluginsMap.values())
-  }, [pluginIndicators])
+  }, [pluginIndicators, visibleIndicators])
 
   // Compute values that depend on state
   const selectedDateNotes = selectedDate
@@ -171,6 +264,30 @@ export default function CalendarPage({ context }: CalendarPageProps) {
           onPrevMonth={prevMonth}
           onNextMonth={nextMonth}
           onDayClick={setSelectedDate}
+          headerContent={
+            <div className="mb-4">
+              <CalendarFilters
+                compact={true}
+                availablePlugins={plugins.map((p) => ({
+                  id: p.id,
+                  name: p.metadata.name,
+                  icon: p.metadata.icon || '📊',
+                }))}
+                visibleIndicators={visibleIndicators}
+                backgroundSource={backgroundSource}
+                onToggleIndicator={(id) => {
+                  const newSet = new Set(visibleIndicators)
+                  if (newSet.has(id)) {
+                    newSet.delete(id)
+                  } else {
+                    newSet.add(id)
+                  }
+                  setVisibleIndicators(newSet)
+                }}
+                onChangeBackground={setBackgroundSource}
+              />
+            </div>
+          }
           footerContent={
             pluginLegend.length > 0 ? (
               <div className="flex flex-wrap gap-4 text-xs text-white/60">

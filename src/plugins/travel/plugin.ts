@@ -69,7 +69,7 @@ export const TravelPlugin: Plugin = {
         : undefined
 
       return {
-        color: plan.color || '#8E44AD', // Use plan color or default purple
+        color: plan.color || '#F97316', // Use plan color or default bright orange
         hasData: true,
         summary: {
           type: 'chip',

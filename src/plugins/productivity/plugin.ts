@@ -72,7 +72,7 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
         : undefined
 
       return {
-        color: '#34C759', // Green
+        color: '#06B6D4', // Bright cyan/turquoise
         hasData: true,
         summary: {
           type: 'chip',

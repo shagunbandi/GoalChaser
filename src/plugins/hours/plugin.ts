@@ -76,7 +76,7 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
         : undefined
 
       return {
-        color: '#007AFF', // Blue
+        color: '#A855F7', // Bright purple/magenta
         hasData: true,
         summary: {
           type: 'chip',
