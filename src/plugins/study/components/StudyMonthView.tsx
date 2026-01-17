@@ -65,11 +65,11 @@ export function StudyMonthView({
     // Use VIBGYOR color based on progress (same as progress bar)
     const { getVibgyorColors } = require('@/utils')
     const vibgyorColors = getVibgyorColors()
-    
+
     const ratio = Math.min(totalHours / maxHours, 1)
     const colorIndex = Math.min(
       Math.floor(ratio * vibgyorColors.length),
-      vibgyorColors.length - 1
+      vibgyorColors.length - 1,
     )
     const color = vibgyorColors[colorIndex].color
 
@@ -85,7 +85,7 @@ export function StudyMonthView({
     return {
       backgroundColor: `${color}CC`, // 80% opacity (CC in hex)
       content: (
-        <div className="text-[10px] text-white/90 mt-1 font-medium">
+        <div className="hidden md:block text-[10px] text-white/90 mt-1 font-medium">
           {formatHours(totalHours)}
         </div>
       ),
