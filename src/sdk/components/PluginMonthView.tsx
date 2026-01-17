@@ -8,6 +8,7 @@ import type { Plugin } from '../interfaces/plugin.interface'
 import type { PluginDayData } from '../types'
 import type { DayCustomization } from '../ui/MonthCalendar'
 import { Card } from '@/components/ui/Card'
+import { ButtonRenderer } from '@/components/features/year-view/renderers/ButtonRenderer'
 import { MONTH_NAMES } from '@/constants'
 
 export interface PluginMonthViewProps<TDayData extends PluginDayData = any> {
@@ -200,32 +201,24 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
     <div className="space-y-4">
       {/* Navigation buttons */}
       <div className="flex items-center gap-2">
-        <button
-          onClick={onBackToYear}
-          className="
-            inline-flex items-center gap-2 px-4 py-2 rounded-xl
-            bg-white/5 hover:bg-white/8
-            border border-white/8 hover:border-white/12
-            text-sm font-medium text-white/70 hover:text-white
-            transition-all duration-150
-          "
-        >
-          <span>←</span>
-          <span>Back to {initialYear}</span>
-        </button>
-        <button
-          onClick={handleBackToCalendar}
-          className="
-            inline-flex items-center gap-2 px-4 py-2 rounded-xl
-            bg-white/5 hover:bg-white/8
-            border border-white/8 hover:border-white/12
-            text-sm font-medium text-white/70 hover:text-white
-            transition-all duration-150
-          "
-        >
-          <span>📅</span>
-          <span>Calendar</span>
-        </button>
+        <ButtonRenderer
+          config={{
+            id: 'back-to-year',
+            label: 'Back to Year View',
+            icon: '←',
+            variant: 'ghost',
+            onClick: onBackToYear,
+          }}
+        />
+        <ButtonRenderer
+          config={{
+            id: 'view-in-calendar',
+            label: 'View in Calendar',
+            icon: '📅',
+            variant: 'ghost',
+            onClick: handleBackToCalendar,
+          }}
+        />
       </div>
 
       {/* Two-column layout: Calendar + Detail Panel (Equal halves) */}
