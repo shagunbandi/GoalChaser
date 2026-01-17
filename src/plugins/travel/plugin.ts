@@ -47,15 +47,6 @@ export const TravelPlugin: Plugin = {
         return null
       }
 
-      const plan = activePlans[0] // Show first active plan
-      const destination = plan.destination || plan.title
-
-      // Build display content
-      let content = destination
-      if (activePlans.length > 1) {
-        content += ` (+${activePlans.length - 1} more)`
-      }
-
       // Build navigation URL
       const dateObj = new Date(date)
       const year = dateObj.getFullYear()
@@ -68,18 +59,71 @@ export const TravelPlugin: Plugin = {
           })
         : undefined
 
+      // If multiple plans, show as list
+      if (activePlans.length > 1) {
+        return {
+          color: '#F97316',
+          hasData: true,
+          summary: {
+            type: 'list',
+            title: 'Travel',
+            subtitle: `${activePlans.length} active trip${activePlans.length !== 1 ? 's' : ''}`,
+            icon: '✈️',
+            badge: `${activePlans.length}`,
+            gradient: { from: '#F97316', to: '#EA580C' },
+            items: activePlans.slice(0, 5).map(plan => {
+              const startDate = new Date(plan.startDate)
+              const endDate = new Date(plan.endDate)
+              const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+              
+              return {
+                id: plan.id,
+                label: plan.destination || plan.title,
+                value: `${days} day${days !== 1 ? 's' : ''}`,
+                icon: '🗺️',
+                color: plan.color || '#F97316',
+                subtitle: `${plan.startDate} to ${plan.endDate}`
+              }
+            }),
+            actions: [
+              {
+                label: 'View Details',
+                url,
+                variant: 'primary',
+              },
+            ],
+          },
+        }
+      }
+
+      // Single plan, use card
+      const plan = activePlans[0]
+      const startDate = new Date(plan.startDate)
+      const endDate = new Date(plan.endDate)
+      const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      const currentDay = Math.ceil((new Date(date).getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+
       return {
-        color: plan.color || '#F97316', // Use plan color or default bright orange
+        color: plan.color || '#F97316',
         hasData: true,
         summary: {
-          type: 'chip',
+          type: 'card',
           title: 'Travel',
-          content,
+          subtitle: plan.destination || plan.title,
           icon: '✈️',
+          badge: `Day ${currentDay}/${days}`,
+          gradient: { from: plan.color || '#F97316', to: '#EA580C' },
+          content: {
+            'Destination': plan.destination || plan.title,
+            'Duration': `${days} day${days !== 1 ? 's' : ''}`,
+            'Dates': `${plan.startDate} to ${plan.endDate}`,
+            'Status': currentDay === 1 ? 'Starting' : currentDay === days ? 'Ending' : 'Ongoing'
+          },
           actions: [
             {
-              label: 'View details',
+              label: 'View Itinerary',
               url,
+              variant: 'primary',
             },
           ],
         },

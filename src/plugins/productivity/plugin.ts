@@ -55,10 +55,6 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
         else level = 'Low'
       }
 
-      const content = hasStatus 
-        ? `${status}/10 (${level})` 
-        : `${areasCount} area${areasCount > 1 ? 's' : ''}`
-
       // Build navigation URL
       const dateObj = new Date(date)
       const year = dateObj.getFullYear()
@@ -71,17 +67,54 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
           })
         : undefined
 
+      // If we have areas, use list type to show them
+      if (data.areas && data.areas.length > 0) {
+        const totalTopics = data.areas.reduce((sum, area) => sum + (area.topics?.length || 0), 0)
+        
+        return {
+          color: '#06B6D4',
+          hasData: true,
+          summary: {
+            type: 'list',
+            title: 'Productivity',
+            subtitle: hasStatus ? `Score: ${status}/10 (${level})` : `${areasCount} area${areasCount !== 1 ? 's' : ''} tracked`,
+            icon: '🎯',
+            badge: hasStatus ? `${status}/10` : `${areasCount}`,
+            gradient: { from: '#06B6D4', to: '#3B82F6' },
+            items: data.areas.slice(0, 5).map(area => ({
+              id: area.area,
+              label: area.area,
+              value: area.topics?.length ? `${area.topics.length} topic${area.topics.length !== 1 ? 's' : ''}` : undefined,
+              icon: '📝',
+              color: '#06B6D4',
+              subtitle: area.topics?.slice(0, 2).map(t => t.topic).join(', ')
+            })),
+            actions: [
+              {
+                label: 'View Details',
+                url,
+                variant: 'primary',
+              },
+            ],
+          },
+        }
+      }
+
+      // Just status score, use chip
       return {
-        color: '#06B6D4', // Bright cyan/turquoise
+        color: '#06B6D4',
         hasData: true,
         summary: {
           type: 'chip',
           title: 'Productivity',
-          content,
+          subtitle: level,
+          content: `${status}/10`,
           icon: '📊',
+          badge: level,
+          gradient: { from: '#06B6D4', to: '#3B82F6' },
           actions: [
             {
-              label: 'View details',
+              label: 'View Details',
               url,
             },
           ],

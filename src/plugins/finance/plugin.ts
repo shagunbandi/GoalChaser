@@ -46,18 +46,6 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
         return null
       }
 
-      // Format summary
-      const transactions: Record<string, any> = {}
-      if (expenseCount > 0) {
-        transactions['Expenses'] = `₹${totalExpenses.toLocaleString('en-IN')}`
-      }
-      if (incomeCount > 0) {
-        transactions['Income'] = `₹${totalIncome.toLocaleString('en-IN')}`
-      }
-      if (netAmount !== 0) {
-        transactions['Net'] = `₹${netAmount.toLocaleString('en-IN')}`
-      }
-
       // Build navigation URL
       const dateObj = new Date(date)
       const year = dateObj.getFullYear()
@@ -70,17 +58,52 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
           })
         : undefined
 
+      // Use stats to show breakdown
+      const stats = []
+      if (totalIncome > 0) {
+        stats.push({
+          label: 'Income',
+          value: `₹${totalIncome.toLocaleString('en-IN')}`,
+          icon: '💰',
+          color: '#22C55E',
+          subtitle: `${incomeCount} transaction${incomeCount !== 1 ? 's' : ''}`
+        })
+      }
+      if (totalExpenses > 0) {
+        stats.push({
+          label: 'Expenses',
+          value: `₹${totalExpenses.toLocaleString('en-IN')}`,
+          icon: '💸',
+          color: '#EF4444',
+          subtitle: `${expenseCount} transaction${expenseCount !== 1 ? 's' : ''}`
+        })
+      }
+      if (netAmount !== 0) {
+        stats.push({
+          label: 'Net',
+          value: `₹${netAmount.toLocaleString('en-IN')}`,
+          icon: netAmount > 0 ? '📈' : '📉',
+          color: netAmount > 0 ? '#22C55E' : '#EF4444',
+          subtitle: netAmount > 0 ? 'Surplus' : 'Deficit'
+        })
+      }
+
       return {
-        color: netAmount >= 0 ? '#22C55E' : '#EF4444', // Bright green for positive, bright red for negative
+        color: netAmount >= 0 ? '#22C55E' : '#EF4444',
         hasData: true,
         summary: {
-          type: 'accordion',
+          type: 'stats',
           title: 'Finance',
-          content: transactions,
+          subtitle: `${expenseCount + incomeCount} transaction${expenseCount + incomeCount !== 1 ? 's' : ''}`,
           icon: '💰',
+          badge: netAmount >= 0 ? 'Surplus' : 'Deficit',
+          gradient: netAmount >= 0 
+            ? { from: '#22C55E', to: '#10B981' }
+            : { from: '#EF4444', to: '#DC2626' },
+          stats,
           actions: [
             {
-              label: 'Add transaction',
+              label: 'View Details',
               url,
               variant: 'primary',
             },

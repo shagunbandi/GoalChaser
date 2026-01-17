@@ -276,13 +276,16 @@ export interface CalendarDaySummary {
  */
 export interface CalendarSummaryConfig {
   /** Rendering type */
-  type: 'chip' | 'accordion' | 'card' | 'custom'
+  type: 'chip' | 'accordion' | 'card' | 'stats' | 'list' | 'custom'
 
   /** Title/heading for the summary */
   title: string
 
+  /** Subtitle or description (optional) */
+  subtitle?: string
+
   /** Content to display (can be string, number, or structured data) */
-  content: string | number | Record<string, any>
+  content?: string | number | Record<string, any>
 
   /** Icon or emoji to display */
   icon?: string
@@ -290,11 +293,50 @@ export interface CalendarSummaryConfig {
   /** Optional color override for the summary (different from dot color) */
   color?: string
 
+  /** Gradient colors for more visual appeal */
+  gradient?: {
+    from: string
+    to: string
+  }
+
+  /** Stats items (for type: 'stats') */
+  stats?: StatItem[]
+
+  /** List items (for type: 'list') */
+  items?: ListItem[]
+
   /** Action buttons to show in the summary */
   actions?: CalendarSummaryAction[]
 
+  /** Badge text (e.g., "New", "Updated", count badge) */
+  badge?: string | number
+
   /** Custom render function (for type: 'custom') */
   customRender?: () => ReactNode
+}
+
+/**
+ * Stat item for stats display
+ */
+export interface StatItem {
+  label: string
+  value: string | number
+  icon?: string
+  color?: string
+  subtitle?: string
+}
+
+/**
+ * List item for list display
+ */
+export interface ListItem {
+  id: string
+  label: string
+  value?: string | number
+  icon?: string
+  color?: string
+  subtitle?: string
+  onClick?: () => void
 }
 
 /**

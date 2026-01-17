@@ -23,6 +23,8 @@ export type {
   CalendarSummaryAction,
   PluginAnalyticsMetric,
   PluginAnalyticsChartData,
+  StatItem as SDKStatItem,
+  ListItem,
 } from './interfaces/plugin.interface'
 
 // Shared types

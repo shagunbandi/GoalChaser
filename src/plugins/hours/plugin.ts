@@ -58,11 +58,6 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
         return `${h}h ${m}m`
       }
 
-      // Format hours breakdown
-      const breakdown = data.subjects && data.subjects.length > 0
-        ? data.subjects.map(s => `${s.subject}: ${formatHours(s.hours)}`).join(', ')
-        : `${formatHours(totalHours)} tracked`
-
       // Build navigation URL
       const dateObj = new Date(date)
       const year = dateObj.getFullYear()
@@ -75,17 +70,50 @@ export const HoursPlugin: Plugin<HoursDayData, HoursConfig> = {
           })
         : undefined
 
+      // If we have subjects breakdown, use stats type
+      if (data.subjects && data.subjects.length > 0) {
+        return {
+          color: '#A855F7',
+          hasData: true,
+          summary: {
+            type: 'stats',
+            title: 'Hours Tracked',
+            subtitle: formatHours(totalHours) + ' total',
+            icon: '⏱️',
+            badge: `${data.subjects.length} subject${data.subjects.length !== 1 ? 's' : ''}`,
+            gradient: { from: '#A855F7', to: '#8B5CF6' },
+            stats: data.subjects.slice(0, 4).map(s => ({
+              label: s.subject,
+              value: formatHours(s.hours),
+              icon: '📚',
+              color: '#A855F7',
+              subtitle: s.topics?.length ? `${s.topics.length} topic${s.topics.length !== 1 ? 's' : ''}` : undefined
+            })),
+            actions: [
+              {
+                label: 'View Details',
+                url,
+                variant: 'primary',
+              },
+            ],
+          },
+        }
+      }
+
+      // Otherwise use chip type
       return {
-        color: '#A855F7', // Bright purple/magenta
+        color: '#A855F7',
         hasData: true,
         summary: {
           type: 'chip',
           title: 'Hours',
+          subtitle: 'Direct tracking',
           content: formatHours(totalHours),
           icon: '⏱️',
+          gradient: { from: '#A855F7', to: '#8B5CF6' },
           actions: [
             {
-              label: 'View details',
+              label: 'View Details',
               url,
             },
           ],
