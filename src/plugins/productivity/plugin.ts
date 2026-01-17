@@ -87,7 +87,7 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
               value: area.topics?.length ? `${area.topics.length} topic${area.topics.length !== 1 ? 's' : ''}` : undefined,
               icon: '📝',
               color: '#06B6D4',
-              subtitle: area.topics?.slice(0, 2).map(t => t.topic).join(', ')
+              subtitle: area.topics?.slice(0, 2).join(', ')
             })),
             actions: [
               {
