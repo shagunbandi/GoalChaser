@@ -69,8 +69,6 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
 
       // If we have areas, use list type to show them
       if (data.areas && data.areas.length > 0) {
-        const totalTopics = data.areas.reduce((sum, area) => sum + (area.topics?.length || 0), 0)
-        
         return {
           color: '#06B6D4',
           hasData: true,

@@ -64,6 +64,7 @@ export type HeaderConfig = {
   stats?: Array<{
     label: string
     value: string | number
+    color?: string
     disabled?: boolean
   }>
   actions: ButtonConfig[]
