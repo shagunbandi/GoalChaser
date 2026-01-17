@@ -64,7 +64,6 @@ class PluginRegistry {
     }
 
     this.initialized = true
-    console.log('[PluginRegistry] Initialization complete')
   }
 
   /**

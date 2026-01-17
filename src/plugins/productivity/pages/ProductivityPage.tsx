@@ -19,8 +19,6 @@ export default function ProductivityPage({
   year,
   month,
 }: PluginPageProps) {
-  console.log('[ProductivityPage] RENDER', { year, month, params })
-
   const {
     goal,
     goalId,
@@ -40,13 +38,6 @@ export default function ProductivityPage({
     pluginId: 'productivity',
     params,
     year,
-  })
-
-  console.log('[ProductivityPage] usePluginPage result', {
-    isLoading,
-    hasGoal: !!goal,
-    dataCount: Object.keys(pluginDayData).length,
-    currentYear,
   })
 
   const handleJumpToDay = (iso: string) => {

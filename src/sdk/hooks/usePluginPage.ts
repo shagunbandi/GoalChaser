@@ -82,8 +82,6 @@ export function usePluginPage<TDayData = any, TConfig = any>({
   const initialSelectedDay = searchParams.get('date')
   const year = initialYear || new Date().getFullYear()
 
-  console.log('[usePluginPage] called', { pluginId, goalId, year, initialYear })
-
   const {
     goal,
     isLoading,
@@ -94,21 +92,9 @@ export function usePluginPage<TDayData = any, TConfig = any>({
     updateConfig: updateConfigBase,
   } = useGoalData(goalId, year)
 
-  console.log('[usePluginPage] useGoalData result', {
-    isLoading,
-    hasGoal: !!goal,
-    hasPluginData: !!pluginData,
-    pluginDataKeys: pluginData ? Object.keys(pluginData) : [],
-  })
-
   // Extract plugin-specific data
   const pluginDayData = (pluginData?.[pluginId] || {}) as Record<string, TDayData>
   const pluginConfig = (pluginConfigs?.[pluginId] as TConfig) || null
-
-  console.log('[usePluginPage] extracted data', {
-    pluginDayDataCount: Object.keys(pluginDayData).length,
-    hasPluginConfig: !!pluginConfig,
-  })
 
   // Wrapper for day data updates
   const updateDayData = async (iso: string, updates: Partial<TDayData>) => {

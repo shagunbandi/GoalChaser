@@ -90,13 +90,10 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
   // Handle day click - update both local state AND URL
   const handleDayClick = useCallback(
     (date: string) => {
-      console.log('[PluginMonthView] Day clicked:', date)
       setSelectedDate(date)
       // Update URL without causing navigation/reload
       const currentPath = window.location.pathname
-      const newUrl = `${currentPath}?date=${date}`
-      console.log('[PluginMonthView] Updating URL to:', newUrl)
-      router.replace(newUrl, { scroll: false })
+      router.replace(`${currentPath}?date=${date}`, { scroll: false })
     },
     [setSelectedDate, router],
   )

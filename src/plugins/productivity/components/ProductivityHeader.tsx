@@ -37,7 +37,6 @@ export function ProductivityHeader({
   onUpdateTopic,
   isTopicInUse,
 }: ProductivityHeaderProps) {
-  console.log('[ProductivityHeader] RENDER', { year, dataCount: Object.keys(dayData).length })
 
   const [showAreaManager, setShowAreaManager] = useState(false)
 

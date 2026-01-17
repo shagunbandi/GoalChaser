@@ -148,10 +148,7 @@ export function useGoalDataQuery({
   // Query 1: Addons Config
   const addonsQuery = useQuery({
     queryKey: goalDataKeys.addonsConfig(userId, goalId),
-    queryFn: () => {
-      console.log('[useGoalDataQuery] Fetching addons config...')
-      return fetchAddonsConfig(userId, goalId)
-    },
+    queryFn: () => fetchAddonsConfig(userId, goalId),
     enabled: enabled && !!userId && !!goalId,
     staleTime: 10 * 60 * 1000, // 10 minutes
   })
@@ -161,20 +158,10 @@ export function useGoalDataQuery({
   // Query 2: Plugin Data (depends on addons config and registry)
   const pluginDataQuery = useQuery({
     queryKey: goalDataKeys.pluginData(userId, goalId, startDate, endDate),
-    queryFn: () => {
-      console.log('[useGoalDataQuery] Fetching plugin data...', { enabledAddons: enabledAddons.length })
-      return fetchPluginData(userId, goalId, startDate, endDate, enabledAddons, registry)
-    },
+    queryFn: () =>
+      fetchPluginData(userId, goalId, startDate, endDate, enabledAddons, registry),
     enabled: enabled && !!userId && !!goalId && registryInitialized && addonsQuery.isSuccess,
     staleTime: 5 * 60 * 1000, // 5 minutes
-  })
-  
-  console.log('[useGoalDataQuery] Query states', {
-    addonsLoading: addonsQuery.isLoading,
-    addonsSuccess: addonsQuery.isSuccess,
-    pluginDataLoading: pluginDataQuery.isLoading,
-    pluginDataSuccess: pluginDataQuery.isSuccess,
-    registryInitialized,
   })
 
   // Query 3: Budgets (independent, only if finance enabled)

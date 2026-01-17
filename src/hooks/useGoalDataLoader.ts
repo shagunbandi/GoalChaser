@@ -135,11 +135,6 @@ export function useGoalDataLoader({
 
   // Main data loading function
   const loadData = useCallback(async () => {
-    console.log('[useGoalDataLoader] loadData called', { 
-      enabled, userId, registryInitialized, addonsConfigLoaded, 
-      enabledAddonsCount: enabledAddons.length 
-    })
-    
     // Don't load if not enabled, userId is missing, registry not initialized, or addons config not loaded
     if (!enabled || !userId || !registryInitialized || !addonsConfigLoaded) {
       // Only set loading to false if we're not waiting for something
@@ -152,7 +147,6 @@ export function useGoalDataLoader({
     // Only show loading state on INITIAL load, not subsequent loads
     // This prevents the UI from flashing loading state when switching years
     if (!hasInitiallyLoadedRef.current) {
-      console.log('[useGoalDataLoader] Setting loading = true (initial load)')
       setLoading(true)
     }
     setError(null)
@@ -196,11 +190,6 @@ export function useGoalDataLoader({
       // Note: Travel data is now loaded via the plugin's data provider (day-based storage)
       // No need to load from the old plans collection
 
-      console.log('[useGoalDataLoader] Data loaded', { 
-        pluginDataKeys: Object.keys(newPluginData), 
-        configKeys: Object.keys(newPluginConfigs) 
-      })
-      
       setPluginData(newPluginData)
       setPluginConfigs(newPluginConfigs)
       setBudgets(budgetsData)
