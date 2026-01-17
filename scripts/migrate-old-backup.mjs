@@ -86,9 +86,9 @@ function extractTravelData(dayData) {
     return null
   }
 
-  // Store travel plans as-is
+  // Store travel plans with correct key (TravelDayData expects 'travelPlans')
   return {
-    plans: dayData.travelPlans,
+    travelPlans: dayData.travelPlans,
   }
 }
 
@@ -168,6 +168,7 @@ function migrateGoal(goalId, goalData, globalMode) {
   const productivityDays = {}
   const studyDays = {}
   const travelDays = {}
+  const travelPlans = {} // Individual travel plan documents
   const calendarDays = {}
 
   // Process each day
@@ -215,6 +216,19 @@ function migrateGoal(goalId, goalData, globalMode) {
         _subcollections: {},
       }
       travelDayCount++
+
+      // Also collect individual travel plans for the plans collection
+      travelData.travelPlans.forEach((plan) => {
+        if (plan.id && !travelPlans[plan.id]) {
+          travelPlans[plan.id] = {
+            _data: {
+              ...plan,
+              updatedAt: dayData.updatedAt || new Date().toISOString(),
+            },
+            _subcollections: {},
+          }
+        }
+      })
     }
 
     // Extract calendar notes
@@ -301,11 +315,20 @@ function migrateGoal(goalId, goalData, globalMode) {
 
   // Create travel addon structure
   if (travelDayCount > 0) {
+    const travelSubcollections = {
+      days: travelDays,
+    }
+
+    // Add plans collection if we have any plans
+    const planCount = Object.keys(travelPlans).length
+    if (planCount > 0) {
+      travelSubcollections.plans = travelPlans
+      console.log(`  ✓ Created ${planCount} individual travel plans`)
+    }
+
     newGoal._subcollections.addons.travel = {
       _data: {},
-      _subcollections: {
-        days: travelDays,
-      },
+      _subcollections: travelSubcollections,
     }
   }
 
