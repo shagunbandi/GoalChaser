@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import type { AreaConfig, AreaEntry } from '@/plugins/productivity/types'
+import type { AreaConfig, AreaEntry, ProductivityDayData } from '@/plugins/productivity/types'
 import type { YearViewConfig } from '@/types/year-view-config'
 import { Card } from '@/components/ui'
 import { GenericYearView } from '@/components/features/year-view/GenericYearView'
@@ -9,6 +9,7 @@ import { StatusSelector } from './StatusSelector'
 import { AreaEntries } from './AreaEntries'
 import { AreaManager } from './AreaManager'
 import { computeMonthInfo } from '@/utils'
+import { buildProductivityHeaderConfig } from '../utils/header-config'
 
 interface ProductivityViewProps {
   year: number
@@ -91,6 +92,17 @@ export function ProductivityView({
     [year],
   )
 
+  // Get year data for header config
+  const yearData = useMemo(() => {
+    const data: Record<string, ProductivityDayData> = {}
+    Object.entries(dayDetails).forEach(([iso, details]) => {
+      if (iso.startsWith(yearPrefix) && details.status !== null) {
+        data[iso] = details
+      }
+    })
+    return data
+  }, [dayDetails, yearPrefix])
+
   // Calculate stats for the year
   const yearStats = useMemo(() => {
     const entries = Object.entries(dayDetails).filter(([iso, details]) =>
@@ -156,28 +168,11 @@ export function ProductivityView({
         }
       },
       showDayModal: false, // Don't show modal on day click, navigate to month view instead
-      header: {
-        icon: '📊',
-        title: 'Productivity Year:',
-        stats: [
-          { label: 'Tracked days', value: yearStats.total },
-          { label: 'High days', value: yearStats.high, color: '#30D158' },
-          { label: 'Average', value: yearStats.average.toFixed(1), color: '#FF9500' },
-        ],
-        legends: [
-          { label: 'High (7-10)', color: 'rgb(48, 209, 88)' },
-          { label: 'OK (4-6)', color: 'rgb(255, 149, 0)' },
-          { label: 'Low (1-3)', color: 'rgb(255, 69, 58)' },
-        ],
-        actions: [
-          {
-            id: 'manage-areas',
-            label: 'Manage Areas',
-            icon: '⚙️',
-            onClick: () => setShowAreaManager(true),
-          },
-        ],
-      },
+      header: buildProductivityHeaderConfig(
+        yearData,
+        'year',
+        () => setShowAreaManager(true)
+      ),
       months: months.map((month) => {
         const stats = monthlyStats[month.month]
 
@@ -343,7 +338,7 @@ export function ProductivityView({
       onNextYear,
       onMonthClick, // Enable month header clicks to navigate to month view
     }),
-    [year, todayISO, yearStats, monthlyStats, months, dayDetails, areaConfigs, draftData, selectedDay, onUpdateDay, onAddArea, onAddTopic, isTopicInUse, onPrevYear, onNextYear, onJumpToDay, onMonthClick],
+    [year, todayISO, yearData, monthlyStats, months, dayDetails, areaConfigs, draftData, selectedDay, onUpdateDay, onAddArea, onAddTopic, isTopicInUse, onPrevYear, onNextYear, onJumpToDay, onMonthClick],
   )
 
   return (

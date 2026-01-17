@@ -24,6 +24,12 @@ interface ProductivityMonthViewProps {
   headerConfig?: HeaderConfig
   onPrevYear?: () => void
   onNextYear?: () => void
+  detailContext?: {
+    areaConfigs: AreaConfig[]
+    onAddArea: (name: string) => void
+    onAddTopic: (areaId: string, topic: string) => void
+    isTopicInUse: (areaId: string, topic: string) => boolean
+  }
 }
 
 export function ProductivityMonthView({
@@ -40,6 +46,7 @@ export function ProductivityMonthView({
   headerConfig,
   onPrevYear,
   onNextYear,
+  detailContext,
 }: ProductivityMonthViewProps) {
   // Build day customizations based on productivity status
   const buildDayCustomization = (
@@ -89,6 +96,7 @@ export function ProductivityMonthView({
       headerConfig={headerConfig}
       onPrevYear={onPrevYear}
       onNextYear={onNextYear}
+      detailContext={detailContext}
     />
   )
 }

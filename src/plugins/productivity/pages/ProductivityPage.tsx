@@ -4,11 +4,13 @@
 
 'use client'
 
+import { useState } from 'react'
 import type { PluginPageProps } from '@/sdk'
 import { usePluginPage, LoadingState, NotFoundState } from '@/sdk'
-import { ProductivityView, ProductivityMonthView } from '../components'
+import { ProductivityView, ProductivityMonthView, AreaManager } from '../components'
 import type { ProductivityDayData, ProductivityConfig } from '../types'
 import { ProductivityPlugin } from '../plugin'
+import { buildProductivityHeaderConfig } from '../utils/header-config'
 
 export default function ProductivityPage({
   context,
@@ -39,6 +41,9 @@ export default function ProductivityPage({
     year,
   })
   
+  // State for Area Manager Modal
+  const [showAreaManager, setShowAreaManager] = useState(false)
+  
   // Handler to navigate to month view with selected day
   const handleJumpToDay = (iso: string) => {
     const [y, m] = iso.split('-').map(Number)
@@ -47,6 +52,7 @@ export default function ProductivityPage({
   
   const areaConfigs = pluginConfig?.areas || []
   
+  // Area management handlers (shared between year and month views)
   const handleAddArea = (name: string) => {
     const newArea = { id: `area_${Date.now()}`, name, topics: [], hasTopics: true }
     updateConfig({ areas: [...areaConfigs, newArea] })
@@ -104,60 +110,65 @@ export default function ProductivityPage({
 
   // If month is specified, show month view
   if (month) {
-    // Calculate month-specific stats
-    const monthData = Object.entries(pluginDayData).filter(([date]) => {
+    // Filter data for the current month
+    const monthData: Record<string, ProductivityDayData> = {}
+    Object.entries(pluginDayData).forEach(([date, data]) => {
       const [y, m] = date.split('-').map(Number)
-      return y === currentYear && m === month
+      if (y === currentYear && m === month) {
+        monthData[date] = data
+      }
     })
-    const monthStats = {
-      total: monthData.filter(([, data]) => data?.status !== null && data?.status !== undefined).length,
-      high: monthData.filter(([, data]) => data?.status !== null && data?.status !== undefined && data.status >= 7).length,
-      average: monthData.length > 0
-        ? monthData.reduce((sum, [, data]) => sum + (data?.status || 0), 0) / monthData.filter(([, data]) => data?.status !== null && data?.status !== undefined).length
-        : 0,
-    }
-
-    const monthHeaderConfig = {
-      icon: '📊',
-      title: `Productivity Month:`,
-      stats: [
-        { label: 'Tracked days', value: monthStats.total },
-        { label: 'High days', value: monthStats.high },
-        { label: 'Average', value: monthStats.average.toFixed(1) },
-      ],
-      legends: [
-        { label: 'High (7-10)', color: 'rgb(48, 209, 88)' },
-        { label: 'OK (4-6)', color: 'rgb(255, 149, 0)' },
-        { label: 'Low (1-3)', color: 'rgb(255, 69, 58)' },
-      ],
-      actions: [
-        {
-          id: 'manage-areas',
-          label: 'Manage Areas',
-          icon: '⚙️',
-          onClick: () => {}, // No-op for now, can be extended later
-        },
-      ],
-    }
+    
+    // Build header config for month view using shared utility
+    const monthHeaderConfig = buildProductivityHeaderConfig(
+      monthData,
+      'month',
+      () => setShowAreaManager(true)
+    )
 
     return (
-      <main className="container mx-auto px-4 py-6 space-y-4">
-        <ProductivityMonthView
-          plugin={ProductivityPlugin}
-          month={month}
-          year={currentYear}
-          goalId={goalId}
-          todayISO={todayISO}
-          dayData={pluginDayData}
-          initialSelectedDate={initialSelectedDay}
-          areaConfigs={areaConfigs}
-          onUpdateDay={updateDayData}
-          onBackToYear={() => navigateToYear(currentYear)}
-          headerConfig={monthHeaderConfig}
-          onPrevYear={navigateToPrevYear}
-          onNextYear={navigateToNextYear}
-        />
-      </main>
+      <>
+        <main className="container mx-auto px-4 py-6 space-y-4">
+          <ProductivityMonthView
+            plugin={ProductivityPlugin}
+            month={month}
+            year={currentYear}
+            goalId={goalId}
+            todayISO={todayISO}
+            dayData={pluginDayData}
+            initialSelectedDate={initialSelectedDay}
+            areaConfigs={areaConfigs}
+            onUpdateDay={updateDayData}
+            onBackToYear={() => navigateToYear(currentYear)}
+            headerConfig={monthHeaderConfig}
+            onPrevYear={navigateToPrevYear}
+            onNextYear={navigateToNextYear}
+            detailContext={{
+              areaConfigs,
+              onAddArea: handleAddArea,
+              onAddTopic: handleAddAreaTopic,
+              isTopicInUse: isAreaTopicInUse,
+            }}
+          />
+        </main>
+        
+        {/* Area Manager Modal */}
+        {showAreaManager && (
+          <AreaManager
+            isOpen={showAreaManager}
+            areaConfigs={areaConfigs}
+            onAddArea={handleAddArea}
+            onRemoveArea={handleRemoveArea}
+            onUpdateArea={handleUpdateArea}
+            onToggleHasTopics={handleToggleAreaHasTopics}
+            onAddTopic={handleAddAreaTopic}
+            onRemoveTopic={handleRemoveAreaTopic}
+            onUpdateTopic={handleUpdateAreaTopic}
+            isTopicInUse={isAreaTopicInUse}
+            onClose={() => setShowAreaManager(false)}
+          />
+        )}
+      </>
     )
   }
 
