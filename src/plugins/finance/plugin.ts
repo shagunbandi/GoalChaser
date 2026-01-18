@@ -31,23 +31,43 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
   // Calendar integration
   calendar: {
     getDaySummary: (date, data, context) => {
-      if (!data || (!data.expenses?.length && !data.income?.length)) {
-        return null
-      }
-
-      const totalExpenses = data.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0
-      const totalIncome = data.income?.reduce((sum, i) => sum + i.amount, 0) || 0
+      // Calculate day totals
+      const totalExpenses = data?.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0
+      const totalIncome = data?.income?.reduce((sum, i) => sum + i.amount, 0) || 0
       const netAmount = totalIncome - totalExpenses
+      const expenseCount = data?.expenses?.length || 0
+      const incomeCount = data?.income?.length || 0
+      const hasDayData = expenseCount > 0 || incomeCount > 0
 
-      const expenseCount = data.expenses?.length || 0
-      const incomeCount = data.income?.length || 0
+      // Calculate month totals from allMonthData
+      const allMonthData = context?.allMonthData || {}
+      const dateObj = new Date(date)
+      const currentMonth = dateObj.getMonth()
+      const currentYear = dateObj.getFullYear()
 
-      if (expenseCount === 0 && incomeCount === 0) {
+      let monthIncome = 0
+      let monthExpenses = 0
+      let monthTransactions = 0
+
+      Object.entries(allMonthData).forEach(([dateKey, dayData]) => {
+        const d = new Date(dateKey)
+        if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+          const finData = dayData as FinanceTransactionData
+          monthIncome += finData?.income?.reduce((sum, i) => sum + i.amount, 0) || 0
+          monthExpenses += finData?.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0
+          monthTransactions += (finData?.income?.length || 0) + (finData?.expenses?.length || 0)
+        }
+      })
+      
+      const monthNet = monthIncome - monthExpenses
+      const hasMonthData = monthTransactions > 0
+
+      // If no day data and no month data, return null
+      if (!hasDayData && !hasMonthData) {
         return null
       }
 
       // Build navigation URL
-      const dateObj = new Date(date)
       const year = dateObj.getFullYear()
       const month = dateObj.getMonth() + 1 // 1-indexed
       const url = context?.goalId
@@ -60,49 +80,85 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
           })
         : undefined
 
-      // Use stats to show breakdown
-      const stats = []
-      if (totalIncome > 0) {
-        stats.push({
-          label: 'Income',
-          value: `₹${totalIncome.toLocaleString('en-IN')}`,
-          icon: '💰',
-          color: '#22C55E',
-          subtitle: `${incomeCount} transaction${incomeCount !== 1 ? 's' : ''}`
-        })
-      }
-      if (totalExpenses > 0) {
-        stats.push({
-          label: 'Expenses',
-          value: `₹${totalExpenses.toLocaleString('en-IN')}`,
-          icon: '💸',
-          color: '#EF4444',
-          subtitle: `${expenseCount} transaction${expenseCount !== 1 ? 's' : ''}`
-        })
-      }
-      if (netAmount !== 0) {
-        stats.push({
-          label: 'Net',
-          value: `₹${netAmount.toLocaleString('en-IN')}`,
-          icon: netAmount > 0 ? '📈' : '📉',
-          color: netAmount > 0 ? '#22C55E' : '#EF4444',
-          subtitle: netAmount > 0 ? 'Surplus' : 'Deficit'
-        })
+      // Build sections array with day and month data
+      const sections = []
+      
+      // Day section (only if there's day data)
+      if (hasDayData) {
+        const dayStats = []
+        if (totalIncome > 0) {
+          dayStats.push({
+            label: 'Income',
+            value: `₹${totalIncome.toLocaleString('en-IN')}`,
+            icon: '💰',
+            color: '#22C55E',
+          })
+        }
+        if (totalExpenses > 0) {
+          dayStats.push({
+            label: 'Expenses',
+            value: `₹${totalExpenses.toLocaleString('en-IN')}`,
+            icon: '💸',
+            color: '#EF4444',
+          })
+        }
+        if (netAmount !== 0) {
+          dayStats.push({
+            label: 'Net',
+            value: `₹${netAmount.toLocaleString('en-IN')}`,
+            icon: netAmount > 0 ? '📈' : '📉',
+            color: netAmount > 0 ? '#22C55E' : '#EF4444',
+          })
+        }
+        if (dayStats.length > 0) {
+          sections.push({ title: 'Today', stats: dayStats })
+        }
       }
 
+      // Month section (always show if there's month data)
+      if (hasMonthData) {
+        const monthStats = [
+          {
+            label: 'Income',
+            value: `₹${monthIncome.toLocaleString('en-IN')}`,
+            icon: '💵',
+            color: '#22C55E',
+          },
+          {
+            label: 'Expenses',
+            value: `₹${monthExpenses.toLocaleString('en-IN')}`,
+            icon: '🛒',
+            color: '#EF4444',
+          },
+          {
+            label: 'Net',
+            value: `₹${monthNet.toLocaleString('en-IN')}`,
+            icon: monthNet >= 0 ? '📊' : '📉',
+            color: monthNet >= 0 ? '#22C55E' : '#EF4444',
+          },
+        ]
+        sections.push({ title: 'This Month', stats: monthStats })
+      }
+
+      // Determine badge based on day data if available, otherwise month data
+      const badgeNet = hasDayData ? netAmount : monthNet
+      const subtitle = hasDayData 
+        ? `${expenseCount + incomeCount} today, ${monthTransactions} this month`
+        : `${monthTransactions} transaction${monthTransactions !== 1 ? 's' : ''} this month`
+
       return {
-        color: netAmount >= 0 ? '#22C55E' : '#EF4444',
+        color: badgeNet >= 0 ? '#22C55E' : '#EF4444',
         hasData: true,
         summary: {
           type: 'stats',
           title: 'Finance',
-          subtitle: `${expenseCount + incomeCount} transaction${expenseCount + incomeCount !== 1 ? 's' : ''}`,
+          subtitle,
           icon: '💰',
-          badge: netAmount >= 0 ? 'Surplus' : 'Deficit',
-          gradient: netAmount >= 0 
+          badge: badgeNet >= 0 ? 'Surplus' : 'Deficit',
+          gradient: badgeNet >= 0 
             ? { from: '#22C55E', to: '#10B981' }
             : { from: '#EF4444', to: '#DC2626' },
-          stats,
+          sections,
           actions: [
             {
               label: 'View Details',

@@ -24,6 +24,9 @@ interface PluginSummaryAggregatorProps {
   /** Plugin data for the date (map of pluginId -> data) */
   pluginData: Record<string, any>
 
+  /** All plugin data for the month (map of pluginId -> date -> data) */
+  allPluginData?: Record<string, Record<string, any>>
+
   /** Goal ID for building navigation URLs */
   goalId?: string
 
@@ -39,6 +42,7 @@ export function PluginSummaryAggregator({
   plugins,
   date,
   pluginData,
+  allPluginData,
   goalId,
   onActionClick,
 }: PluginSummaryAggregatorProps) {
@@ -49,7 +53,9 @@ export function PluginSummaryAggregator({
       if (!plugin.calendar?.getDaySummary) continue
 
       const data = pluginData[plugin.id] || null
-      const summary = plugin.calendar.getDaySummary(date, data, { goalId })
+      // Pass all month data for this plugin so it can calculate monthly totals
+      const allMonthData = allPluginData?.[plugin.id] || undefined
+      const summary = plugin.calendar.getDaySummary(date, data, { goalId, allMonthData })
 
       if (summary && summary.hasData && summary.summary) {
         result.push({ pluginId: plugin.id, summary })
@@ -57,7 +63,7 @@ export function PluginSummaryAggregator({
     }
 
     return result
-  }, [plugins, date, pluginData, goalId])
+  }, [plugins, date, pluginData, allPluginData, goalId])
 
   if (summaries.length === 0) {
     return null

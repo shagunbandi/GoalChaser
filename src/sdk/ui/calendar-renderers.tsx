@@ -6,6 +6,7 @@ import type {
   CalendarSummaryConfig,
   CalendarSummaryAction,
   StatItem,
+  StatSection,
   ListItem,
 } from '../interfaces/plugin.interface'
 
@@ -61,24 +62,29 @@ function ActionButton({
  * Chip renderer - compact single-line summary
  */
 export function SummaryChip({ config, onActionClick }: SummaryRendererProps) {
-  const { icon, title, subtitle, content, color, badge, actions, gradient } = config
+  const { icon, title, subtitle, content, color, badge, actions, gradient } =
+    config
 
   return (
-    <div 
+    <div
       className="flex items-center justify-between gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/[0.07] transition-all duration-200 group"
-      style={gradient ? {
-        background: `linear-gradient(135deg, ${gradient.from}15, ${gradient.to}15)`
-      } : undefined}
+      style={
+        gradient
+          ? {
+              background: `linear-gradient(135deg, ${gradient.from}15, ${gradient.to}15)`,
+            }
+          : undefined
+      }
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         {icon && (
-          <div 
+          <div
             className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 transition-transform group-hover:scale-110"
             style={{
-              backgroundColor: gradient 
-                ? `${gradient.from}40` 
-                : color 
-                ? `${color}30` 
+              backgroundColor: gradient
+                ? `${gradient.from}40`
+                : color
+                ? `${color}30`
                 : 'rgba(255,255,255,0.1)',
             }}
           >
@@ -87,9 +93,7 @@ export function SummaryChip({ config, onActionClick }: SummaryRendererProps) {
         )}
         <div className="flex flex-col min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-white/90">
-              {title}
-            </span>
+            <span className="text-sm font-semibold text-white/90">{title}</span>
             {badge && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/10 text-white/70">
                 {badge}
@@ -134,14 +138,19 @@ export function SummaryAccordion({
   onActionClick,
 }: SummaryRendererProps) {
   const [isOpen, setIsOpen] = React.useState(false)
-  const { icon, title, subtitle, content, color, actions, badge, gradient } = config
+  const { icon, title, subtitle, content, color, actions, badge, gradient } =
+    config
 
   return (
-    <div 
+    <div
       className="border border-white/10 rounded-xl overflow-hidden bg-white/5"
-      style={gradient ? {
-        background: `linear-gradient(135deg, ${gradient.from}10, ${gradient.to}10)`
-      } : undefined}
+      style={
+        gradient
+          ? {
+              background: `linear-gradient(135deg, ${gradient.from}10, ${gradient.to}10)`,
+            }
+          : undefined
+      }
     >
       {/* Header */}
       <button
@@ -153,10 +162,10 @@ export function SummaryAccordion({
             <div
               className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
               style={{
-                backgroundColor: gradient 
-                  ? `${gradient.from}40` 
-                  : color 
-                  ? `${color}30` 
+                backgroundColor: gradient
+                  ? `${gradient.from}40`
+                  : color
+                  ? `${color}30`
                   : 'rgba(255,255,255,0.1)',
               }}
             >
@@ -165,7 +174,9 @@ export function SummaryAccordion({
           )}
           <div className="text-left">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-white/90">{title}</span>
+              <span className="text-sm font-semibold text-white/90">
+                {title}
+              </span>
               {badge && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/10 text-white/70">
                   {badge}
@@ -206,7 +217,9 @@ export function SummaryAccordion({
                 {Object.entries(content).map(([key, value]) => (
                   <div key={key} className="flex justify-between">
                     <span className="text-white/50">{key}:</span>
-                    <span className="text-white/80 font-medium">{String(value)}</span>
+                    <span className="text-white/80 font-medium">
+                      {String(value)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -254,14 +267,19 @@ export function SummaryAccordion({
  * Card renderer - full-featured summary card
  */
 export function SummaryCard({ config, onActionClick }: SummaryRendererProps) {
-  const { icon, title, subtitle, content, color, actions, badge, gradient } = config
+  const { icon, title, subtitle, content, color, actions, badge, gradient } =
+    config
 
   return (
-    <div 
+    <div
       className="border border-white/10 rounded-xl overflow-hidden bg-white/5 hover:bg-white/[0.07] transition-colors"
-      style={gradient ? {
-        background: `linear-gradient(135deg, ${gradient.from}10, ${gradient.to}10)`
-      } : undefined}
+      style={
+        gradient
+          ? {
+              background: `linear-gradient(135deg, ${gradient.from}10, ${gradient.to}10)`,
+            }
+          : undefined
+      }
     >
       {/* Header */}
       <div className="px-4 py-3 border-b border-white/10 bg-white/[0.02]">
@@ -270,10 +288,10 @@ export function SummaryCard({ config, onActionClick }: SummaryRendererProps) {
             <div
               className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
               style={{
-                backgroundColor: gradient 
-                  ? `${gradient.from}40` 
-                  : color 
-                  ? `${color}30` 
+                backgroundColor: gradient
+                  ? `${gradient.from}40`
+                  : color
+                  ? `${color}30`
                   : 'rgba(255,255,255,0.1)',
               }}
             >
@@ -356,33 +374,76 @@ export function SummaryCard({ config, onActionClick }: SummaryRendererProps) {
 }
 
 /**
- * Stats renderer - display multiple stat items in a grid
+ * Helper to render a row of stats
+ */
+function StatsRow({ stats }: { stats: StatItem[] }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {stats.map((stat, idx) => (
+        <div
+          key={idx}
+          className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.03] border border-white/5"
+        >
+          {stat.icon && <span className="text-sm">{stat.icon}</span>}
+          <span
+            className="text-sm font-semibold"
+            style={stat.color ? { color: stat.color } : undefined}
+          >
+            {stat.value}
+          </span>
+          <span className="text-[10px] text-white/50">{stat.label}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Stats renderer - display multiple stat items in a compact grid
+ * Supports both flat stats and sectioned stats
  */
 export function SummaryStats({ config, onActionClick }: SummaryRendererProps) {
-  const { icon, title, subtitle, stats, color, gradient, actions, badge } = config
+  const {
+    icon,
+    title,
+    subtitle,
+    stats,
+    sections,
+    color,
+    gradient,
+    actions,
+    badge,
+  } = config
 
-  if (!stats || stats.length === 0) {
+  const hasStats =
+    (stats && stats.length > 0) || (sections && sections.length > 0)
+
+  if (!hasStats) {
     return null
   }
 
   return (
-    <div 
+    <div
       className="border border-white/10 rounded-xl overflow-hidden bg-white/5"
-      style={gradient ? {
-        background: `linear-gradient(135deg, ${gradient.from}10, ${gradient.to}10)`
-      } : undefined}
+      style={
+        gradient
+          ? {
+              background: `linear-gradient(135deg, ${gradient.from}10, ${gradient.to}10)`,
+            }
+          : undefined
+      }
     >
       {/* Header */}
-      <div className="px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-        <div className="flex items-center gap-3">
+      <div className="px-3 py-2 border-b border-white/10 bg-white/[0.02]">
+        <div className="flex items-center gap-2">
           {icon && (
             <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
               style={{
-                backgroundColor: gradient 
-                  ? `${gradient.from}40` 
-                  : color 
-                  ? `${color}30` 
+                backgroundColor: gradient
+                  ? `${gradient.from}40`
+                  : color
+                  ? `${color}30`
                   : 'rgba(255,255,255,0.1)',
               }}
             >
@@ -391,56 +452,46 @@ export function SummaryStats({ config, onActionClick }: SummaryRendererProps) {
           )}
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-white/90">{title}</h3>
+              <h3 className="text-xs font-semibold text-white/90">{title}</h3>
               {badge && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/10 text-white/70">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-white/10 text-white/70">
                   {badge}
                 </span>
               )}
             </div>
             {subtitle && (
-              <p className="text-xs text-white/50 mt-0.5">{subtitle}</p>
+              <p className="text-[10px] text-white/50">{subtitle}</p>
             )}
           </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="px-4 py-4">
-        <div className="grid grid-cols-2 gap-3">
-          {stats.map((stat, idx) => (
-            <div
-              key={idx}
-              className="px-3 py-3 rounded-lg bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-colors"
-            >
-              {stat.icon && (
-                <div className="text-lg mb-1">{stat.icon}</div>
-              )}
-              <div
-                className="text-lg font-bold text-white/90"
-                style={stat.color ? { color: stat.color } : undefined}
-              >
-                {stat.value}
+      {/* Stats Content */}
+      <div className="px-3 py-2 space-y-3">
+        {/* Render sections if provided */}
+        {sections && sections.length > 0
+          ? sections.map((section, sectionIdx) => (
+              <div key={sectionIdx}>
+                <div className="text-[10px] font-medium text-white/40 uppercase tracking-wide mb-1.5">
+                  {section.title}
+                </div>
+                <StatsRow stats={section.stats} />
               </div>
-              <div className="text-xs text-white/50 mt-1">{stat.label}</div>
-              {stat.subtitle && (
-                <div className="text-[10px] text-white/40 mt-0.5">{stat.subtitle}</div>
-              )}
-            </div>
-          ))}
-        </div>
+            ))
+          : /* Render flat stats */
+            stats && <StatsRow stats={stats} />}
       </div>
 
       {/* Actions */}
       {actions && actions.length > 0 && (
-        <div className="px-4 py-3 border-t border-white/10 flex items-center gap-2">
+        <div className="px-3 py-2 border-t border-white/10 flex items-center gap-2">
           {actions.map((action, idx) => (
             <ActionButton
               key={idx}
               action={action}
               onClick={() => onActionClick?.(action)}
               className={`
-                flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors
+                flex-1 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors
                 ${
                   action.variant === 'primary'
                     ? 'bg-blue-500 hover:bg-blue-600 text-white'
@@ -469,18 +520,23 @@ export function SummaryStats({ config, onActionClick }: SummaryRendererProps) {
  * List renderer - display items in a vertical list
  */
 export function SummaryList({ config, onActionClick }: SummaryRendererProps) {
-  const { icon, title, subtitle, items, color, gradient, actions, badge } = config
+  const { icon, title, subtitle, items, color, gradient, actions, badge } =
+    config
 
   if (!items || items.length === 0) {
     return null
   }
 
   return (
-    <div 
+    <div
       className="border border-white/10 rounded-xl overflow-hidden bg-white/5"
-      style={gradient ? {
-        background: `linear-gradient(135deg, ${gradient.from}10, ${gradient.to}10)`
-      } : undefined}
+      style={
+        gradient
+          ? {
+              background: `linear-gradient(135deg, ${gradient.from}10, ${gradient.to}10)`,
+            }
+          : undefined
+      }
     >
       {/* Header */}
       <div className="px-4 py-3 border-b border-white/10 bg-white/[0.02]">
@@ -489,10 +545,10 @@ export function SummaryList({ config, onActionClick }: SummaryRendererProps) {
             <div
               className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
               style={{
-                backgroundColor: gradient 
-                  ? `${gradient.from}40` 
-                  : color 
-                  ? `${color}30` 
+                backgroundColor: gradient
+                  ? `${gradient.from}40`
+                  : color
+                  ? `${color}30`
                   : 'rgba(255,255,255,0.1)',
               }}
             >
@@ -525,7 +581,11 @@ export function SummaryList({ config, onActionClick }: SummaryRendererProps) {
             className={`
               w-full px-4 py-3 flex items-center justify-between gap-3
               transition-colors
-              ${item.onClick ? 'hover:bg-white/[0.05] cursor-pointer' : 'cursor-default'}
+              ${
+                item.onClick
+                  ? 'hover:bg-white/[0.05] cursor-pointer'
+                  : 'cursor-default'
+              }
             `}
           >
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -533,9 +593,13 @@ export function SummaryList({ config, onActionClick }: SummaryRendererProps) {
                 <span className="text-lg shrink-0">{item.icon}</span>
               )}
               <div className="flex flex-col items-start min-w-0">
-                <span className="text-sm text-white/80 truncate">{item.label}</span>
+                <span className="text-sm text-white/80 truncate">
+                  {item.label}
+                </span>
                 {item.subtitle && (
-                  <span className="text-xs text-white/40 mt-0.5">{item.subtitle}</span>
+                  <span className="text-xs text-white/40 mt-0.5">
+                    {item.subtitle}
+                  </span>
                 )}
               </div>
             </div>

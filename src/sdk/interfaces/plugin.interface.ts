@@ -28,13 +28,13 @@ export interface Plugin<TDayData = any, TConfig = any> {
      * Generate calendar summary for a specific date
      * @param date ISO date string (YYYY-MM-DD)
      * @param data Day data for this plugin (or null if no data)
-     * @param context Optional context information (goalId, etc.) for building navigation URLs
+     * @param context Optional context information (goalId, allMonthData, etc.) for building navigation URLs
      * @returns CalendarDaySummary or null if no summary to show
      */
     getDaySummary: (
       date: string,
       data: TDayData | null,
-      context?: { goalId?: string }
+      context?: { goalId?: string; allMonthData?: Record<string, TDayData> }
     ) => CalendarDaySummary | null
   }
 
@@ -271,6 +271,7 @@ export interface CalendarDaySummary {
   summary?: CalendarSummaryConfig
 }
 
+
 /**
  * Configuration for how the summary should be rendered in the detail panel
  */
@@ -302,6 +303,9 @@ export interface CalendarSummaryConfig {
   /** Stats items (for type: 'stats') */
   stats?: StatItem[]
 
+  /** Sectioned stats (for type: 'stats' with multiple groups) */
+  sections?: StatSection[]
+
   /** List items (for type: 'list') */
   items?: ListItem[]
 
@@ -324,6 +328,14 @@ export interface StatItem {
   icon?: string
   color?: string
   subtitle?: string
+}
+
+/**
+ * Section of stats for grouped display
+ */
+export interface StatSection {
+  title: string
+  stats: StatItem[]
 }
 
 /**

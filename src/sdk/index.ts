@@ -24,6 +24,7 @@ export type {
   PluginAnalyticsMetric,
   PluginAnalyticsChartData,
   StatItem as SDKStatItem,
+  StatSection,
   ListItem,
 } from './interfaces/plugin.interface'
 

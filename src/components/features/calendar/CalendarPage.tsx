@@ -329,6 +329,7 @@ export default function CalendarPage({
                   plugins={plugins}
                   date={selectedDate}
                   pluginData={pluginDataByDate[selectedDate] || {}}
+                  allPluginData={pluginData || {}}
                   goalId={goalId}
                   onActionClick={(pluginId) =>
                     handleJumpToPlugin(pluginId, selectedDate)
