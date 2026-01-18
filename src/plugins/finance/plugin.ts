@@ -300,16 +300,30 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
 
       // Charts and extras only if there's data
       if (hasData) {
-        // Calculate recurring totals
+        // Calculate recurring totals and counts
         let recurringIncome = 0
+        let recurringIncomeCount = 0
         let recurringExpenses = 0
+        let recurringExpenseCount = 0
         let recurringInvestments = 0
+        let recurringInvestmentCount = 0
+
+        // Track unique series to count recurring items properly
+        const incomeSeriesIds = new Set<string>()
+        const expenseSeriesIds = new Set<string>()
+        const investmentSeriesIds = new Set<string>()
 
         Object.values(data).forEach(dayData => {
           if (dayData?.income) {
             dayData.income.forEach(inc => {
               if (inc.isRecurring || inc.seriesId) {
                 recurringIncome += inc.amount
+                if (inc.seriesId && !incomeSeriesIds.has(inc.seriesId)) {
+                  incomeSeriesIds.add(inc.seriesId)
+                  recurringIncomeCount++
+                } else if (!inc.seriesId) {
+                  recurringIncomeCount++
+                }
               }
             })
           }
@@ -317,6 +331,12 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
             dayData.expenses.forEach(exp => {
               if (exp.isRecurring || exp.seriesId) {
                 recurringExpenses += exp.amount
+                if (exp.seriesId && !expenseSeriesIds.has(exp.seriesId)) {
+                  expenseSeriesIds.add(exp.seriesId)
+                  recurringExpenseCount++
+                } else if (!exp.seriesId) {
+                  recurringExpenseCount++
+                }
               }
             })
           }
@@ -324,10 +344,21 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
             dayData.investments.forEach(inv => {
               if (inv.isRecurring || inv.seriesId) {
                 recurringInvestments += inv.amount
+                if (inv.seriesId && !investmentSeriesIds.has(inv.seriesId)) {
+                  investmentSeriesIds.add(inv.seriesId)
+                  recurringInvestmentCount++
+                } else if (!inv.seriesId) {
+                  recurringInvestmentCount++
+                }
               }
             })
           }
         })
+
+        // Calculate monthly amounts
+        const recurringIncomePerMonth = monthCount > 0 ? Math.round(recurringIncome / monthCount) : recurringIncome
+        const recurringExpensesPerMonth = monthCount > 0 ? Math.round(recurringExpenses / monthCount) : recurringExpenses
+        const recurringInvestmentsPerMonth = monthCount > 0 ? Math.round(recurringInvestments / monthCount) : recurringInvestments
 
         // Recurring metrics
         if (recurringIncome > 0) {
@@ -336,10 +367,11 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
             title: 'Recurring Income',
             metricData: {
               label: 'Recurring Income',
-              value: `₹${recurringIncome.toLocaleString('en-IN')}`,
+              value: `₹${recurringIncomePerMonth.toLocaleString('en-IN')}`,
+              unit: '/month',
               icon: '🔄',
               color: '#22C55E',
-              subtitle: 'Regular income',
+              subtitle: `${incomeSeriesIds.size || recurringIncomeCount} recurring source${(incomeSeriesIds.size || recurringIncomeCount) !== 1 ? 's' : ''}`,
             },
           })
         }
@@ -350,10 +382,11 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
             title: 'Recurring Expenses',
             metricData: {
               label: 'Recurring Expenses',
-              value: `₹${recurringExpenses.toLocaleString('en-IN')}`,
+              value: `₹${recurringExpensesPerMonth.toLocaleString('en-IN')}`,
+              unit: '/month',
               icon: '🔁',
               color: '#F59E0B',
-              subtitle: 'Regular expenses',
+              subtitle: `${expenseSeriesIds.size || recurringExpenseCount} recurring expense${(expenseSeriesIds.size || recurringExpenseCount) !== 1 ? 's' : ''}`,
             },
           })
         }
@@ -364,10 +397,11 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
             title: 'Recurring Investments',
             metricData: {
               label: 'Recurring Investments',
-              value: `₹${recurringInvestments.toLocaleString('en-IN')}`,
+              value: `₹${recurringInvestmentsPerMonth.toLocaleString('en-IN')}`,
+              unit: '/month',
               icon: '📊',
               color: '#6366F1',
-              subtitle: 'SIPs & regular investments',
+              subtitle: `${investmentSeriesIds.size || recurringInvestmentCount} SIP${(investmentSeriesIds.size || recurringInvestmentCount) !== 1 ? 's' : ''} & investments`,
             },
           })
         }
