@@ -221,98 +221,156 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
 
       const hasData = totalIncome > 0 || totalExpenses > 0 || totalInvestments > 0
 
-      // Metric cards
+      // Always show basic metric cards (even with 0 values)
+      charts.push({
+        chartType: 'metric',
+        title: 'Total Income',
+        metricData: {
+          label: 'Total Income',
+          value: `₹${totalIncome.toLocaleString('en-IN')}`,
+          icon: '💵',
+          color: '#22C55E',
+          subtitle: `${dates.length} days`,
+        },
+      })
+
+      charts.push({
+        chartType: 'metric',
+        title: 'Total Expenses',
+        metricData: {
+          label: 'Total Expenses',
+          value: `₹${totalExpenses.toLocaleString('en-IN')}`,
+          icon: '💸',
+          color: '#EF4444',
+          subtitle: `${dates.length} days`,
+        },
+      })
+
+      charts.push({
+        chartType: 'metric',
+        title: 'Total Investments',
+        metricData: {
+          label: 'Total Investments',
+          value: `₹${totalInvestments.toLocaleString('en-IN')}`,
+          icon: '📈',
+          color: '#6366F1',
+          subtitle: `${dates.length} days`,
+        },
+      })
+
+      charts.push({
+        chartType: 'metric',
+        title: 'Net Savings',
+        metricData: {
+          label: 'Net Savings',
+          value: `₹${netSavings.toLocaleString('en-IN')}`,
+          icon: netSavings >= 0 ? '📊' : '📉',
+          color: netSavings >= 0 ? '#22C55E' : '#EF4444',
+          subtitle: netSavings >= 0 ? 'Surplus' : 'Deficit',
+        },
+      })
+
+      // Calculate monthly data for comparisons and averages
+      const monthlyData: Record<string, { income: number; expenses: number; investments: number }> = {}
+      dates.forEach((date, index) => {
+        const monthKey = date.substring(0, 7) // YYYY-MM
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { income: 0, expenses: 0, investments: 0 }
+        }
+        monthlyData[monthKey].income += dailyIncome[index]
+        monthlyData[monthKey].expenses += dailyExpenses[index]
+        monthlyData[monthKey].investments += dailyInvestments[index]
+      })
+
+      const monthCount = Object.keys(monthlyData).length
+      const avgMonthlySavings = monthCount > 0 ? netSavings / monthCount : 0
+
+      // Average Monthly Savings
+      charts.push({
+        chartType: 'metric',
+        title: 'Avg Monthly Savings',
+        metricData: {
+          label: 'Avg Monthly Savings',
+          value: `₹${Math.round(avgMonthlySavings).toLocaleString('en-IN')}`,
+          icon: avgMonthlySavings >= 0 ? '💰' : '📉',
+          color: avgMonthlySavings >= 0 ? '#10B981' : '#EF4444',
+          subtitle: `Over ${monthCount} month${monthCount !== 1 ? 's' : ''}`,
+        },
+      })
+
+      // Charts and extras only if there's data
       if (hasData) {
-        charts.push({
-          chartType: 'metric',
-          title: 'Total Income',
-          metricData: {
-            label: 'Total Income',
-            value: `₹${totalIncome.toLocaleString('en-IN')}`,
-            icon: '💵',
-            color: '#22C55E',
-            subtitle: `${dates.length} days`,
-          },
+        // Calculate recurring totals
+        let recurringIncome = 0
+        let recurringExpenses = 0
+        let recurringInvestments = 0
+
+        Object.values(data).forEach(dayData => {
+          if (dayData?.income) {
+            dayData.income.forEach(inc => {
+              if (inc.isRecurring || inc.seriesId) {
+                recurringIncome += inc.amount
+              }
+            })
+          }
+          if (dayData?.expenses) {
+            dayData.expenses.forEach(exp => {
+              if (exp.isRecurring || exp.seriesId) {
+                recurringExpenses += exp.amount
+              }
+            })
+          }
+          if (dayData?.investments) {
+            dayData.investments.forEach(inv => {
+              if (inv.isRecurring || inv.seriesId) {
+                recurringInvestments += inv.amount
+              }
+            })
+          }
         })
 
-        charts.push({
-          chartType: 'metric',
-          title: 'Total Expenses',
-          metricData: {
-            label: 'Total Expenses',
-            value: `₹${totalExpenses.toLocaleString('en-IN')}`,
-            icon: '💸',
-            color: '#EF4444',
-            subtitle: `${dates.length} days`,
-          },
-        })
+        // Recurring metrics
+        if (recurringIncome > 0) {
+          charts.push({
+            chartType: 'metric',
+            title: 'Recurring Income',
+            metricData: {
+              label: 'Recurring Income',
+              value: `₹${recurringIncome.toLocaleString('en-IN')}`,
+              icon: '🔄',
+              color: '#22C55E',
+              subtitle: 'Regular income',
+            },
+          })
+        }
 
-        charts.push({
-          chartType: 'metric',
-          title: 'Total Investments',
-          metricData: {
-            label: 'Total Investments',
-            value: `₹${totalInvestments.toLocaleString('en-IN')}`,
-            icon: '📈',
-            color: '#6366F1',
-            subtitle: `${dates.length} days`,
-          },
-        })
+        if (recurringExpenses > 0) {
+          charts.push({
+            chartType: 'metric',
+            title: 'Recurring Expenses',
+            metricData: {
+              label: 'Recurring Expenses',
+              value: `₹${recurringExpenses.toLocaleString('en-IN')}`,
+              icon: '🔁',
+              color: '#F59E0B',
+              subtitle: 'Regular expenses',
+            },
+          })
+        }
 
-        charts.push({
-          chartType: 'metric',
-          title: 'Net Savings',
-          metricData: {
-            label: 'Net Savings',
-            value: `₹${netSavings.toLocaleString('en-IN')}`,
-            icon: netSavings >= 0 ? '📊' : '📉',
-            color: netSavings >= 0 ? '#22C55E' : '#EF4444',
-            subtitle: netSavings >= 0 ? 'Surplus' : 'Deficit',
-          },
-        })
-
-        // Line chart: Income vs Expenses vs Investments
-        charts.push({
-          chartType: 'line',
-          title: 'Cash Flow',
-          size: 'large',
-          data: {
-            labels: dates.map(d => formatDateLabel(d)),
-            datasets: [
-              {
-                label: 'Income',
-                data: dailyIncome,
-                color: '#34C759',
-              },
-              {
-                label: 'Expenses',
-                data: dailyExpenses,
-                color: '#FF3B30',
-              },
-              {
-                label: 'Investments',
-                data: dailyInvestments,
-                color: '#6366F1',
-              },
-            ],
-          },
-        })
-
-        // Bar chart: Net savings per day
-        const dailyNet = dates.map((_, i) => dailyIncome[i] - dailyExpenses[i] - dailyInvestments[i])
-        charts.push({
-          chartType: 'bar',
-          title: 'Daily Net',
-          size: 'medium',
-          data: {
-            labels: dates.map(d => formatDateLabel(d)),
-            datasets: [{
-              label: 'Net Amount',
-              data: dailyNet,
-              color: '#007AFF',
-            }],
-          },
-        })
+        if (recurringInvestments > 0) {
+          charts.push({
+            chartType: 'metric',
+            title: 'Recurring Investments',
+            metricData: {
+              label: 'Recurring Investments',
+              value: `₹${recurringInvestments.toLocaleString('en-IN')}`,
+              icon: '📊',
+              color: '#6366F1',
+              subtitle: 'SIPs & regular investments',
+            },
+          })
+        }
 
         // Pie chart: Expenses by category
         const categoryTotals: Record<string, number> = {}
@@ -344,55 +402,6 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
           })
         }
 
-        // Pie chart: Investments by group
-        const investmentTotals: Record<string, number> = {}
-        Object.values(data).forEach(dayData => {
-          if (dayData.investments) {
-            dayData.investments.forEach(investment => {
-              const group = investment.investmentGroupName || 'Other'
-              investmentTotals[group] = (investmentTotals[group] || 0) + investment.amount
-            })
-          }
-        })
-
-        if (Object.keys(investmentTotals).length > 0) {
-          const groups = Object.keys(investmentTotals)
-          const amounts = groups.map(g => investmentTotals[g])
-
-          charts.push({
-            chartType: 'pie',
-            title: 'Investments by Group',
-            size: 'medium',
-            data: {
-              labels: groups,
-              datasets: [{
-                label: 'Amount',
-                data: amounts,
-                color: '#6366F1',
-              }],
-            },
-          })
-        }
-
-        // Heat map: Transaction activity
-        const heatmapData: Record<string, number> = {}
-        dates.forEach((date, index) => {
-          const totalActivity = dailyIncome[index] + dailyExpenses[index] + dailyInvestments[index]
-          if (totalActivity > 0) {
-            heatmapData[date] = totalActivity
-          }
-        })
-
-        charts.push({
-          chartType: 'heatmap',
-          title: 'Transaction Activity',
-          size: 'large',
-          heatmapData,
-          dateRange: {
-            start: startDate,
-            end: endDate,
-          },
-        })
       }
 
       return charts
