@@ -235,10 +235,12 @@ export function MonthCalendar({
           const isInRange = isDateInRange(day.iso)
           const customization = dayCustomizations[day.iso]
 
-          // Check if backgroundColor is a hex color (starts with #) or a Tailwind class
-          const isHexColor = customization?.backgroundColor?.startsWith('#')
-          const bgClass = isHexColor ? '' : (customization?.backgroundColor || 'bg-white/[0.15]')
-          const bgStyle = isHexColor ? { backgroundColor: customization?.backgroundColor } : {}
+          // Check if backgroundColor is a CSS color (hex, rgb, rgba) or a Tailwind class
+          const bgColor = customization?.backgroundColor
+          const isCssColor =
+            bgColor?.startsWith('#') || bgColor?.startsWith('rgb')
+          const bgClass = isCssColor ? '' : bgColor || 'bg-white/[0.15]'
+          const bgStyle = isCssColor ? { backgroundColor: bgColor } : {}
 
           return (
             <div
@@ -269,7 +271,9 @@ export function MonthCalendar({
 
       {/* Footer content (e.g., legend) */}
       {footerContent && (
-        <div className="mt-4 pt-3 border-t border-white/10">{footerContent}</div>
+        <div className="mt-4 pt-3 border-t border-white/10">
+          {footerContent}
+        </div>
       )}
     </>
   )

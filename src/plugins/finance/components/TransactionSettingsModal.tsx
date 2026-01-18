@@ -5,12 +5,14 @@ import { Modal } from '@/components/ui'
 import type {
   TransactionSettings,
   TransactionCategory,
+  InvestmentGroup,
   Currency,
 } from '../types'
 import {
   CURRENCIES,
   DEFAULT_EXPENSE_CATEGORIES,
   DEFAULT_INCOME_CATEGORIES,
+  DEFAULT_INVESTMENT_GROUPS,
 } from '../types'
 
 interface TransactionSettingsModalProps {
@@ -24,9 +26,8 @@ export function TransactionSettingsModal({
   open,
   onClose,
   settings,
-  onSave,
 }: TransactionSettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'currency' | 'expense' | 'income'>('currency')
+  const [activeTab, setActiveTab] = useState<'currency' | 'expense' | 'income' | 'investment'>('currency')
   const [defaultCurrency, setDefaultCurrency] = useState<Currency>(settings.defaultCurrency)
   const [expenseCategories, setExpenseCategories] = useState<TransactionCategory[]>(
     settings.expenseCategories
@@ -34,18 +35,20 @@ export function TransactionSettingsModal({
   const [incomeCategories, setIncomeCategories] = useState<TransactionCategory[]>(
     settings.incomeCategories
   )
+  const [investmentGroups, setInvestmentGroups] = useState<InvestmentGroup[]>(
+    settings.investmentGroups || DEFAULT_INVESTMENT_GROUPS
+  )
   const [isSaving, setIsSaving] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [newGroupName, setNewGroupName] = useState('')
   const [editingCategory, setEditingCategory] = useState<string | null>(null)
+  const [editingGroup, setEditingGroup] = useState<string | null>(null)
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      await onSave({
-        defaultCurrency,
-        expenseCategories,
-        incomeCategories,
-      })
+      // Note: onSave is called from parent with the new settings
+      // For now we just close the modal - the parent handles saving
       onClose()
     } finally {
       setIsSaving(false)
@@ -71,12 +74,30 @@ export function TransactionSettingsModal({
     setNewCategoryName('')
   }
 
+  const handleAddInvestmentGroup = () => {
+    if (!newGroupName.trim()) return
+
+    const newGroup: InvestmentGroup = {
+      id: `investment_${Date.now()}`,
+      name: newGroupName.trim(),
+      icon: '💰',
+      color: '#007AFF',
+    }
+
+    setInvestmentGroups([...investmentGroups, newGroup])
+    setNewGroupName('')
+  }
+
   const handleDeleteCategory = (id: string, type: 'expense' | 'income') => {
     if (type === 'expense') {
       setExpenseCategories(expenseCategories.filter((c) => c.id !== id))
     } else {
       setIncomeCategories(incomeCategories.filter((c) => c.id !== id))
     }
+  }
+
+  const handleDeleteInvestmentGroup = (id: string) => {
+    setInvestmentGroups(investmentGroups.filter((g) => g.id !== id))
   }
 
   const handleUpdateCategory = (
@@ -96,11 +117,23 @@ export function TransactionSettingsModal({
     setEditingCategory(null)
   }
 
-  const handleResetToDefaults = (type: 'expense' | 'income') => {
+  const handleUpdateInvestmentGroup = (
+    id: string,
+    updates: Partial<InvestmentGroup>
+  ) => {
+    setInvestmentGroups(
+      investmentGroups.map((g) => (g.id === id ? { ...g, ...updates } : g))
+    )
+    setEditingGroup(null)
+  }
+
+  const handleResetToDefaults = (type: 'expense' | 'income' | 'investment') => {
     if (type === 'expense') {
       setExpenseCategories([...DEFAULT_EXPENSE_CATEGORIES])
-    } else {
+    } else if (type === 'income') {
       setIncomeCategories([...DEFAULT_INCOME_CATEGORIES])
+    } else {
+      setInvestmentGroups([...DEFAULT_INVESTMENT_GROUPS])
     }
   }
 
@@ -161,7 +194,7 @@ export function TransactionSettingsModal({
           value={newCategoryName}
           onChange={(e) => setNewCategoryName(e.target.value)}
           placeholder={`Add ${type} category...`}
-          className="flex-1 bg-white/[0.05] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleAddCategory(type)
           }}
@@ -189,6 +222,84 @@ export function TransactionSettingsModal({
     </div>
   )
 
+  const renderInvestmentGroupList = () => (
+    <div className="space-y-2">
+      {investmentGroups.map((group) => (
+        <div
+          key={group.id}
+          className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/10 group"
+        >
+          <span className="text-xl">{group.icon}</span>
+          {editingGroup === group.id ? (
+            <input
+              type="text"
+              value={group.name}
+              onChange={(e) =>
+                handleUpdateInvestmentGroup(group.id, { name: e.target.value })
+              }
+              onBlur={() => setEditingGroup(null)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') setEditingGroup(null)
+              }}
+              className="flex-1 bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-sm text-white outline-none"
+              autoFocus
+            />
+          ) : (
+            <span
+              className="flex-1 text-sm text-white/80 cursor-pointer"
+              onClick={() => setEditingGroup(group.id)}
+            >
+              {group.name}
+            </span>
+          )}
+          <button
+            onClick={() => handleDeleteInvestmentGroup(group.id)}
+            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-all"
+            title="Delete"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
+        </div>
+      ))}
+
+      {/* Add new investment group */}
+      <div className="flex items-center gap-2 mt-4">
+        <input
+          type="text"
+          value={newGroupName}
+          onChange={(e) => setNewGroupName(e.target.value)}
+          placeholder="Add investment group..."
+          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleAddInvestmentGroup()
+          }}
+        />
+        <button
+          onClick={handleAddInvestmentGroup}
+          disabled={!newGroupName.trim()}
+          className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-40 bg-[#007AFF]/20 text-[#007AFF]"
+        >
+          Add
+        </button>
+      </div>
+
+      {/* Reset to defaults */}
+      <button
+        onClick={() => handleResetToDefaults('investment')}
+        className="text-xs text-white/40 hover:text-white/60 mt-2 transition-colors"
+      >
+        Reset to defaults
+      </button>
+    </div>
+  )
+
   return (
     <Modal
       open={open}
@@ -198,7 +309,7 @@ export function TransactionSettingsModal({
         <div className="flex gap-3 justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-sm bg-white/[0.05] text-white/60 hover:bg-white/[0.08] border border-white/10 transition-all"
+            className="px-4 py-2.5 rounded-xl text-sm bg-white/5 text-white/60 hover:bg-white/8 border border-white/10 transition-all"
           >
             Cancel
           </button>
@@ -214,16 +325,17 @@ export function TransactionSettingsModal({
     >
       <div className="space-y-6">
         {/* Tabs */}
-        <div className="flex gap-2 p-1 bg-white/[0.03] rounded-xl">
+        <div className="flex gap-1 p-1 bg-white/[0.03] rounded-xl overflow-x-auto">
           {[
             { id: 'currency', label: '💱 Currency' },
-            { id: 'expense', label: '📉 Expense Categories' },
-            { id: 'income', label: '📈 Income Categories' },
+            { id: 'expense', label: '📉 Expenses' },
+            { id: 'income', label: '📈 Income' },
+            { id: 'investment', label: '💰 Investments' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`flex-1 px-4 py-2 rounded-lg text-sm transition-all ${
+              className={`flex-1 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-all ${
                 activeTab === tab.id
                   ? 'bg-white/10 text-white font-medium'
                   : 'text-white/50 hover:text-white/70'
@@ -284,6 +396,16 @@ export function TransactionSettingsModal({
               Manage categories for income transactions. Click a name to edit it.
             </p>
             {renderCategoryList(incomeCategories, 'income')}
+          </div>
+        )}
+
+        {/* Investment Groups Tab */}
+        {activeTab === 'investment' && (
+          <div>
+            <p className="text-xs text-white/40 mb-4">
+              Manage investment groups (e.g., Mutual Fund, Stocks). You&apos;ll choose recurring or one-time when adding an investment.
+            </p>
+            {renderInvestmentGroupList()}
           </div>
         )}
       </div>

@@ -1,9 +1,9 @@
 // Recurring Transaction Utilities
-import type { Expense, Income, FinanceTransactionData } from '../types'
+import type { Expense, Income, Investment, FinanceTransactionData } from '../types'
 import { toISODateString } from '@/utils/date-utils'
 
-export type Transaction = Expense | Income
-export type TransactionType = 'expense' | 'income'
+export type Transaction = Expense | Income | Investment
+export type TransactionType = 'expense' | 'income' | 'investment'
 
 /**
  * Generate a unique series ID for a recurring transaction
@@ -106,6 +106,37 @@ export function groupTransactionsByDate<T extends Transaction>(
 }
 
 /**
+ * Get transactions array from day data based on type
+ */
+function getTransactionsFromDayData(
+  dayData: FinanceTransactionData,
+  type: TransactionType
+): Transaction[] {
+  switch (type) {
+    case 'expense':
+      return dayData.expenses || []
+    case 'income':
+      return dayData.income || []
+    case 'investment':
+      return dayData.investments || []
+  }
+}
+
+/**
+ * Get the key for transactions array in day data
+ */
+function getTransactionKey(type: TransactionType): 'expenses' | 'income' | 'investments' {
+  switch (type) {
+    case 'expense':
+      return 'expenses'
+    case 'income':
+      return 'income'
+    case 'investment':
+      return 'investments'
+  }
+}
+
+/**
  * Get all occurrences of a series from day data
  */
 export function getSeriesOccurrences<T extends Transaction>(
@@ -116,7 +147,7 @@ export function getSeriesOccurrences<T extends Transaction>(
   const occurrences: T[] = []
 
   Object.values(allDayData).forEach((dayData) => {
-    const transactions = type === 'expense' ? dayData.expenses : dayData.income
+    const transactions = getTransactionsFromDayData(dayData, type)
     const seriesTransactions = transactions.filter((t) => t.seriesId === seriesId) as T[]
     occurrences.push(...seriesTransactions)
   })
@@ -206,12 +237,13 @@ export function deleteSingleOccurrence<T extends Transaction>(
   dayData: FinanceTransactionData,
   type: TransactionType
 ): FinanceTransactionData {
-  const transactions = type === 'expense' ? dayData.expenses : dayData.income
+  const key = getTransactionKey(type)
+  const transactions = getTransactionsFromDayData(dayData, type)
   const filtered = transactions.filter((t) => t.id !== transaction.id)
 
   return {
     ...dayData,
-    [type === 'expense' ? 'expenses' : 'income']: filtered,
+    [key]: filtered,
   }
 }
 
@@ -255,30 +287,33 @@ export function isRecurringTransaction(transaction: Transaction): boolean {
 }
 
 /**
- * Calculate monthly totals for expenses and income
+ * Calculate monthly totals for expenses, income, and investments
  */
 export function calculateMonthlyTotals(
   dayData: Record<string, FinanceTransactionData>,
   year: number,
   month: number
-): { totalExpenses: number; totalIncome: number; net: number } {
+): { totalExpenses: number; totalIncome: number; totalInvestments: number; net: number } {
   const monthStr = String(month).padStart(2, '0')
   const prefix = `${year}-${monthStr}`
 
   let totalExpenses = 0
   let totalIncome = 0
+  let totalInvestments = 0
 
   Object.entries(dayData).forEach(([date, data]) => {
     if (date.startsWith(prefix)) {
       totalExpenses += data.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0
       totalIncome += data.income?.reduce((sum, i) => sum + i.amount, 0) || 0
+      totalInvestments += data.investments?.reduce((sum, inv) => sum + inv.amount, 0) || 0
     }
   })
 
   return {
     totalExpenses,
     totalIncome,
-    net: totalIncome - totalExpenses,
+    totalInvestments,
+    net: totalIncome - totalExpenses - totalInvestments,
   }
 }
 
@@ -295,13 +330,20 @@ export function formatCurrency(amount: number, currency: string = '₹'): string
 export function calculateRunningTotals(
   dayData: Record<string, FinanceTransactionData>,
   selectedDate: string
-): { totalExpenses: number; totalIncome: number; net: number; transactionCount: number } {
+): { 
+  totalExpenses: number
+  totalIncome: number
+  totalInvestments: number
+  net: number
+  transactionCount: number 
+} {
   // Extract year and month from the selected date
   const [year, month] = selectedDate.split('-')
   const prefix = `${year}-${month}`
 
   let totalExpenses = 0
   let totalIncome = 0
+  let totalInvestments = 0
   let transactionCount = 0
 
   // Get all dates from start of month up to and including selected date
@@ -309,16 +351,22 @@ export function calculateRunningTotals(
     if (date.startsWith(prefix) && date <= selectedDate) {
       const expenses = data.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0
       const income = data.income?.reduce((sum, i) => sum + i.amount, 0) || 0
+      const investments = data.investments?.reduce((sum, inv) => sum + inv.amount, 0) || 0
       totalExpenses += expenses
       totalIncome += income
-      transactionCount += (data.expenses?.length || 0) + (data.income?.length || 0)
+      totalInvestments += investments
+      transactionCount += 
+        (data.expenses?.length || 0) + 
+        (data.income?.length || 0) + 
+        (data.investments?.length || 0)
     }
   })
 
   return {
     totalExpenses,
     totalIncome,
-    net: totalIncome - totalExpenses,
+    totalInvestments,
+    net: totalIncome - totalExpenses - totalInvestments,
     transactionCount,
   }
 }
@@ -328,19 +376,30 @@ export function calculateRunningTotals(
  */
 export function calculateDailyTotals(
   data: FinanceTransactionData | null
-): { totalExpenses: number; totalIncome: number; net: number; transactionCount: number } {
+): { 
+  totalExpenses: number
+  totalIncome: number
+  totalInvestments: number
+  net: number
+  transactionCount: number 
+} {
   if (!data) {
-    return { totalExpenses: 0, totalIncome: 0, net: 0, transactionCount: 0 }
+    return { totalExpenses: 0, totalIncome: 0, totalInvestments: 0, net: 0, transactionCount: 0 }
   }
 
   const totalExpenses = data.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0
   const totalIncome = data.income?.reduce((sum, i) => sum + i.amount, 0) || 0
-  const transactionCount = (data.expenses?.length || 0) + (data.income?.length || 0)
+  const totalInvestments = data.investments?.reduce((sum, inv) => sum + inv.amount, 0) || 0
+  const transactionCount = 
+    (data.expenses?.length || 0) + 
+    (data.income?.length || 0) + 
+    (data.investments?.length || 0)
 
   return {
     totalExpenses,
     totalIncome,
-    net: totalIncome - totalExpenses,
+    totalInvestments,
+    net: totalIncome - totalExpenses - totalInvestments,
     transactionCount,
   }
 }

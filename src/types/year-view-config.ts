@@ -13,7 +13,7 @@ export type ButtonConfig = {
 
 // Day appearance configuration
 export type DayIndicator = {
-  type: 'travel' | 'expense' | 'income' | 'sip'
+  type: 'travel' | 'expense' | 'income' | 'investment'
   color?: string // optional custom color
   count?: number // for multiple items
 }
@@ -31,7 +31,7 @@ export type DayConfig = {
 // Month footer configuration
 export type MonthFooterItem = {
   id: string
-  type: 'budget' | 'sip' | 'travel' | 'custom'
+  type: 'travel' | 'investment' | 'custom'
   title: string
   subtitle?: string
   icon?: string
@@ -95,4 +95,5 @@ export type YearViewConfig = {
   onDaySelect?: (date: string | null) => void
   onMonthClick?: (year: number, month: number) => void // Navigate to month view
   showDayModal?: boolean // Control whether clicking a day opens a modal (default: true) or navigates directly
+  hideMonthFooter?: boolean // Hide the footer section below each month (default: false)
 }

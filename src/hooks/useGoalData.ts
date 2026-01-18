@@ -7,12 +7,13 @@ import { useGoals } from './useGoals'
 import { useGoalDataQuery } from './useGoalDataQuery'
 import { toISODateString, getMsUntilMidnight } from '@/utils'
 import type { PluginConfigData, PluginDayData } from '@/sdk'
-import type { TravelPlan } from '@/plugins/travel/types'
-import type { BudgetPlan, SIPPlan } from '@/plugins/finance/types'
 
 /**
  * Main hook for goal data management
  * Uses React Query for efficient data fetching and caching
+ * 
+ * This hook is CORE infrastructure and should NOT import from plugins.
+ * Plugin-specific logic should live in plugin folders.
  */
 export function useGoalData(goalId: string, year?: number) {
   const router = useRouter()
@@ -37,19 +38,10 @@ export function useGoalData(goalId: string, year?: number) {
   const {
     pluginData,
     pluginConfigs,
-    budgets,
-    sips,
-    travelPlans,
     loading: dataLoading,
     error: dataError,
     updatePluginData,
     updatePluginConfig,
-    saveBudget,
-    deleteBudget: deleteBudgetHandler,
-    saveSIP,
-    deleteSIP: deleteSIPHandler,
-    saveTravelPlan,
-    deleteTravelPlan: deleteTravelPlanHandler,
     reload,
   } = useGoalDataQuery({
     userId: user?.uid || '',
@@ -65,13 +57,13 @@ export function useGoalData(goalId: string, year?: number) {
     'info' | 'success' | 'error' | 'progress'
   >('info')
 
-  const pushStatus = (status: {
+  const pushStatus = useCallback((status: {
     text: string
     tone?: 'info' | 'success' | 'error' | 'progress'
   }) => {
     setStatusText(status.text)
     setStatusTone(status.tone ?? 'info')
-  }
+  }, [])
 
   // Update todayISO at midnight
   useEffect(() => {
@@ -86,7 +78,7 @@ export function useGoalData(goalId: string, year?: number) {
     return () => clearTimeout(timeoutId)
   }, [])
 
-  // Generic config management helpers
+  // Generic config management helper
   const updateConfig = useCallback(
     async (pluginId: string, config: PluginConfigData) => {
       await updatePluginConfig(pluginId, config)
@@ -109,65 +101,6 @@ export function useGoalData(goalId: string, year?: number) {
     }
   }, [authLoading, user, router])
 
-  // Travel handler
-  const handleAddTravel = useCallback(
-    async (travel: Omit<TravelPlan, 'id'>) => {
-      pushStatus({ text: 'Saving travel…', tone: 'progress' })
-
-      try {
-        const plan = {
-          ...travel,
-          id: `travel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        } as TravelPlan
-
-        await saveTravelPlan(plan)
-
-        pushStatus({
-          text: 'Travel saved',
-          tone: 'success',
-        })
-      } catch (err) {
-        console.error('Failed to save travel:', err)
-        pushStatus({ text: 'Failed to save travel', tone: 'error' })
-      }
-    },
-    [saveTravelPlan]
-  )
-
-  // Budget handlers
-  const handleSaveBudget = useCallback(
-    async (budget: BudgetPlan) => {
-      if (!user) return
-      await saveBudget(budget)
-    },
-    [user, saveBudget]
-  )
-
-  const handleDeleteBudget = useCallback(
-    async (budgetId: string) => {
-      if (!user) return
-      await deleteBudgetHandler(budgetId)
-    },
-    [user, deleteBudgetHandler]
-  )
-
-  // SIP handlers
-  const handleSaveSIP = useCallback(
-    async (sip: SIPPlan) => {
-      if (!user) return
-      await saveSIP(sip)
-    },
-    [user, saveSIP]
-  )
-
-  const handleDeleteSIP = useCallback(
-    async (sipId: string) => {
-      if (!user) return
-      await deleteSIPHandler(sipId)
-    },
-    [user, deleteSIPHandler]
-  )
-
   return {
     // Goal data
     goal,
@@ -179,7 +112,6 @@ export function useGoalData(goalId: string, year?: number) {
     authLoading,
     goalsLoading,
     firebaseLoading: dataLoading,
-    budgetingLoading: dataLoading,
     firebaseError: dataError,
 
     // Date state
@@ -189,23 +121,9 @@ export function useGoalData(goalId: string, year?: number) {
     pluginData,
     pluginConfigs,
 
-    // Non-day-based data
-    budgets,
-    sips,
-    travelPlans,
-
     // Generic handlers
     handleUpdateData,
     updateConfig,
-
-    // Travel handlers
-    handleAddTravel,
-
-    // Budget handlers
-    handleSaveBudget,
-    handleDeleteBudget,
-    handleSaveSIP,
-    handleDeleteSIP,
 
     // Status
     pushStatus,

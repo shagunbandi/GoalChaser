@@ -1,20 +1,17 @@
 import { useState } from 'react'
-import type {
-  TransactionCategory,
-  Currency,
-} from '@/plugins/finance/types'
+import type { InvestmentGroup, Currency } from '@/plugins/finance/types'
 import { CURRENCIES } from '@/plugins/finance/types'
 
-interface ExpenseFormProps {
+interface InvestmentFormProps {
   date: string // ISO date
-  categories: TransactionCategory[]
+  investmentGroups: InvestmentGroup[]
   defaultCurrency?: Currency
   onSubmit: (data: {
-    categoryId: string
-    categoryName: string
+    investmentGroupId: string
+    investmentGroupName: string
     amount: number
     currency: Currency
-    description: string
+    description?: string
     date: string
     isRecurring?: boolean
     frequency?: 'daily' | 'weekly' | 'monthly'
@@ -24,15 +21,15 @@ interface ExpenseFormProps {
   isSubmitting?: boolean
 }
 
-export function ExpenseForm({
+export function InvestmentForm({
   date,
-  categories,
+  investmentGroups,
   defaultCurrency = '₹',
   onSubmit,
   onCancel,
   isSubmitting = false,
-}: ExpenseFormProps) {
-  const [categoryId, setCategoryId] = useState(categories[0]?.id || '')
+}: InvestmentFormProps) {
+  const [investmentGroupId, setInvestmentGroupId] = useState(investmentGroups[0]?.id || '')
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState<Currency>(defaultCurrency)
   const [description, setDescription] = useState('')
@@ -41,11 +38,14 @@ export function ExpenseForm({
   const [endDate, setEndDate] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  // Get selected investment group
+  const selectedGroup = investmentGroups.find((g) => g.id === investmentGroupId)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!categoryId || !amount) {
-      setError('Category and amount are required')
+    if (!investmentGroupId || !amount) {
+      setError('Investment group and amount are required')
       return
     }
 
@@ -55,14 +55,14 @@ export function ExpenseForm({
       return
     }
 
-    const category = categories.find((c) => c.id === categoryId)
-    if (!category) {
-      setError('Invalid category selected')
+    const group = investmentGroups.find((g) => g.id === investmentGroupId)
+    if (!group) {
+      setError('Invalid investment group selected')
       return
     }
 
     if (isRecurring && !endDate) {
-      setError('End date is required for recurring expenses')
+      setError('End date is required for recurring investments')
       return
     }
 
@@ -73,11 +73,11 @@ export function ExpenseForm({
 
     setError(null)
     await onSubmit({
-      categoryId,
-      categoryName: category.name,
+      investmentGroupId,
+      investmentGroupName: group.name,
       amount: amountNum,
       currency,
-      description: description.trim(),
+      description: description.trim() || undefined,
       date,
       isRecurring,
       frequency: isRecurring ? frequency : undefined,
@@ -106,24 +106,34 @@ export function ExpenseForm({
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs text-white/60">Category *</label>
+        <label className="text-xs text-white/60">Investment Group *</label>
         <select
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
+          value={investmentGroupId}
+          onChange={(e) => setInvestmentGroupId(e.target.value)}
           className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
           required
         >
-          {categories.length === 0 ? (
-            <option value="">No categories available</option>
+          {investmentGroups.length === 0 ? (
+            <option value="">No investment groups available</option>
           ) : (
-            categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.icon ? `${cat.icon} ` : ''}
-                {cat.name}
+            investmentGroups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.icon ? `${group.icon} ` : ''}{group.name}
               </option>
             ))
           )}
         </select>
+        {selectedGroup && (
+          <div className="flex items-center gap-2 mt-1">
+            <span
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: selectedGroup.color || '#007AFF' }}
+            />
+            <span className="text-xs text-white/50">
+              {selectedGroup.name}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="space-y-1">
@@ -147,7 +157,7 @@ export function ExpenseForm({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
-            placeholder="150"
+            placeholder="5000"
             required
             min="0.01"
             step="0.01"
@@ -157,13 +167,13 @@ export function ExpenseForm({
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs text-white/60">Description</label>
+        <label className="text-xs text-white/60">Description (Optional)</label>
         <input
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
-          placeholder="Lunch at cafe, groceries, etc."
+          placeholder="HDFC Mid Cap, Axis Bluechip, etc."
         />
       </div>
 
@@ -175,8 +185,11 @@ export function ExpenseForm({
             onChange={(e) => setIsRecurring(e.target.checked)}
             className="w-4 h-4 rounded border-white/20 bg-white/10 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
           />
-          <span className="text-sm text-white/90">Recurring Expense</span>
+          <span className="text-sm text-white/90">Recurring Investment (SIP)</span>
         </label>
+        <p className="text-xs text-white/40 mt-1 ml-6">
+          Enable for systematic investment plans that repeat on a schedule
+        </p>
 
         {isRecurring && (
           <div className="mt-3 space-y-3 pl-6 border-l-2 border-white/10">
@@ -220,10 +233,10 @@ export function ExpenseForm({
         </button>
         <button
           type="submit"
-          className="flex-1 rounded-xl bg-gradient-to-r from-red-500 to-rose-500 px-4 py-2 text-sm font-medium text-white transition-all hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isSubmitting || categories.length === 0}
+          className="flex-1 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-2 text-sm font-medium text-white transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isSubmitting || investmentGroups.length === 0}
         >
-          {isSubmitting ? 'Adding...' : 'Add Expense'}
+          {isSubmitting ? 'Adding...' : isRecurring ? 'Add Recurring Investment' : 'Add Investment'}
         </button>
       </div>
     </form>

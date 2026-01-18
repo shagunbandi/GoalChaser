@@ -433,12 +433,12 @@ export function SummaryStats({ config, onActionClick }: SummaryRendererProps) {
           : undefined
       }
     >
-      {/* Header */}
-      <div className="px-3 py-2 border-b border-white/10 bg-white/[0.02]">
-        <div className="flex items-center gap-2">
+      {/* Header - consistent with other summary types */}
+      <div className="px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+        <div className="flex items-center gap-3">
           {icon && (
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
               style={{
                 backgroundColor: gradient
                   ? `${gradient.from}40`
@@ -452,22 +452,22 @@ export function SummaryStats({ config, onActionClick }: SummaryRendererProps) {
           )}
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-semibold text-white/90">{title}</h3>
+              <h3 className="text-sm font-semibold text-white/90">{title}</h3>
               {badge && (
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-white/10 text-white/70">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/10 text-white/70">
                   {badge}
                 </span>
               )}
             </div>
             {subtitle && (
-              <p className="text-[10px] text-white/50">{subtitle}</p>
+              <p className="text-xs text-white/50 mt-0.5">{subtitle}</p>
             )}
           </div>
         </div>
       </div>
 
       {/* Stats Content */}
-      <div className="px-3 py-2 space-y-3">
+      <div className="px-4 py-3 space-y-3">
         {/* Render sections if provided */}
         {sections && sections.length > 0
           ? sections.map((section, sectionIdx) => (
@@ -484,14 +484,14 @@ export function SummaryStats({ config, onActionClick }: SummaryRendererProps) {
 
       {/* Actions */}
       {actions && actions.length > 0 && (
-        <div className="px-3 py-2 border-t border-white/10 flex items-center gap-2">
+        <div className="px-4 py-3 border-t border-white/10 flex items-center gap-2">
           {actions.map((action, idx) => (
             <ActionButton
               key={idx}
               action={action}
               onClick={() => onActionClick?.(action)}
               className={`
-                flex-1 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors
+                flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors
                 ${
                   action.variant === 'primary'
                     ? 'bg-blue-500 hover:bg-blue-600 text-white'

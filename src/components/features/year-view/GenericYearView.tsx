@@ -113,10 +113,12 @@ export function GenericYearView({
                   ))}
                 </div>
 
-                {/* Footer */}
-                <div className="mt-3 pt-3 border-t border-white/10 min-h-[120px]">
-                  <FooterRenderer items={monthConfig.footer} />
-                </div>
+                {/* Footer - only show if not hidden */}
+                {!config.hideMonthFooter && (
+                  <div className="mt-3 pt-3 border-t border-white/10 min-h-[120px]">
+                    <FooterRenderer items={monthConfig.footer} />
+                  </div>
+                )}
               </div>
             )
           })}

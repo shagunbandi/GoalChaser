@@ -15,7 +15,7 @@ export const CURRENCIES: { value: Currency; label: string; name: string }[] = [
   { value: 'C$', label: 'C$ CAD', name: 'Canadian Dollar' },
 ]
 
-// Transaction category (for standalone categories not tied to budgets)
+// Transaction category
 export interface TransactionCategory {
   id: string
   name: string
@@ -38,33 +38,31 @@ export const DEFAULT_EXPENSE_CATEGORIES: TransactionCategory[] = [
 export const DEFAULT_INCOME_CATEGORIES: TransactionCategory[] = [
   { id: 'salary', name: 'Salary', type: 'income', icon: '💼', color: '#32D74B' },
   { id: 'freelance', name: 'Freelance', type: 'income', icon: '💻', color: '#00C7BE' },
-  { id: 'investment', name: 'Investment', type: 'income', icon: '📈', color: '#30D158' },
+  { id: 'investment-return', name: 'Investment Return', type: 'income', icon: '📈', color: '#30D158' },
   { id: 'refund', name: 'Refund', type: 'income', icon: '💵', color: '#34C759' },
   { id: 'gift', name: 'Gift', type: 'income', icon: '🎁', color: '#64D2FF' },
   { id: 'other-income', name: 'Other', type: 'income', icon: '✨', color: '#5AC8FA' },
 ]
 
-export interface BudgetCategory {
+// Investment Group (managed in settings, like categories)
+export interface InvestmentGroup {
   id: string
-  name: string
-  allocatedAmount: number
-  isFixed: boolean
+  name: string           // e.g., "HDFC Mid Cap", "Emergency Fund"
+  icon?: string
   color?: string
 }
 
-export interface BudgetPlan extends ActivityItem {
-  name: string
-  income: number
-  categories: BudgetCategory[]
-  startDate: string
-  endDate: string
-  note?: string
-  isRecurring?: boolean
-  frequency?: 'monthly'
-  startDay?: number
-  parentBudgetId?: string
-  periodIndex?: number
-}
+// Default investment groups
+export const DEFAULT_INVESTMENT_GROUPS: InvestmentGroup[] = [
+  { id: 'mutual-fund', name: 'Mutual Fund', icon: '📊', color: '#5856D6' },
+  { id: 'stocks', name: 'Stocks', icon: '📉', color: '#34C759' },
+  { id: 'fd', name: 'Fixed Deposit', icon: '🏦', color: '#FF9500' },
+  { id: 'gold', name: 'Gold', icon: '🥇', color: '#FFD700' },
+  { id: 'ppf', name: 'PPF/Retirement', icon: '🏛️', color: '#30D158' },
+  { id: 'crypto', name: 'Crypto', icon: '₿', color: '#F7931A' },
+  { id: 'bonds', name: 'Bonds', icon: '📜', color: '#007AFF' },
+  { id: 'real-estate', name: 'Real Estate', icon: '🏠', color: '#8E8E93' },
+]
 
 export interface Expense extends ActivityItem {
   categoryId: string
@@ -73,7 +71,6 @@ export interface Expense extends ActivityItem {
   currency?: Currency        // Currency symbol (defaults to config default)
   description: string
   date: string
-  budgetId?: string
   isRecurring?: boolean
   frequency?: 'daily' | 'weekly' | 'monthly'
   endDate?: string
@@ -91,7 +88,6 @@ export interface Income extends ActivityItem {
   currency?: Currency        // Currency symbol (defaults to config default)
   description: string
   date: string
-  budgetId?: string
   isRecurring?: boolean
   frequency?: 'daily' | 'weekly' | 'monthly'
   endDate?: string
@@ -102,24 +98,28 @@ export interface Income extends ActivityItem {
   isSeriesParent?: boolean  // True for the first/defining occurrence in a series
 }
 
+// Day-level Investment (similar to Expense, shown as outflow)
+export interface Investment extends ActivityItem {
+  investmentGroupId: string
+  investmentGroupName: string
+  amount: number
+  currency?: Currency
+  description?: string
+  date: string
+  // Recurring support (same as Expense)
+  isRecurring?: boolean
+  frequency?: 'daily' | 'weekly' | 'monthly'
+  endDate?: string
+  seriesId?: string
+  isSeriesParent?: boolean
+  occurrenceIndex?: number
+}
+
 export interface FinanceTransactionData extends PluginDayData {
   expenses: Expense[]
   income: Income[]
+  investments: Investment[]  // Day-level investments
   notes?: string
-}
-
-export type SIPFrequency = 'daily' | 'weekly' | 'monthly'
-
-export interface SIPPlan extends ActivityItem {
-  name: string
-  amount: number
-  frequency: SIPFrequency
-  startDate: string
-  endDate: string
-  expectedReturn?: number
-  note?: string
-  color?: string
-  completedDates?: string[]
 }
 
 // Transaction settings for user preferences
@@ -127,10 +127,9 @@ export interface TransactionSettings {
   defaultCurrency: Currency
   expenseCategories: TransactionCategory[]
   incomeCategories: TransactionCategory[]
+  investmentGroups: InvestmentGroup[]  // User-defined investment groups
 }
 
 export interface FinanceConfig extends PluginConfigData {
-  budgets: BudgetPlan[]
-  sips: SIPPlan[]
   transactionSettings?: TransactionSettings
 }

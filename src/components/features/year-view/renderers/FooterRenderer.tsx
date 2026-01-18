@@ -13,9 +13,7 @@ export function FooterRenderer({ items }: FooterRendererProps) {
 
   const getIconForType = (type: string) => {
     switch (type) {
-      case 'budget':
-        return '💵'
-      case 'sip':
+      case 'investment':
         return '📈'
       case 'travel':
         return '✈️'
@@ -28,10 +26,8 @@ export function FooterRenderer({ items }: FooterRendererProps) {
     if (customColor) return customColor
 
     switch (type) {
-      case 'budget':
-        return 'rgb(34,197,94)'
-      case 'sip':
-        return 'rgb(59,130,246)'
+      case 'investment':
+        return 'rgb(99, 102, 241)' // Indigo for investments
       case 'travel':
         return 'rgba(14,165,233,0.9)'
       default:

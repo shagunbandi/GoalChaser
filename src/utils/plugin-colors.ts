@@ -6,6 +6,7 @@
 import type { StudyDayData } from '@/plugins/study/types'
 import type { FinanceTransactionData } from '@/plugins/finance/types'
 import type { TravelDayData } from '@/plugins/travel/types'
+import type { PeriodDayData } from '@/plugins/period/types'
 import { getVibgyorColors } from './score-utils'
 
 /**
@@ -77,4 +78,19 @@ export function getTravelBackgroundColor(
   }
 
   return 'bg-blue-500/20'
+}
+
+/**
+ * Calculate background color for Period plugin
+ */
+export function getPeriodBackgroundColor(
+  data: PeriodDayData | null,
+): string | undefined {
+  if (!data) return undefined
+
+  if (data.isPeriod) {
+    return 'bg-rose-500/30' // Rose-500 with 30% opacity for period days
+  }
+
+  return undefined
 }

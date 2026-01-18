@@ -7,13 +7,11 @@ import type {
   FinanceTransactionData,
   Expense,
   Income,
-  BudgetCategory,
-  BudgetPlan,
-  TransactionCategory,
+  Investment,
   TransactionSettings,
 } from '../types'
-import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../types'
-import type { FinanceDetailContext, TransactionFormData } from '../detail-provider'
+import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES, DEFAULT_INVESTMENT_GROUPS } from '../types'
+import type { FinanceDetailContext, TransactionFormData, InvestmentFormData } from '../detail-provider'
 import type { EditAction, EditedTransactionData } from './EditTransactionModal'
 import { calculateMonthlyTotals, formatCurrency } from '../utils/recurring-utils'
 
@@ -30,26 +28,23 @@ interface FinanceMonthViewProps {
     updates: Partial<FinanceTransactionData>
   ) => Promise<void>
   onBackToYear: () => void
-  // Category and budget props
-  categories: BudgetCategory[]
-  budgets: BudgetPlan[]
-  activeBudgetId?: string
   // Transaction settings
   transactionSettings?: TransactionSettings
   // Transaction handlers
   onAddExpense: (date: string, expense: TransactionFormData) => Promise<void>
   onAddIncome: (date: string, income: TransactionFormData) => Promise<void>
+  onAddInvestment: (date: string, investment: InvestmentFormData) => Promise<void>
   onEditTransaction: (
     date: string,
-    transaction: Expense | Income,
-    type: 'expense' | 'income',
+    transaction: Expense | Income | Investment,
+    type: 'expense' | 'income' | 'investment',
     action: EditAction,
     editedData?: EditedTransactionData
   ) => Promise<void>
   onDeleteTransaction: (
     date: string,
-    transaction: Expense | Income,
-    type: 'expense' | 'income',
+    transaction: Expense | Income | Investment,
+    type: 'expense' | 'income' | 'investment',
     action: EditAction
   ) => Promise<void>
   onUpdateSettings?: (settings: TransactionSettings) => Promise<void>
@@ -65,12 +60,10 @@ export function FinanceMonthView({
   initialSelectedDate,
   onUpdateDay,
   onBackToYear,
-  categories,
-  budgets,
-  activeBudgetId,
   transactionSettings,
   onAddExpense,
   onAddIncome,
+  onAddInvestment,
   onEditTransaction,
   onDeleteTransaction,
   onUpdateSettings,
@@ -80,6 +73,7 @@ export function FinanceMonthView({
     defaultCurrency: '₹' as const,
     expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
     incomeCategories: DEFAULT_INCOME_CATEGORIES,
+    investmentGroups: DEFAULT_INVESTMENT_GROUPS,
   }
 
   // Calculate monthly totals
@@ -96,16 +90,19 @@ export function FinanceMonthView({
 
     const hasExpenses = data.expenses && data.expenses.length > 0
     const hasIncome = data.income && data.income.length > 0
+    const hasInvestments = data.investments && data.investments.length > 0
 
-    if (!hasExpenses && !hasIncome) return null
+    if (!hasExpenses && !hasIncome && !hasInvestments) return null
 
     // Calculate totals
     const totalExpenses =
       data.expenses?.reduce((sum: number, e) => sum + (e.amount || 0), 0) || 0
     const totalIncome =
       data.income?.reduce((sum: number, i) => sum + (i.amount || 0), 0) || 0
+    const totalInvestments =
+      data.investments?.reduce((sum: number, inv) => sum + (inv.amount || 0), 0) || 0
 
-    const netAmount = totalIncome - totalExpenses
+    const netAmount = totalIncome - totalExpenses - totalInvestments
 
     // Color based on net: positive (green), negative (red), neutral (orange)
     const getFinanceColor = () => {
@@ -118,18 +115,25 @@ export function FinanceMonthView({
     const currency = settings.defaultCurrency
 
     const indicators = []
-    if (hasExpenses) {
-      indicators.push({
-        id: 'expense',
-        label: `${currency}${totalExpenses.toFixed(0)} expense`,
-        color: '#FF6B6B',
-      })
-    }
     if (hasIncome) {
       indicators.push({
         id: 'income',
         label: `${currency}${totalIncome.toFixed(0)} income`,
-        color: '#00FF00',
+        color: '#34D399',
+      })
+    }
+    if (hasExpenses) {
+      indicators.push({
+        id: 'expense',
+        label: `${currency}${totalExpenses.toFixed(0)} expense`,
+        color: '#F87171',
+      })
+    }
+    if (hasInvestments) {
+      indicators.push({
+        id: 'investment',
+        label: `${currency}${totalInvestments.toFixed(0)} invested`,
+        color: '#6366F1',
       })
     }
 
@@ -147,11 +151,9 @@ export function FinanceMonthView({
   // Build detail context with all necessary handlers
   const detailContext: FinanceDetailContext = useMemo(
     () => ({
-      categories,
       expenseCategories: settings.expenseCategories,
       incomeCategories: settings.incomeCategories,
-      budgets,
-      activeBudgetId,
+      investmentGroups: settings.investmentGroups || DEFAULT_INVESTMENT_GROUPS,
       transactionSettings: settings,
       allDayData: dayData,
       onAddExpense: async (expense) => {
@@ -163,6 +165,11 @@ export function FinanceMonthView({
         const dateFromUrl = new URLSearchParams(window.location.search).get('date')
         const date = dateFromUrl || todayISO
         await onAddIncome(date, income)
+      },
+      onAddInvestment: async (investment) => {
+        const dateFromUrl = new URLSearchParams(window.location.search).get('date')
+        const date = dateFromUrl || todayISO
+        await onAddInvestment(date, investment)
       },
       onEditTransaction: async (transaction, type, action, editedData) => {
         const dateFromUrl = new URLSearchParams(window.location.search).get('date')
@@ -177,14 +184,12 @@ export function FinanceMonthView({
       onUpdateSettings,
     }),
     [
-      categories,
       settings,
-      budgets,
-      activeBudgetId,
       dayData,
       todayISO,
       onAddExpense,
       onAddIncome,
+      onAddInvestment,
       onEditTransaction,
       onDeleteTransaction,
       onUpdateSettings,
@@ -193,37 +198,46 @@ export function FinanceMonthView({
 
   // Monthly summary chips for footer
   const monthlySummaryChips = (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2">
       {/* Income Chip */}
-      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30">
         <span className="w-2 h-2 rounded-full bg-emerald-400" />
-        <span className="text-xs text-white/60">Monthly Income</span>
-        <span className="text-sm font-semibold text-emerald-400">
+        <span className="text-[10px] text-white/60">Income</span>
+        <span className="text-xs font-semibold text-emerald-400">
           +{formatCurrency(monthlyTotals.totalIncome, settings.defaultCurrency)}
         </span>
       </div>
 
       {/* Expenses Chip */}
-      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/30">
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/30">
         <span className="w-2 h-2 rounded-full bg-red-400" />
-        <span className="text-xs text-white/60">Monthly Expenses</span>
-        <span className="text-sm font-semibold text-red-400">
+        <span className="text-[10px] text-white/60">Expenses</span>
+        <span className="text-xs font-semibold text-red-400">
           -{formatCurrency(monthlyTotals.totalExpenses, settings.defaultCurrency)}
+        </span>
+      </div>
+
+      {/* Investments Chip */}
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30">
+        <span className="w-2 h-2 rounded-full bg-indigo-400" />
+        <span className="text-[10px] text-white/60">Invested</span>
+        <span className="text-xs font-semibold text-indigo-400">
+          -{formatCurrency(monthlyTotals.totalInvestments, settings.defaultCurrency)}
         </span>
       </div>
 
       {/* Net Flow Chip */}
       <div
-        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
           monthlyTotals.net >= 0
             ? 'bg-emerald-500/10 border-emerald-500/30'
             : 'bg-red-500/10 border-red-500/30'
         }`}
       >
-        <span className="text-base">💰</span>
-        <span className="text-xs text-white/60">Net Flow</span>
+        <span className="text-sm">💰</span>
+        <span className="text-[10px] text-white/60">Net</span>
         <span
-          className={`text-sm font-semibold ${
+          className={`text-xs font-semibold ${
             monthlyTotals.net >= 0 ? 'text-emerald-400' : 'text-red-400'
           }`}
         >

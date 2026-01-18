@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import type {
-  BudgetCategory,
-  BudgetPlan,
   TransactionCategory,
   Currency,
 } from '@/plugins/finance/types'
@@ -9,8 +7,7 @@ import { CURRENCIES } from '@/plugins/finance/types'
 
 interface IncomeFormProps {
   date: string // ISO date
-  categories: (BudgetCategory | TransactionCategory)[]
-  availableBudgets?: BudgetPlan[] // Budgets that are active for this date
+  categories: TransactionCategory[]
   defaultCurrency?: Currency
   onSubmit: (data: {
     categoryId: string
@@ -19,31 +16,26 @@ interface IncomeFormProps {
     currency: Currency
     description: string
     date: string
-    budgetId?: string
     isRecurring?: boolean
     frequency?: 'daily' | 'weekly' | 'monthly'
     endDate?: string
   }) => void | Promise<void>
   onCancel: () => void
   isSubmitting?: boolean
-  activeBudgetId?: string
 }
 
 export function IncomeForm({
   date,
   categories,
-  availableBudgets = [],
   defaultCurrency = '₹',
   onSubmit,
   onCancel,
   isSubmitting = false,
-  activeBudgetId,
 }: IncomeFormProps) {
   const [categoryId, setCategoryId] = useState(categories[0]?.id || '')
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState<Currency>(defaultCurrency)
   const [description, setDescription] = useState('')
-  const [budgetId, setBudgetId] = useState(activeBudgetId || '')
   const [isRecurring, setIsRecurring] = useState(false)
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('monthly')
   const [endDate, setEndDate] = useState('')
@@ -87,7 +79,6 @@ export function IncomeForm({
       currency,
       description: description.trim(),
       date,
-      budgetId: budgetId || undefined,
       isRecurring,
       frequency: isRecurring ? frequency : undefined,
       endDate: isRecurring ? endDate : undefined,
@@ -127,7 +118,7 @@ export function IncomeForm({
           ) : (
             categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
-                {'icon' in cat && cat.icon ? `${cat.icon} ` : ''}
+                {cat.icon ? `${cat.icon} ` : ''}
                 {cat.name}
               </option>
             ))
@@ -175,24 +166,6 @@ export function IncomeForm({
           placeholder="Freelance payment, refund, bonus, etc."
         />
       </div>
-
-      {availableBudgets.length > 0 && (
-        <div className="space-y-1">
-          <label className="text-xs text-white/60">Budget (Optional)</label>
-          <select
-            value={budgetId}
-            onChange={(e) => setBudgetId(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
-          >
-            <option value="">No budget selected</option>
-            {availableBudgets.map((budget) => (
-              <option key={budget.id} value={budget.id}>
-                {budget.name} ({currency}{budget.income.toLocaleString()})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
 
       <div className="rounded-xl border border-white/10 bg-white/5 p-3">
         <label className="flex items-center gap-2 cursor-pointer">

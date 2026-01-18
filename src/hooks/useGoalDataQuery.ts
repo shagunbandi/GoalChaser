@@ -1,28 +1,14 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 import type { AddonId } from '@/types'
 import { loadCalendarDays, saveCalendarDay } from '@/components/features/calendar/api'
-import {
-  loadBudgetsFromFirebase,
-  saveBudgetToFirebase,
-  deleteBudgetFromFirebase,
-  loadSIPsFromFirebase,
-  saveSIPToFirebase,
-  deleteSIPFromFirebase,
-  setFirebaseDb,
-} from '@/plugins/finance/api'
-import { saveTravelPlan, deleteTravelPlan } from '@/plugins/travel/api'
 import { initFirebase } from '@/lib/api/firebase-client'
-import { getFirestore } from 'firebase/firestore'
-import { getFirebaseApp } from '@/lib/firebase-service'
 import { loadGoalAddonsConfig } from '@/lib/api/addon-config-api'
 import { usePluginRegistry } from '@/core/plugin-registry/hooks'
 import { createPluginContext } from '@/sdk'
 import type { PluginDayData, PluginConfigData } from '@/sdk'
-import type { BudgetPlan, SIPPlan } from '@/plugins/finance/types'
-import type { TravelPlan } from '@/plugins/travel/types'
 
 // ============================================================================
 // Query Keys - centralized for cache management
@@ -33,10 +19,6 @@ export const goalDataKeys = {
     [...goalDataKeys.all, 'addonsConfig', userId, goalId] as const,
   pluginData: (userId: string, goalId: string, startDate: string, endDate: string) =>
     [...goalDataKeys.all, 'pluginData', userId, goalId, startDate, endDate] as const,
-  budgets: (userId: string, goalId: string) =>
-    [...goalDataKeys.all, 'budgets', userId, goalId] as const,
-  sips: (userId: string, goalId: string) =>
-    [...goalDataKeys.all, 'sips', userId, goalId] as const,
 }
 
 // ============================================================================
@@ -63,11 +45,6 @@ interface GoalDataResult {
 let firebaseInitialized = false
 async function ensureFirebaseInit() {
   if (firebaseInitialized) return
-  const app = getFirebaseApp()
-  if (app) {
-    const db = getFirestore(app)
-    setFirebaseDb(db)
-  }
   await initFirebase()
   firebaseInitialized = true
 }
@@ -120,18 +97,6 @@ async function fetchPluginData(
   return { pluginData: newPluginData, pluginConfigs: newPluginConfigs }
 }
 
-// Fetch budgets
-async function fetchBudgets(userId: string, goalId: string): Promise<BudgetPlan[]> {
-  await ensureFirebaseInit()
-  return loadBudgetsFromFirebase(userId, goalId)
-}
-
-// Fetch SIPs
-async function fetchSIPs(userId: string, goalId: string): Promise<SIPPlan[]> {
-  await ensureFirebaseInit()
-  return loadSIPsFromFirebase(userId, goalId)
-}
-
 // ============================================================================
 // Main Hook
 // ============================================================================
@@ -162,22 +127,6 @@ export function useGoalDataQuery({
       fetchPluginData(userId, goalId, startDate, endDate, enabledAddons, registry),
     enabled: enabled && !!userId && !!goalId && registryInitialized && addonsQuery.isSuccess,
     staleTime: 5 * 60 * 1000, // 5 minutes
-  })
-
-  // Query 3: Budgets (independent, only if finance enabled)
-  const budgetsQuery = useQuery({
-    queryKey: goalDataKeys.budgets(userId, goalId),
-    queryFn: () => fetchBudgets(userId, goalId),
-    enabled: enabled && !!userId && !!goalId && enabledAddons.includes('finance'),
-    staleTime: 5 * 60 * 1000,
-  })
-
-  // Query 4: SIPs (independent, only if finance enabled)
-  const sipsQuery = useQuery({
-    queryKey: goalDataKeys.sips(userId, goalId),
-    queryFn: () => fetchSIPs(userId, goalId),
-    enabled: enabled && !!userId && !!goalId && enabledAddons.includes('finance'),
-    staleTime: 5 * 60 * 1000,
   })
 
   // ============================================================================
@@ -285,86 +234,6 @@ export function useGoalDataQuery({
     },
   })
 
-  // Budget mutations
-  const saveBudgetMutation = useMutation({
-    mutationFn: (budget: BudgetPlan) => saveBudgetToFirebase(userId, goalId, budget),
-    onSuccess: (_, budget) => {
-      queryClient.setQueryData(
-        goalDataKeys.budgets(userId, goalId),
-        (old: BudgetPlan[] | undefined) => {
-          if (!old) return [budget]
-          const idx = old.findIndex((b) => b.id === budget.id)
-          if (idx >= 0) {
-            const updated = [...old]
-            updated[idx] = budget
-            return updated
-          }
-          return [...old, budget]
-        }
-      )
-    },
-  })
-
-  const deleteBudgetMutation = useMutation({
-    mutationFn: (budgetId: string) => deleteBudgetFromFirebase(userId, goalId, budgetId),
-    onSuccess: (_, budgetId) => {
-      queryClient.setQueryData(
-        goalDataKeys.budgets(userId, goalId),
-        (old: BudgetPlan[] | undefined) => old?.filter((b) => b.id !== budgetId) ?? []
-      )
-    },
-  })
-
-  // SIP mutations
-  const saveSIPMutation = useMutation({
-    mutationFn: (sip: SIPPlan) => saveSIPToFirebase(userId, goalId, sip),
-    onSuccess: (_, sip) => {
-      queryClient.setQueryData(
-        goalDataKeys.sips(userId, goalId),
-        (old: SIPPlan[] | undefined) => {
-          if (!old) return [sip]
-          const idx = old.findIndex((s) => s.id === sip.id)
-          if (idx >= 0) {
-            const updated = [...old]
-            updated[idx] = sip
-            return updated
-          }
-          return [...old, sip]
-        }
-      )
-    },
-  })
-
-  const deleteSIPMutation = useMutation({
-    mutationFn: (sipId: string) => deleteSIPFromFirebase(userId, goalId, sipId),
-    onSuccess: (_, sipId) => {
-      queryClient.setQueryData(
-        goalDataKeys.sips(userId, goalId),
-        (old: SIPPlan[] | undefined) => old?.filter((s) => s.id !== sipId) ?? []
-      )
-    },
-  })
-
-  // Travel mutations
-  const saveTravelPlanMutation = useMutation({
-    mutationFn: (plan: TravelPlan) => saveTravelPlan(userId, goalId, plan),
-    onSuccess: () => {
-      // Invalidate plugin data to reload travel data
-      queryClient.invalidateQueries({
-        queryKey: goalDataKeys.pluginData(userId, goalId, startDate, endDate),
-      })
-    },
-  })
-
-  const deleteTravelPlanMutation = useMutation({
-    mutationFn: (planId: string) => deleteTravelPlan(userId, goalId, planId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: goalDataKeys.pluginData(userId, goalId, startDate, endDate),
-      })
-    },
-  })
-
   // ============================================================================
   // Wrapper functions for mutations
   // ============================================================================
@@ -392,15 +261,12 @@ export function useGoalDataQuery({
     pluginDataQuery.isLoading ||
     (!registryInitialized && enabled && !!userId)
 
-  const error = addonsQuery.error || pluginDataQuery.error || budgetsQuery.error || sipsQuery.error
+  const error = addonsQuery.error || pluginDataQuery.error
 
   return {
     // Data
     pluginData: pluginDataQuery.data?.pluginData ?? {},
     pluginConfigs: pluginDataQuery.data?.pluginConfigs ?? {},
-    budgets: budgetsQuery.data ?? [],
-    sips: sipsQuery.data ?? [],
-    travelPlans: [] as TravelPlan[], // Travel is now in pluginData
 
     // Loading state
     loading: isLoading,
@@ -409,12 +275,6 @@ export function useGoalDataQuery({
     // Mutations
     updatePluginData,
     updatePluginConfig,
-    saveBudget: saveBudgetMutation.mutateAsync,
-    deleteBudget: deleteBudgetMutation.mutateAsync,
-    saveSIP: saveSIPMutation.mutateAsync,
-    deleteSIP: deleteSIPMutation.mutateAsync,
-    saveTravelPlan: saveTravelPlanMutation.mutateAsync,
-    deleteTravelPlan: deleteTravelPlanMutation.mutateAsync,
 
     // Reload
     reload,

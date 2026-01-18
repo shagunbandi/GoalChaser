@@ -1,6 +1,6 @@
-// Finance Plugin Data Provider - simplified, full implementation would mirror budget-api.ts
+// Finance Plugin Data Provider
 import type { PluginDataProvider, PluginContext } from '@/sdk'
-import type { FinanceTransactionData, BudgetPlan, SIPPlan } from './types'
+import type { FinanceTransactionData } from './types'
 
 // Helper to remove undefined fields recursively
 function removeUndefinedFields(obj: any): any {
@@ -37,7 +37,7 @@ export class FinanceDataProvider implements PluginDataProvider<FinanceTransactio
       const docSnap = await context.firestore.getDoc(docRef)
       if (docSnap.exists()) {
         const data = docSnap.data()
-        return { expenses: data.expenses || [], income: data.income || [], notes: data.notes }
+        return { expenses: data.expenses || [], income: data.income || [], investments: data.investments || [], notes: data.notes }
       }
       return null
     } catch (error) {
@@ -54,7 +54,7 @@ export class FinanceDataProvider implements PluginDataProvider<FinanceTransactio
       const result: Record<string, FinanceTransactionData> = {}
       snapshot.forEach((docSnap: any) => {
         const data = docSnap.data()
-        result[docSnap.id] = { expenses: data.expenses || [], income: data.income || [], notes: data.notes }
+        result[docSnap.id] = { expenses: data.expenses || [], income: data.income || [], investments: data.investments || [], notes: data.notes }
       })
       return result
     } catch (error) {
@@ -68,12 +68,13 @@ export class FinanceDataProvider implements PluginDataProvider<FinanceTransactio
     try {
       const docRef = context.firestore.doc(`transactions/${date}`)
       const docSnap = await context.firestore.getDoc(docRef)
-      let existingData: FinanceTransactionData = { expenses: [], income: [] }
+      let existingData: FinanceTransactionData = { expenses: [], income: [], investments: [] }
       if (docSnap.exists()) existingData = docSnap.data() as FinanceTransactionData
       
       const updatedData: FinanceTransactionData = {
         expenses: data.expenses !== undefined ? data.expenses : existingData.expenses,
         income: data.income !== undefined ? data.income : existingData.income,
+        investments: data.investments !== undefined ? data.investments : existingData.investments,
         notes: data.notes !== undefined ? data.notes : existingData.notes,
       }
       

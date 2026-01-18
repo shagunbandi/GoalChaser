@@ -19,6 +19,7 @@ import {
   getStudyBackgroundColor,
   getFinanceBackgroundColor,
   getTravelBackgroundColor,
+  getPeriodBackgroundColor,
 } from '@/utils/plugin-colors'
 import {
   loadCalendarFilters,
@@ -190,6 +191,9 @@ export default function CalendarPage({
       } else if (backgroundSource === 'travel') {
         const travelData = pluginData?.['travel']?.[day.iso] as any
         bgColor = getTravelBackgroundColor(travelData)
+      } else if (backgroundSource === 'period') {
+        const periodData = pluginData?.['period']?.[day.iso] as any
+        bgColor = getPeriodBackgroundColor(periodData)
       }
       // else: backgroundSource is null, no background
 

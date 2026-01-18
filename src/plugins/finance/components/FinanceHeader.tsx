@@ -2,43 +2,30 @@
 
 import { useMemo, useState } from 'react'
 import { HeaderRenderer } from '@/components/features/year-view/renderers/HeaderRenderer'
-import { FinanceManager } from './FinanceManager'
 import { TransactionSettingsModal } from './TransactionSettingsModal'
-import type { FinanceTransactionData, BudgetPlan, SIPPlan, TransactionSettings } from '../types'
-import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../types'
+import type {
+  FinanceTransactionData,
+  TransactionSettings,
+} from '../types'
+import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES, DEFAULT_INVESTMENT_GROUPS } from '../types'
 
 interface FinanceHeaderProps {
   year: number
   dayData: Record<string, FinanceTransactionData>
-  budgets?: BudgetPlan[]
-  sips?: SIPPlan[]
   transactionSettings?: TransactionSettings
   onPrevYear: () => void
   onNextYear: () => void
-  onSaveBudget?: (budget: BudgetPlan) => Promise<void>
-  onSaveBudgets?: (budgets: BudgetPlan[]) => Promise<void>
-  onDeleteBudget?: (budgetId: string) => Promise<void>
-  onSaveSIP?: (sip: SIPPlan) => Promise<void>
-  onDeleteSIP?: (sipId: string) => Promise<void>
   onUpdateSettings?: (settings: TransactionSettings) => Promise<void>
 }
 
 export function FinanceHeader({
   year,
   dayData,
-  budgets = [],
-  sips = [],
   transactionSettings,
   onPrevYear,
   onNextYear,
-  onSaveBudget,
-  onSaveBudgets,
-  onDeleteBudget,
-  onSaveSIP,
-  onDeleteSIP,
   onUpdateSettings,
 }: FinanceHeaderProps) {
-  const [showFinanceManager, setShowFinanceManager] = useState(false)
   const [showTransactionSettings, setShowTransactionSettings] = useState(false)
 
   // Get settings with defaults
@@ -46,6 +33,7 @@ export function FinanceHeader({
     defaultCurrency: '₹' as const,
     expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
     incomeCategories: DEFAULT_INCOME_CATEGORIES,
+    investmentGroups: DEFAULT_INVESTMENT_GROUPS,
   }
 
   const headerConfig = useMemo(() => {
@@ -73,34 +61,27 @@ export function FinanceHeader({
           ) || 0)
         )
       }, 0),
-      sips: yearEntries.reduce((sum, [, data]) => {
+      investments: yearEntries.reduce((sum, [, data]) => {
         return (
           sum +
-          ((data as { sips?: Array<{ amount?: number }> })?.sips?.reduce(
-            (s: number, sip: { amount?: number }) => s + (sip.amount || 0),
+          (data?.investments?.reduce(
+            (s: number, inv: { amount?: number }) => s + (inv.amount || 0),
             0,
           ) || 0)
         )
       }, 0),
     }
 
-    const hasActions = onSaveBudget && onSaveSIP
     const currency = settings.defaultCurrency
 
     const actions = []
-    if (hasActions) {
-      actions.push({
-        id: 'manage-finance',
-        label: 'Manage Finance',
-        icon: '⚙️',
-        onClick: () => setShowFinanceManager(true),
-      })
-    }
+    
+    // Manage Categories/Settings button
     if (onUpdateSettings) {
       actions.push({
-        id: 'manage-transactions',
-        label: 'Manage Transactions',
-        icon: '💳',
+        id: 'manage-categories',
+        label: 'Categories & Settings',
+        icon: '⚙️',
         onClick: () => setShowTransactionSettings(true),
       })
     }
@@ -117,16 +98,19 @@ export function FinanceHeader({
           label: 'Expenses',
           value: `${currency}${yearStats.expenses.toLocaleString('en-IN')}`,
         },
-        { label: 'SIP', value: `${currency}${yearStats.sips.toLocaleString('en-IN')}` },
+        { 
+          label: 'Invested', 
+          value: `${currency}${yearStats.investments.toLocaleString('en-IN')}` 
+        },
       ],
       legends: [
         { label: 'Income', color: 'rgb(74, 222, 128)' },
         { label: 'Expense', color: 'rgb(248, 113, 113)' },
-        { label: 'SIP', color: 'rgb(96, 165, 250)' },
+        { label: 'Investment', color: 'rgb(99, 102, 241)' },
       ],
       actions,
     }
-  }, [dayData, year, onSaveBudget, onSaveSIP, onUpdateSettings, settings.defaultCurrency])
+  }, [dayData, year, onUpdateSettings, settings.defaultCurrency])
 
   const handleSaveSettings = async (newSettings: TransactionSettings) => {
     if (onUpdateSettings) {
@@ -144,21 +128,6 @@ export function FinanceHeader({
         onPrevYear={onPrevYear}
         onNextYear={onNextYear}
       />
-
-      {/* Finance Manager Drawer */}
-      {showFinanceManager && onSaveBudget && onSaveBudgets && onDeleteBudget && onSaveSIP && onDeleteSIP && (
-        <FinanceManager
-          isOpen={showFinanceManager}
-          budgets={budgets}
-          sips={sips}
-          onSaveBudget={onSaveBudget}
-          onSaveBudgets={onSaveBudgets}
-          onDeleteBudget={onDeleteBudget}
-          onSaveSIP={onSaveSIP}
-          onDeleteSIP={onDeleteSIP}
-          onClose={() => setShowFinanceManager(false)}
-        />
-      )}
 
       {/* Transaction Settings Modal */}
       <TransactionSettingsModal
