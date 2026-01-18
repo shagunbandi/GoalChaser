@@ -79,9 +79,19 @@ export const TravelPlugin: Plugin = {
               const endDate = new Date(plan.endDate)
               const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
               
+              // Show both title and destination if both exist
+              const hasTitle = plan.title && plan.title.trim().length > 0
+              const hasDestination = plan.destination && plan.destination.trim().length > 0
+              let label = ''
+              if (hasTitle && hasDestination && plan.title !== plan.destination) {
+                label = `${plan.title} • ${plan.destination}`
+              } else {
+                label = plan.destination || plan.title || 'Trip'
+              }
+              
               return {
                 id: plan.id,
-                label: plan.destination || plan.title,
+                label,
                 value: `${days} day${days !== 1 ? 's' : ''}`,
                 icon: '🗺️',
                 color: plan.color || '#F97316',
@@ -106,22 +116,58 @@ export const TravelPlugin: Plugin = {
       const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
       const currentDay = Math.ceil((new Date(date).getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
 
+      // Build subtitle showing both title and destination if both exist
+      const hasTitle = plan.title && plan.title.trim().length > 0
+      const hasDestination = plan.destination && plan.destination.trim().length > 0
+      let subtitle = ''
+      if (hasTitle && hasDestination && plan.title !== plan.destination) {
+        subtitle = `${plan.title} • ${plan.destination}`
+      } else {
+        subtitle = plan.destination || plan.title || 'Trip'
+      }
+
+      // Build stats for expanded view
+      const stats = []
+      if (hasTitle && plan.title) {
+        stats.push({
+          label: 'Trip',
+          value: plan.title,
+          icon: '🏷️',
+          color: '#F97316',
+        })
+      }
+      if (hasDestination && plan.destination) {
+        stats.push({
+          label: 'Destination',
+          value: plan.destination,
+          icon: '📍',
+          color: '#EA580C',
+        })
+      }
+      stats.push({
+        label: 'Duration',
+        value: `${days} day${days !== 1 ? 's' : ''}`,
+        icon: '⏱️',
+        color: '#D97706',
+      })
+      stats.push({
+        label: 'Status',
+        value: currentDay === 1 ? 'Starting' : currentDay === days ? 'Ending' : 'Ongoing',
+        icon: currentDay === 1 ? '🚀' : currentDay === days ? '🏁' : '✈️',
+        color: '#F59E0B',
+      })
+
       return {
         color: plan.color || '#F97316',
         hasData: true,
         summary: {
-          type: 'card',
+          type: 'stats',
           title: 'Travel',
-          subtitle: plan.destination || plan.title,
+          subtitle,
           icon: '✈️',
           badge: `Day ${currentDay}/${days}`,
           gradient: { from: plan.color || '#F97316', to: '#EA580C' },
-          content: {
-            'Destination': plan.destination || plan.title,
-            'Duration': `${days} day${days !== 1 ? 's' : ''}`,
-            'Dates': `${plan.startDate} to ${plan.endDate}`,
-            'Status': currentDay === 1 ? 'Starting' : currentDay === days ? 'Ending' : 'Ongoing'
-          },
+          stats,
           actions: [
             {
               label: 'View Itinerary',
@@ -230,71 +276,130 @@ export const TravelPlugin: Plugin = {
         return charts
       }
 
-      // Pie chart: Destinations (show first for visual variety)
-      const destinationCounts: Record<string, number> = {}
-      allPlans.forEach(plan => {
-        const dest = plan.destination || plan.title || 'Unknown'
-        destinationCounts[dest] = (destinationCounts[dest] || 0) + 1
-      })
-
-      if (Object.keys(destinationCounts).length > 0) {
-        const destinations = Object.keys(destinationCounts)
-        const counts = destinations.map(d => destinationCounts[d])
-
-        charts.push({
-          chartType: 'pie',
-          title: 'Trips by Destination',
-          size: 'medium',
-          data: {
-            labels: destinations,
-            datasets: [{
-              label: 'Trips',
-              data: counts,
-              color: '#F97316',
-            }],
-          },
-        })
-      }
-
-      // Bar chart: Trip durations
-      const durations = allPlans.map(plan => {
-        const start = new Date(plan.startDate)
-        const end = new Date(plan.endDate)
-        const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-        return days
-      })
-
-      const tripNames = allPlans.map(plan => plan.destination || plan.title || 'Trip')
-
-      charts.push({
-        chartType: 'bar',
-        title: 'Trip Duration (Days)',
-        size: 'medium',
-        data: {
-          labels: tripNames,
-          datasets: [{
-            label: 'Days',
-            data: durations,
-            color: '#F97316',
-          }],
-        },
-      })
-
-      // Heat map: Days traveled
+      // Calculate weekday vs weekend travel days
+      let weekdayTravelDays = 0
+      let weekendTravelDays = 0
       const heatmapData: Record<string, number> = {}
+      
       dates.forEach(date => {
         const isTravel = allPlans.some(plan => 
           date >= plan.startDate && date <= plan.endDate
         )
         if (isTravel) {
           heatmapData[date] = 1
+          const dayOfWeek = new Date(date).getDay()
+          if (dayOfWeek === 0 || dayOfWeek === 6) {
+            weekendTravelDays++
+          } else {
+            weekdayTravelDays++
+          }
         }
       })
 
+      // Weekday vs Weekend metrics
+      charts.push({
+        chartType: 'metric',
+        title: 'Weekday Travel',
+        metricData: {
+          label: 'Weekday Days',
+          value: weekdayTravelDays,
+          unit: 'days',
+          icon: '💼',
+          color: '#3B82F6',
+          subtitle: 'Mon-Fri travel',
+        },
+      })
+
+      charts.push({
+        chartType: 'metric',
+        title: 'Weekend Travel',
+        metricData: {
+          label: 'Weekend Days',
+          value: weekendTravelDays,
+          unit: 'days',
+          icon: '🏖️',
+          color: '#8B5CF6',
+          subtitle: 'Sat-Sun travel',
+        },
+      })
+
+      // Longest and shortest trip
+      const tripDurations = allPlans.map(plan => {
+        const start = new Date(plan.startDate)
+        const end = new Date(plan.endDate)
+        return {
+          name: plan.title || plan.destination || 'Trip',
+          days: Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        }
+      })
+
+      if (tripDurations.length > 0) {
+        const longestTrip = tripDurations.reduce((max, t) => t.days > max.days ? t : max, tripDurations[0])
+        const shortestTrip = tripDurations.reduce((min, t) => t.days < min.days ? t : min, tripDurations[0])
+
+        charts.push({
+          chartType: 'metric',
+          title: 'Longest Trip',
+          metricData: {
+            label: 'Longest Trip',
+            value: longestTrip.days,
+            unit: 'days',
+            icon: '🏆',
+            color: '#10B981',
+            subtitle: longestTrip.name,
+          },
+        })
+
+        if (allPlans.length > 1) {
+          charts.push({
+            chartType: 'metric',
+            title: 'Shortest Trip',
+            metricData: {
+              label: 'Shortest Trip',
+              value: shortestTrip.days,
+              unit: 'days',
+              icon: '⚡',
+              color: '#F59E0B',
+              subtitle: shortestTrip.name,
+            },
+          })
+        }
+      }
+
+      // Bar chart: Travel by month
+      const monthlyTravel: Record<string, number> = {}
+      dates.forEach(date => {
+        const isTravel = allPlans.some(plan => 
+          date >= plan.startDate && date <= plan.endDate
+        )
+        if (isTravel) {
+          const monthKey = date.substring(0, 7) // YYYY-MM
+          const monthName = new Date(date).toLocaleDateString('en-US', { month: 'short' })
+          monthlyTravel[monthName] = (monthlyTravel[monthName] || 0) + 1
+        }
+      })
+
+      if (Object.keys(monthlyTravel).length > 1) {
+        charts.push({
+          chartType: 'bar',
+          title: 'Travel Days by Month',
+          size: 'medium',
+          data: {
+            labels: Object.keys(monthlyTravel),
+            datasets: [{
+              label: 'Days',
+              data: Object.values(monthlyTravel),
+              color: '#F97316',
+            }],
+          },
+        })
+      }
+
+      // Heat map: Days traveled
       charts.push({
         chartType: 'heatmap',
-        title: 'Travel Days',
-        size: 'large',
+        title: 'Travel Activity',
+        size: 'small',
         heatmapData,
         dateRange: {
           start: startDate,

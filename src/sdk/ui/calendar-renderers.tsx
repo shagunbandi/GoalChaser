@@ -6,7 +6,6 @@ import type {
   CalendarSummaryConfig,
   CalendarSummaryAction,
   StatItem,
-  StatSection,
   ListItem,
 } from '../interfaces/plugin.interface'
 
@@ -59,321 +58,6 @@ function ActionButton({
 }
 
 /**
- * Chip renderer - compact single-line summary
- */
-export function SummaryChip({ config, onActionClick }: SummaryRendererProps) {
-  const { icon, title, subtitle, content, color, badge, actions, gradient } =
-    config
-
-  return (
-    <div
-      className="flex items-center justify-between gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/[0.07] transition-all duration-200 group"
-      style={
-        gradient
-          ? {
-              background: `linear-gradient(135deg, ${gradient.from}15, ${gradient.to}15)`,
-            }
-          : undefined
-      }
-    >
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        {icon && (
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 transition-transform group-hover:scale-110"
-            style={{
-              backgroundColor: gradient
-                ? `${gradient.from}40`
-                : color
-                ? `${color}30`
-                : 'rgba(255,255,255,0.1)',
-            }}
-          >
-            {icon}
-          </div>
-        )}
-        <div className="flex flex-col min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-white/90">{title}</span>
-            {badge && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/10 text-white/70">
-                {badge}
-              </span>
-            )}
-          </div>
-          {subtitle && (
-            <span className="text-xs text-white/50 mt-0.5">{subtitle}</span>
-          )}
-          {content && (
-            <span
-              className="text-sm text-white/70 mt-1"
-              style={color ? { color } : undefined}
-            >
-              {typeof content === 'object' ? JSON.stringify(content) : content}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {actions && actions.length > 0 && (
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {actions.map((action, idx) => (
-            <ActionButton
-              key={idx}
-              action={action}
-              onClick={() => onActionClick?.(action)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all duration-200 font-medium"
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * Accordion renderer - expandable summary with details
- */
-export function SummaryAccordion({
-  config,
-  onActionClick,
-}: SummaryRendererProps) {
-  const [isOpen, setIsOpen] = React.useState(false)
-  const { icon, title, subtitle, content, color, actions, badge, gradient } =
-    config
-
-  return (
-    <div
-      className="border border-white/10 rounded-xl overflow-hidden bg-white/5"
-      style={
-        gradient
-          ? {
-              background: `linear-gradient(135deg, ${gradient.from}10, ${gradient.to}10)`,
-            }
-          : undefined
-      }
-    >
-      {/* Header */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-white/[0.05] transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          {icon && (
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
-              style={{
-                backgroundColor: gradient
-                  ? `${gradient.from}40`
-                  : color
-                  ? `${color}30`
-                  : 'rgba(255,255,255,0.1)',
-              }}
-            >
-              {icon}
-            </div>
-          )}
-          <div className="text-left">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-white/90">
-                {title}
-              </span>
-              {badge && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/10 text-white/70">
-                  {badge}
-                </span>
-              )}
-            </div>
-            {subtitle && (
-              <p className="text-xs text-white/50 mt-0.5">{subtitle}</p>
-            )}
-          </div>
-        </div>
-        <svg
-          className={`w-5 h-5 text-white/60 transition-transform ${
-            isOpen ? 'rotate-180' : ''
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
-      </button>
-
-      {/* Content */}
-      {isOpen && content && (
-        <div className="px-4 py-3 border-t border-white/10">
-          <div
-            className="text-sm text-white/70 mb-3"
-            style={color ? { color } : undefined}
-          >
-            {typeof content === 'object' ? (
-              <div className="space-y-2">
-                {Object.entries(content).map(([key, value]) => (
-                  <div key={key} className="flex justify-between">
-                    <span className="text-white/50">{key}:</span>
-                    <span className="text-white/80 font-medium">
-                      {String(value)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              content
-            )}
-          </div>
-
-          {actions && actions.length > 0 && (
-            <div className="flex items-center gap-2 pt-2 border-t border-white/10">
-              {actions.map((action, idx) => (
-                <ActionButton
-                  key={idx}
-                  action={action}
-                  onClick={() => onActionClick?.(action)}
-                  className={`
-                    text-xs px-3 py-1.5 rounded font-medium transition-colors
-                    ${
-                      action.variant === 'primary'
-                        ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                        : ''
-                    }
-                    ${
-                      action.variant === 'danger'
-                        ? 'bg-red-500 hover:bg-red-600 text-white'
-                        : ''
-                    }
-                    ${
-                      !action.variant || action.variant === 'secondary'
-                        ? 'bg-white/10 hover:bg-white/20 text-white/80'
-                        : ''
-                    }
-                  `}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * Card renderer - full-featured summary card
- */
-export function SummaryCard({ config, onActionClick }: SummaryRendererProps) {
-  const { icon, title, subtitle, content, color, actions, badge, gradient } =
-    config
-
-  return (
-    <div
-      className="border border-white/10 rounded-xl overflow-hidden bg-white/5 hover:bg-white/[0.07] transition-colors"
-      style={
-        gradient
-          ? {
-              background: `linear-gradient(135deg, ${gradient.from}10, ${gradient.to}10)`,
-            }
-          : undefined
-      }
-    >
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-        <div className="flex items-center gap-3">
-          {icon && (
-            <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
-              style={{
-                backgroundColor: gradient
-                  ? `${gradient.from}40`
-                  : color
-                  ? `${color}30`
-                  : 'rgba(255,255,255,0.1)',
-              }}
-            >
-              {icon}
-            </div>
-          )}
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-semibold text-white/90">{title}</h3>
-              {badge && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/10 text-white/70">
-                  {badge}
-                </span>
-              )}
-            </div>
-            {subtitle && (
-              <p className="text-xs text-white/50 mt-1">{subtitle}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      {content && (
-        <div className="px-4 py-4">
-          <div
-            className="text-sm text-white/70"
-            style={color ? { color } : undefined}
-          >
-            {typeof content === 'object' ? (
-              <div className="space-y-2">
-                {Object.entries(content).map(([key, value]) => (
-                  <div key={key} className="flex justify-between">
-                    <span className="text-white/50">{key}:</span>
-                    <span className="text-white/80 font-medium">
-                      {String(value)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-lg font-medium">{content}</div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Actions */}
-      {actions && actions.length > 0 && (
-        <div className="px-4 py-3 border-t border-white/10 flex items-center gap-2">
-          {actions.map((action, idx) => (
-            <ActionButton
-              key={idx}
-              action={action}
-              onClick={() => onActionClick?.(action)}
-              className={`
-                flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors
-                ${
-                  action.variant === 'primary'
-                    ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                    : ''
-                }
-                ${
-                  action.variant === 'danger'
-                    ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
-                    : ''
-                }
-                ${
-                  !action.variant || action.variant === 'secondary'
-                    ? 'bg-white/10 hover:bg-white/15 text-white/80'
-                    : ''
-                }
-              `}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
  * Helper to render a row of stats
  */
 function StatsRow({ stats }: { stats: StatItem[] }) {
@@ -382,7 +66,7 @@ function StatsRow({ stats }: { stats: StatItem[] }) {
       {stats.map((stat, idx) => (
         <div
           key={idx}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.03] border border-white/5"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08]"
         >
           {stat.icon && <span className="text-sm">{stat.icon}</span>}
           <span
@@ -391,7 +75,7 @@ function StatsRow({ stats }: { stats: StatItem[] }) {
           >
             {stat.value}
           </span>
-          <span className="text-[10px] text-white/50">{stat.label}</span>
+          <span className="text-xs text-white/50">{stat.label}</span>
         </div>
       ))}
     </div>
@@ -399,250 +83,249 @@ function StatsRow({ stats }: { stats: StatItem[] }) {
 }
 
 /**
- * Stats renderer - display multiple stat items in a compact grid
- * Supports both flat stats and sectioned stats
+ * Helper to render list items
  */
-export function SummaryStats({ config, onActionClick }: SummaryRendererProps) {
+function ListItems({ items }: { items: ListItem[] }) {
+  return (
+    <div className="space-y-1">
+      {items.map((item) => (
+        <button
+          key={item.id}
+          onClick={item.onClick}
+          disabled={!item.onClick}
+          className={`
+            w-full px-3 py-2.5 flex items-center justify-between gap-3 rounded-lg
+            transition-colors bg-white/[0.02] border border-white/[0.05]
+            ${
+              item.onClick
+                ? 'hover:bg-white/[0.06] cursor-pointer'
+                : 'cursor-default'
+            }
+          `}
+        >
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            {item.icon && (
+              <span className="text-base shrink-0">{item.icon}</span>
+            )}
+            <div className="flex flex-col items-start min-w-0">
+              <span className="text-sm text-white/80 truncate">
+                {item.label}
+              </span>
+              {item.subtitle && (
+                <span className="text-xs text-white/40">{item.subtitle}</span>
+              )}
+            </div>
+          </div>
+          {item.value && (
+            <span
+              className="text-sm font-semibold text-white/70 shrink-0"
+              style={item.color ? { color: item.color } : undefined}
+            >
+              {item.value}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Unified Summary Card - Chip with optional Accordion
+ *
+ * Design:
+ * - Always shows chip-like header with icon, title, badge, subtitle
+ * - Actions (like "View Details") always visible in header
+ * - If has content (stats or items), shows accordion arrow
+ * - Clicking expands to show stats grid or list items
+ * - If no content, no accordion arrow
+ */
+export function UnifiedSummaryCard({
+  config,
+  onActionClick,
+}: SummaryRendererProps) {
+  const [isOpen, setIsOpen] = React.useState(false)
   const {
     icon,
     title,
     subtitle,
     stats,
     sections,
+    items,
+    content,
     color,
     gradient,
     actions,
     badge,
   } = config
 
+  // Convert content object to stats format (for backwards compatibility with card type)
+  const contentAsStats: StatItem[] | undefined = React.useMemo(() => {
+    if (content && typeof content === 'object' && !Array.isArray(content)) {
+      return Object.entries(content as Record<string, any>).map(
+        ([label, value]) => ({
+          label,
+          value: String(value),
+        }),
+      )
+    }
+    return undefined
+  }, [content])
+
+  // Determine if we have expandable content
+  const effectiveStats = stats || contentAsStats
   const hasStats =
-    (stats && stats.length > 0) || (sections && sections.length > 0)
-
-  if (!hasStats) {
-    return null
-  }
+    (effectiveStats && effectiveStats.length > 0) ||
+    (sections && sections.length > 0)
+  const hasItems = items && items.length > 0
+  const hasExpandableContent = hasStats || hasItems
 
   return (
     <div
-      className="border border-white/10 rounded-xl overflow-hidden bg-white/5"
+      className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.03] hover:bg-white/[0.05] transition-all duration-200"
       style={
         gradient
           ? {
-              background: `linear-gradient(135deg, ${gradient.from}10, ${gradient.to}10)`,
+              background: `linear-gradient(135deg, ${gradient.from}12, ${gradient.to}08)`,
+              borderColor: `${gradient.from}25`,
             }
           : undefined
       }
     >
-      {/* Header - consistent with other summary types */}
-      <div className="px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-        <div className="flex items-center gap-3">
-          {icon && (
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-              style={{
-                backgroundColor: gradient
-                  ? `${gradient.from}40`
-                  : color
-                  ? `${color}30`
-                  : 'rgba(255,255,255,0.1)',
-              }}
-            >
-              {icon}
-            </div>
-          )}
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-white/90">{title}</h3>
-              {badge && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/10 text-white/70">
-                  {badge}
-                </span>
-              )}
-            </div>
-            {subtitle && (
-              <p className="text-xs text-white/50 mt-0.5">{subtitle}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Content */}
-      <div className="px-4 py-3 space-y-3">
-        {/* Render sections if provided */}
-        {sections && sections.length > 0
-          ? sections.map((section, sectionIdx) => (
-              <div key={sectionIdx}>
-                <div className="text-[10px] font-medium text-white/40 uppercase tracking-wide mb-1.5">
-                  {section.title}
-                </div>
-                <StatsRow stats={section.stats} />
-              </div>
-            ))
-          : /* Render flat stats */
-            stats && <StatsRow stats={stats} />}
-      </div>
-
-      {/* Actions */}
-      {actions && actions.length > 0 && (
-        <div className="px-4 py-3 border-t border-white/10 flex items-center gap-2">
-          {actions.map((action, idx) => (
-            <ActionButton
-              key={idx}
-              action={action}
-              onClick={() => onActionClick?.(action)}
-              className={`
-                flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors
-                ${
-                  action.variant === 'primary'
-                    ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                    : ''
-                }
-                ${
-                  action.variant === 'danger'
-                    ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
-                    : ''
-                }
-                ${
-                  !action.variant || action.variant === 'secondary'
-                    ? 'bg-white/10 hover:bg-white/15 text-white/80'
-                    : ''
-                }
-              `}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * List renderer - display items in a vertical list
- */
-export function SummaryList({ config, onActionClick }: SummaryRendererProps) {
-  const { icon, title, subtitle, items, color, gradient, actions, badge } =
-    config
-
-  if (!items || items.length === 0) {
-    return null
-  }
-
-  return (
-    <div
-      className="border border-white/10 rounded-xl overflow-hidden bg-white/5"
-      style={
-        gradient
-          ? {
-              background: `linear-gradient(135deg, ${gradient.from}10, ${gradient.to}10)`,
-            }
-          : undefined
-      }
-    >
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-        <div className="flex items-center gap-3">
-          {icon && (
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
-              style={{
-                backgroundColor: gradient
-                  ? `${gradient.from}40`
-                  : color
-                  ? `${color}30`
-                  : 'rgba(255,255,255,0.1)',
-              }}
-            >
-              {icon}
-            </div>
-          )}
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-white/90">{title}</h3>
-              {badge && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/10 text-white/70">
-                  {badge}
-                </span>
-              )}
-            </div>
-            {subtitle && (
-              <p className="text-xs text-white/50 mt-0.5">{subtitle}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* List Items */}
-      <div className="divide-y divide-white/5">
-        {items.map((item) => (
-          <button
-            key={item.id}
-            onClick={item.onClick}
-            disabled={!item.onClick}
-            className={`
-              w-full px-4 py-3 flex items-center justify-between gap-3
-              transition-colors
-              ${
-                item.onClick
-                  ? 'hover:bg-white/[0.05] cursor-pointer'
-                  : 'cursor-default'
-              }
-            `}
+      {/* Header - Always visible, chip-like */}
+      <div
+        className={`px-4 py-3 flex items-center gap-3 ${
+          hasExpandableContent ? 'cursor-pointer' : ''
+        }`}
+        onClick={() => hasExpandableContent && setIsOpen(!isOpen)}
+      >
+        {/* Icon */}
+        {icon && (
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 transition-transform duration-200"
+            style={{
+              backgroundColor: gradient
+                ? `${gradient.from}30`
+                : color
+                ? `${color}25`
+                : 'rgba(255,255,255,0.08)',
+            }}
           >
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              {item.icon && (
-                <span className="text-lg shrink-0">{item.icon}</span>
-              )}
-              <div className="flex flex-col items-start min-w-0">
-                <span className="text-sm text-white/80 truncate">
-                  {item.label}
-                </span>
-                {item.subtitle && (
-                  <span className="text-xs text-white/40 mt-0.5">
-                    {item.subtitle}
-                  </span>
-                )}
-              </div>
-            </div>
-            {item.value && (
+            {icon}
+          </div>
+        )}
+
+        {/* Title & Subtitle */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-white/90 truncate">
+              {title}
+            </h3>
+            {badge && (
               <span
-                className="text-sm font-semibold text-white/70 shrink-0"
-                style={item.color ? { color: item.color } : undefined}
+                className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide shrink-0"
+                style={{
+                  backgroundColor: gradient
+                    ? `${gradient.from}25`
+                    : color
+                    ? `${color}20`
+                    : 'rgba(255,255,255,0.1)',
+                  color: gradient?.from || color || 'rgba(255,255,255,0.7)',
+                }}
               >
-                {item.value}
+                {badge}
               </span>
             )}
-          </button>
-        ))}
+          </div>
+          {subtitle && (
+            <p className="text-xs text-white/50 mt-0.5 truncate">{subtitle}</p>
+          )}
+        </div>
+
+        {/* Actions */}
+        {actions && actions.length > 0 && (
+          <div
+            className="flex items-center gap-2 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {actions.map((action, idx) => (
+              <ActionButton
+                key={idx}
+                action={action}
+                onClick={() => onActionClick?.(action)}
+                className={`
+                  text-xs px-3 py-1.5 rounded-lg font-medium transition-all duration-200
+                  ${
+                    action.variant === 'primary'
+                      ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                      : ''
+                  }
+                  ${
+                    action.variant === 'danger'
+                      ? 'bg-red-500/15 hover:bg-red-500/25 text-red-400'
+                      : ''
+                  }
+                  ${
+                    !action.variant || action.variant === 'secondary'
+                      ? 'bg-white/10 hover:bg-white/15 text-white/80'
+                      : ''
+                  }
+                `}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Accordion Arrow */}
+        {hasExpandableContent && (
+          <div className="shrink-0 ml-1">
+            <svg
+              className={`w-4 h-4 text-white/40 transition-transform duration-200 ${
+                isOpen ? 'rotate-180' : ''
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+        )}
       </div>
 
-      {/* Actions */}
-      {actions && actions.length > 0 && (
-        <div className="px-4 py-3 border-t border-white/10 flex items-center gap-2">
-          {actions.map((action, idx) => (
-            <ActionButton
-              key={idx}
-              action={action}
-              onClick={() => onActionClick?.(action)}
-              className={`
-                flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors
-                ${
-                  action.variant === 'primary'
-                    ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                    : ''
-                }
-                ${
-                  action.variant === 'danger'
-                    ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
-                    : ''
-                }
-                ${
-                  !action.variant || action.variant === 'secondary'
-                    ? 'bg-white/10 hover:bg-white/15 text-white/80'
-                    : ''
-                }
-              `}
-            />
-          ))}
+      {/* Expandable Content */}
+      {hasExpandableContent && isOpen && (
+        <div className="px-4 pb-4 pt-1 border-t border-white/[0.06] animate-in slide-in-from-top-2 duration-200">
+          {/* Stats */}
+          {hasStats && (
+            <div className="space-y-3">
+              {sections && sections.length > 0
+                ? sections.map((section, sectionIdx) => (
+                    <div key={sectionIdx}>
+                      <div className="text-[10px] font-medium text-white/40 uppercase tracking-wide mb-2">
+                        {section.title}
+                      </div>
+                      <StatsRow stats={section.stats} />
+                    </div>
+                  ))
+                : effectiveStats && <StatsRow stats={effectiveStats} />}
+            </div>
+          )}
+
+          {/* List Items */}
+          {hasItems && !hasStats && <ListItems items={items!} />}
+
+          {/* Both stats and items */}
+          {hasStats && hasItems && (
+            <div className="mt-3">
+              <ListItems items={items!} />
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -650,28 +333,17 @@ export function SummaryList({ config, onActionClick }: SummaryRendererProps) {
 }
 
 /**
- * Main renderer component that selects the appropriate renderer based on type
+ * Main renderer component - uses unified design for all types
  */
 export function CalendarSummaryRenderer({
   config,
   onActionClick,
 }: SummaryRendererProps) {
+  // Custom render still supported
   if (config.type === 'custom' && config.customRender) {
     return <>{config.customRender()}</>
   }
 
-  switch (config.type) {
-    case 'chip':
-      return <SummaryChip config={config} onActionClick={onActionClick} />
-    case 'accordion':
-      return <SummaryAccordion config={config} onActionClick={onActionClick} />
-    case 'card':
-      return <SummaryCard config={config} onActionClick={onActionClick} />
-    case 'stats':
-      return <SummaryStats config={config} onActionClick={onActionClick} />
-    case 'list':
-      return <SummaryList config={config} onActionClick={onActionClick} />
-    default:
-      return <SummaryChip config={config} onActionClick={onActionClick} />
-  }
+  // All types use the unified card
+  return <UnifiedSummaryCard config={config} onActionClick={onActionClick} />
 }

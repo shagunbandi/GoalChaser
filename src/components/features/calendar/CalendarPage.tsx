@@ -255,6 +255,13 @@ export default function CalendarPage({
     router.push(`/goal/${goalId}/${pluginId}/${year}?date=${date}`)
   }
 
+  // Handle day click - update URL with selected date
+  const handleDayClick = (date: string) => {
+    setSelectedDate(date)
+    // Update URL with the selected date
+    router.push(`/goal/${goalId}?date=${date}`, { scroll: false })
+  }
+
   if (loading || !goal) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -278,7 +285,7 @@ export default function CalendarPage({
           dayCustomizations={dayCustomizations}
           onPrevMonth={prevMonth}
           onNextMonth={nextMonth}
-          onDayClick={setSelectedDate}
+          onDayClick={handleDayClick}
           headerContent={
             <div className="mb-4">
               <CalendarFilters
