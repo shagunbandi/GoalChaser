@@ -23,7 +23,8 @@ import {
   IncomeForm,
 } from '.'
 import { computeMonthInfo } from '@/utils'
-import { generateSIPDates } from '../utils'
+import { generateSIPDates } from '../utils/sip-utils'
+import { calculateMonthlyTotals, formatCurrency } from '../utils/recurring-utils'
 
 interface BudgetingViewProps {
   year: number
@@ -597,11 +598,21 @@ export function BudgetingView({
       months: months.map((month) => {
         const monthBudgets = getMonthBudgets(year, month.month)
         const monthSIPs = getMonthSIPs(year, month.month)
+        const monthTotals = calculateMonthlyTotals(dayDetails, year, month.month)
 
         return {
           month: month.month,
           year: month.year,
           onHeaderClick: () => onMonthClick?.(month.year, month.month), // Navigate to month view
+          headerRight: (monthTotals.totalIncome > 0 || monthTotals.totalExpenses > 0) ? (
+            <div className="flex items-center gap-3 text-xs">
+              <span className="text-emerald-400">+{formatCurrency(monthTotals.totalIncome)}</span>
+              <span className="text-red-400">-{formatCurrency(monthTotals.totalExpenses)}</span>
+              <span className={monthTotals.net >= 0 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
+                = {monthTotals.net >= 0 ? '+' : ''}{formatCurrency(monthTotals.net)}
+              </span>
+            </div>
+          ) : null,
           days: month.days.map((day) => {
             const info = getDayInfo(day.iso)
             const indicators = []

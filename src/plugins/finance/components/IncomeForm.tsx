@@ -1,14 +1,22 @@
 import { useState } from 'react'
-import type { BudgetCategory, BudgetPlan, Income } from '@/plugins/finance/types'
+import type {
+  BudgetCategory,
+  BudgetPlan,
+  TransactionCategory,
+  Currency,
+} from '@/plugins/finance/types'
+import { CURRENCIES } from '@/plugins/finance/types'
 
 interface IncomeFormProps {
   date: string // ISO date
-  categories: BudgetCategory[]
+  categories: (BudgetCategory | TransactionCategory)[]
   availableBudgets?: BudgetPlan[] // Budgets that are active for this date
+  defaultCurrency?: Currency
   onSubmit: (data: {
     categoryId: string
     categoryName: string
     amount: number
+    currency: Currency
     description: string
     date: string
     budgetId?: string
@@ -25,6 +33,7 @@ export function IncomeForm({
   date,
   categories,
   availableBudgets = [],
+  defaultCurrency = '₹',
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -32,6 +41,7 @@ export function IncomeForm({
 }: IncomeFormProps) {
   const [categoryId, setCategoryId] = useState(categories[0]?.id || '')
   const [amount, setAmount] = useState('')
+  const [currency, setCurrency] = useState<Currency>(defaultCurrency)
   const [description, setDescription] = useState('')
   const [budgetId, setBudgetId] = useState(activeBudgetId || '')
   const [isRecurring, setIsRecurring] = useState(false)
@@ -74,6 +84,7 @@ export function IncomeForm({
       categoryId,
       categoryName: category.name,
       amount: amountNum,
+      currency,
       description: description.trim(),
       date,
       budgetId: budgetId || undefined,
@@ -116,6 +127,7 @@ export function IncomeForm({
           ) : (
             categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
+                {'icon' in cat && cat.icon ? `${cat.icon} ` : ''}
                 {cat.name}
               </option>
             ))
@@ -124,18 +136,33 @@ export function IncomeForm({
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs text-white/60">Amount (₹) *</label>
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
-          placeholder="500"
-          required
-          min="0.01"
-          step="0.01"
-          autoFocus
-        />
+        <label className="text-xs text-white/60">Amount *</label>
+        <div className="flex gap-2">
+          {/* Currency Selector */}
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as Currency)}
+            className="w-20 rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.value}
+              </option>
+            ))}
+          </select>
+          {/* Amount Input */}
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
+            placeholder="500"
+            required
+            min="0.01"
+            step="0.01"
+            autoFocus
+          />
+        </div>
       </div>
 
       <div className="space-y-1">
@@ -160,7 +187,7 @@ export function IncomeForm({
             <option value="">No budget selected</option>
             {availableBudgets.map((budget) => (
               <option key={budget.id} value={budget.id}>
-                {budget.name} (₹{budget.income.toLocaleString('en-IN')})
+                {budget.name} ({currency}{budget.income.toLocaleString()})
               </option>
             ))}
           </select>
@@ -184,7 +211,7 @@ export function IncomeForm({
               <label className="text-xs text-white/60">Frequency *</label>
               <select
                 value={frequency}
-                onChange={(e) => setFrequency(e.target.value as any)}
+                onChange={(e) => setFrequency(e.target.value as 'daily' | 'weekly' | 'monthly')}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
                 required
               >

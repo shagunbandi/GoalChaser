@@ -300,13 +300,17 @@ export async function saveFinanceTransaction(
 
     const updatedData: FinanceTransactionData = {
       expenses: data.expenses !== undefined ? data.expenses : existingData.expenses,
-      income: data.income !== undefined ? data.income : existingData.income
+      income: data.income !== undefined ? data.income : existingData.income,
+      notes: data.notes !== undefined ? data.notes : existingData.notes,
     }
 
-    await setDoc(docRef, {
+    // Clean undefined fields before saving
+    const cleanedData = removeUndefinedFields({
       ...updatedData,
       updatedAt: new Date().toISOString()
     })
+
+    await setDoc(docRef, cleanedData)
 
     logger.success('Transaction saved')
     return true

@@ -3,13 +3,16 @@
 import { useMemo, useState } from 'react'
 import { HeaderRenderer } from '@/components/features/year-view/renderers/HeaderRenderer'
 import { FinanceManager } from './FinanceManager'
-import type { FinanceTransactionData, BudgetPlan, SIPPlan } from '../types'
+import { TransactionSettingsModal } from './TransactionSettingsModal'
+import type { FinanceTransactionData, BudgetPlan, SIPPlan, TransactionSettings } from '../types'
+import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../types'
 
 interface FinanceHeaderProps {
   year: number
   dayData: Record<string, FinanceTransactionData>
   budgets?: BudgetPlan[]
   sips?: SIPPlan[]
+  transactionSettings?: TransactionSettings
   onPrevYear: () => void
   onNextYear: () => void
   onSaveBudget?: (budget: BudgetPlan) => Promise<void>
@@ -17,6 +20,7 @@ interface FinanceHeaderProps {
   onDeleteBudget?: (budgetId: string) => Promise<void>
   onSaveSIP?: (sip: SIPPlan) => Promise<void>
   onDeleteSIP?: (sipId: string) => Promise<void>
+  onUpdateSettings?: (settings: TransactionSettings) => Promise<void>
 }
 
 export function FinanceHeader({
@@ -24,6 +28,7 @@ export function FinanceHeader({
   dayData,
   budgets = [],
   sips = [],
+  transactionSettings,
   onPrevYear,
   onNextYear,
   onSaveBudget,
@@ -31,8 +36,17 @@ export function FinanceHeader({
   onDeleteBudget,
   onSaveSIP,
   onDeleteSIP,
+  onUpdateSettings,
 }: FinanceHeaderProps) {
   const [showFinanceManager, setShowFinanceManager] = useState(false)
+  const [showTransactionSettings, setShowTransactionSettings] = useState(false)
+
+  // Get settings with defaults
+  const settings = transactionSettings || {
+    defaultCurrency: '₹' as const,
+    expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
+    incomeCategories: DEFAULT_INCOME_CATEGORIES,
+  }
 
   const headerConfig = useMemo(() => {
     const yearPrefix = `${year}-`
@@ -71,6 +85,25 @@ export function FinanceHeader({
     }
 
     const hasActions = onSaveBudget && onSaveSIP
+    const currency = settings.defaultCurrency
+
+    const actions = []
+    if (hasActions) {
+      actions.push({
+        id: 'manage-finance',
+        label: 'Manage Finance',
+        icon: '⚙️',
+        onClick: () => setShowFinanceManager(true),
+      })
+    }
+    if (onUpdateSettings) {
+      actions.push({
+        id: 'manage-transactions',
+        label: 'Manage Transactions',
+        icon: '💳',
+        onClick: () => setShowTransactionSettings(true),
+      })
+    }
 
     return {
       icon: '💰',
@@ -78,31 +111,28 @@ export function FinanceHeader({
       stats: [
         {
           label: 'Income',
-          value: `₹${yearStats.income.toLocaleString('en-IN')}`,
+          value: `${currency}${yearStats.income.toLocaleString('en-IN')}`,
         },
         {
           label: 'Expenses',
-          value: `₹${yearStats.expenses.toLocaleString('en-IN')}`,
+          value: `${currency}${yearStats.expenses.toLocaleString('en-IN')}`,
         },
-        { label: 'SIP', value: `₹${yearStats.sips.toLocaleString('en-IN')}` },
+        { label: 'SIP', value: `${currency}${yearStats.sips.toLocaleString('en-IN')}` },
       ],
       legends: [
         { label: 'Income', color: 'rgb(74, 222, 128)' },
         { label: 'Expense', color: 'rgb(248, 113, 113)' },
         { label: 'SIP', color: 'rgb(96, 165, 250)' },
       ],
-      actions: hasActions
-        ? [
-            {
-              id: 'manage-finance',
-              label: 'Manage Finance',
-              icon: '⚙️',
-              onClick: () => setShowFinanceManager(true),
-            },
-          ]
-        : [],
+      actions,
     }
-  }, [dayData, year, onSaveBudget, onSaveSIP])
+  }, [dayData, year, onSaveBudget, onSaveSIP, onUpdateSettings, settings.defaultCurrency])
+
+  const handleSaveSettings = async (newSettings: TransactionSettings) => {
+    if (onUpdateSettings) {
+      await onUpdateSettings(newSettings)
+    }
+  }
 
   if (!headerConfig) return null
 
@@ -129,6 +159,14 @@ export function FinanceHeader({
           onClose={() => setShowFinanceManager(false)}
         />
       )}
+
+      {/* Transaction Settings Modal */}
+      <TransactionSettingsModal
+        open={showTransactionSettings}
+        onClose={() => setShowTransactionSettings(false)}
+        settings={settings}
+        onSave={handleSaveSettings}
+      />
     </>
   )
 }

@@ -47,6 +47,9 @@ export interface PluginMonthViewProps<TDayData extends PluginDayData = any> {
 
   /** Optional context to pass to detail provider */
   detailContext?: any
+
+  /** Footer content to display below the calendar (e.g., summary chips, legend) */
+  footerContent?: React.ReactNode
 }
 
 /**
@@ -70,6 +73,7 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
   onBackToYear,
   buildDayCustomization,
   detailContext,
+  footerContent,
 }: PluginMonthViewProps<TDayData>) {
   const router = useRouter()
 
@@ -233,6 +237,7 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
             onNextMonth={nextMonth}
             onDayClick={handleDayClick}
             testIdPrefix={`${plugin.id}-month`}
+            footerContent={footerContent}
           />
         </div>
 

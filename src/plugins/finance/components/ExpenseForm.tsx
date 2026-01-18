@@ -1,14 +1,22 @@
 import { useState } from 'react'
-import type { BudgetCategory, BudgetPlan, Expense } from '@/plugins/finance/types'
+import type {
+  BudgetCategory,
+  BudgetPlan,
+  TransactionCategory,
+  Currency,
+} from '@/plugins/finance/types'
+import { CURRENCIES } from '@/plugins/finance/types'
 
 interface ExpenseFormProps {
   date: string // ISO date
-  categories: BudgetCategory[]
+  categories: (BudgetCategory | TransactionCategory)[]
   availableBudgets?: BudgetPlan[] // Budgets that are active for this date
+  defaultCurrency?: Currency
   onSubmit: (data: {
     categoryId: string
     categoryName: string
     amount: number
+    currency: Currency
     description: string
     date: string
     budgetId?: string
@@ -25,6 +33,7 @@ export function ExpenseForm({
   date,
   categories,
   availableBudgets = [],
+  defaultCurrency = '₹',
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -32,6 +41,7 @@ export function ExpenseForm({
 }: ExpenseFormProps) {
   const [categoryId, setCategoryId] = useState(categories[0]?.id || '')
   const [amount, setAmount] = useState('')
+  const [currency, setCurrency] = useState<Currency>(defaultCurrency)
   const [description, setDescription] = useState('')
   const [budgetId, setBudgetId] = useState(activeBudgetId || '')
   const [isRecurring, setIsRecurring] = useState(false)
@@ -74,6 +84,7 @@ export function ExpenseForm({
       categoryId,
       categoryName: category.name,
       amount: amountNum,
+      currency,
       description: description.trim(),
       date,
       budgetId: budgetId || undefined,
@@ -81,6 +92,11 @@ export function ExpenseForm({
       frequency: isRecurring ? frequency : undefined,
       endDate: isRecurring ? endDate : undefined,
     })
+  }
+
+  // Check if category has allocatedAmount (BudgetCategory)
+  const isBudgetCategory = (cat: BudgetCategory | TransactionCategory): cat is BudgetCategory => {
+    return 'allocatedAmount' in cat
   }
 
   return (
@@ -116,7 +132,9 @@ export function ExpenseForm({
           ) : (
             categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
-                {cat.name} (₹{cat.allocatedAmount.toLocaleString('en-IN')} budgeted)
+                {'icon' in cat && cat.icon ? `${cat.icon} ` : ''}
+                {cat.name}
+                {isBudgetCategory(cat) && ` (${currency}${cat.allocatedAmount.toLocaleString()} budgeted)`}
               </option>
             ))
           )}
@@ -124,18 +142,33 @@ export function ExpenseForm({
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs text-white/60">Amount (₹) *</label>
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
-          placeholder="150"
-          required
-          min="0.01"
-          step="0.01"
-          autoFocus
-        />
+        <label className="text-xs text-white/60">Amount *</label>
+        <div className="flex gap-2">
+          {/* Currency Selector */}
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as Currency)}
+            className="w-20 rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.value}
+              </option>
+            ))}
+          </select>
+          {/* Amount Input */}
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
+            placeholder="150"
+            required
+            min="0.01"
+            step="0.01"
+            autoFocus
+          />
+        </div>
       </div>
 
       <div className="space-y-1">
@@ -160,7 +193,7 @@ export function ExpenseForm({
             <option value="">No budget selected</option>
             {availableBudgets.map((budget) => (
               <option key={budget.id} value={budget.id}>
-                {budget.name} (₹{budget.income.toLocaleString('en-IN')})
+                {budget.name} ({currency}{budget.income.toLocaleString()})
               </option>
             ))}
           </select>
@@ -184,7 +217,7 @@ export function ExpenseForm({
               <label className="text-xs text-white/60">Frequency *</label>
               <select
                 value={frequency}
-                onChange={(e) => setFrequency(e.target.value as any)}
+                onChange={(e) => setFrequency(e.target.value as 'daily' | 'weekly' | 'monthly')}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[#007AFF]/50"
                 required
               >
@@ -220,7 +253,7 @@ export function ExpenseForm({
         </button>
         <button
           type="submit"
-          className="flex-1 rounded-xl bg-gradient-to-r from-[#007AFF] to-[#AF52DE] px-4 py-2 text-sm font-medium text-white transition-all hover:shadow-[0_0_20px_rgba(0,122,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 rounded-xl bg-gradient-to-r from-red-500 to-rose-500 px-4 py-2 text-sm font-medium text-white transition-all hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isSubmitting || categories.length === 0}
         >
           {isSubmitting ? 'Adding...' : 'Add Expense'}
