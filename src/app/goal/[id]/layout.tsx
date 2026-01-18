@@ -10,7 +10,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useGoals } from '@/hooks/useGoals'
 import { useAddonsConfig } from '@/hooks/useAddonsConfig'
@@ -24,6 +24,7 @@ interface GoalLayoutProps {
 export default function GoalLayout({ children }: GoalLayoutProps) {
   const params = useParams()
   const router = useRouter()
+  const pathname = usePathname()
   const goalId = params.id as string
   const pluginSegments = (params.plugin as string[]) || []
 
@@ -86,7 +87,9 @@ export default function GoalLayout({ children }: GoalLayoutProps) {
   }
 
   // Determine current plugin and year from URL
-  const currentPlugin = pluginSegments[0] || 'calendar'
+  // Check if we're on the analytics route (separate from catch-all plugin route)
+  const isAnalyticsRoute = pathname?.endsWith('/analytics')
+  const currentPlugin = isAnalyticsRoute ? 'analytics' : (pluginSegments[0] || 'calendar')
   const currentYear =
     pluginSegments[1] && !isNaN(parseInt(pluginSegments[1]))
       ? parseInt(pluginSegments[1])

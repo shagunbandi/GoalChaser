@@ -2,7 +2,8 @@
  * Productivity Plugin
  */
 
-import type { Plugin } from '@/sdk'
+import type { Plugin, PluginAnalyticsChartData } from '@/sdk'
+import { calculateStreak, calculateAverage, generateDateRange } from '@/sdk'
 import { ProductivityDataProvider } from './data-provider'
 import { ProductivityDetailProviderImpl } from './detail-provider'
 import ProductivityPage from './pages/ProductivityPage'
@@ -126,15 +127,8 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
   // Analytics integration
   analytics: {
     getAnalyticsData: (startDate, endDate, data) => {
-      const charts = []
-
-      // Generate date labels
-      const dates: string[] = []
-      const start = new Date(startDate)
-      const end = new Date(endDate)
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        dates.push(d.toISOString().split('T')[0])
-      }
+      const charts: PluginAnalyticsChartData[] = []
+      const dates = generateDateRange(startDate, endDate)
 
       // Calculate daily productivity scores
       const dailyScores = dates.map(date => {
@@ -142,43 +136,114 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
         return dayData?.status ?? null
       }).filter((score): score is number => score !== null)
 
-      if (dailyScores.length > 0) {
-        // Line chart: Productivity over time
-        const scoresWithDates = dates.map(date => data[date]?.status ?? 0)
+      const daysTracked = dailyScores.length
+      const avgScore = calculateAverage(data, (d) => d?.status ?? null)
+
+      // Calculate streak for high productivity days (score >= 7)
+      const highProductivityStreak = calculateStreak(
+        data,
+        (d) => d?.status !== null && d?.status !== undefined && d.status >= 7
+      )
+
+      // Calculate area and topic statistics
+      const areaStats: Record<string, { days: number; topics: Set<string> }> = {}
+
+      Object.values(data).forEach(dayData => {
+        if (dayData.areas) {
+          dayData.areas.forEach(areaEntry => {
+            const areaName = areaEntry.area || 'Unknown'
+            if (!areaStats[areaName]) {
+              areaStats[areaName] = { days: 0, topics: new Set() }
+            }
+            areaStats[areaName].days++
+            if (areaEntry.topics) {
+              areaEntry.topics.forEach(topic => {
+                areaStats[areaName].topics.add(topic)
+              })
+            }
+          })
+        }
+      })
+
+      const uniqueAreas = Object.keys(areaStats).length
+      const uniqueTopics = Object.values(areaStats).reduce((sum, s) => sum + s.topics.size, 0)
+
+      // Metric cards
+      if (daysTracked > 0) {
         charts.push({
-          chartType: 'line' as const,
-          title: 'Productivity Score Over Time',
-          data: {
-            labels: dates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
-            datasets: [{
-              label: 'Productivity (1-10)',
-              data: scoresWithDates,
-              color: '#34C759',
-            }],
+          chartType: 'metric',
+          title: 'Average Score',
+          metricData: {
+            label: 'Average Productivity',
+            value: avgScore.toFixed(1),
+            unit: '/10',
+            icon: '📊',
+            color: avgScore >= 7 ? '#34C759' : avgScore >= 4 ? '#FF9500' : '#FF3B30',
+            subtitle: `Based on ${daysTracked} days`,
           },
         })
 
-        // Pie chart: Distribution of productivity levels
-        const highCount = dailyScores.filter(s => s >= 7).length
-        const okCount = dailyScores.filter(s => s >= 4 && s < 7).length
-        const lowCount = dailyScores.filter(s => s < 4).length
+        charts.push({
+          chartType: 'metric',
+          title: 'Days Tracked',
+          metricData: {
+            label: 'Days Tracked',
+            value: daysTracked,
+            icon: '📅',
+            color: '#007AFF',
+            subtitle: `Out of ${dates.length} days`,
+          },
+        })
 
-        if (highCount + okCount + lowCount > 0) {
+        // High productivity days count
+        const highDays = dailyScores.filter(s => s >= 7).length
+        charts.push({
+          chartType: 'metric',
+          title: 'High Productivity Days',
+          metricData: {
+            label: 'High Productivity',
+            value: highDays,
+            icon: '🔥',
+            color: '#34C759',
+            subtitle: `Score 7+`,
+          },
+        })
+
+        // Areas tracked
+        if (uniqueAreas > 0) {
           charts.push({
-            chartType: 'pie' as const,
-            title: 'Productivity Distribution',
-            data: {
-              labels: ['High (7-10)', 'OK (4-6)', 'Low (1-3)'],
-              datasets: [{
-                label: 'Days',
-                data: [highCount, okCount, lowCount],
-                color: '#34C759',
-              }],
+            chartType: 'metric',
+            title: 'Areas Tracked',
+            metricData: {
+              label: 'Unique Areas',
+              value: uniqueAreas,
+              icon: '🎯',
+              color: '#06B6D4',
+              subtitle: `${uniqueTopics} unique topics`,
             },
           })
         }
+      }
 
-        // Heat map: Productivity activity
+      // Streak display
+      if (highProductivityStreak.longest > 0) {
+        charts.push({
+          chartType: 'streak',
+          title: 'High Productivity Streak',
+          size: 'medium',
+          streakData: {
+            currentStreak: highProductivityStreak.current,
+            longestStreak: highProductivityStreak.longest,
+            unit: 'days',
+            icon: '🔥',
+            color: '#FF9500',
+            description: 'Consecutive days with score 7+',
+          },
+        })
+      }
+
+      // Heat map: Productivity activity
+      if (dailyScores.length > 0) {
         const heatmapData: Record<string, number> = {}
         dates.forEach(date => {
           const score = data[date]?.status
@@ -188,45 +253,13 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
         })
 
         charts.push({
-          chartType: 'heatmap' as const,
+          chartType: 'heatmap',
           title: 'Productivity Heat Map',
-          data: {
-            labels: [],
-            datasets: [],
-          },
+          size: 'small',
           heatmapData,
           dateRange: {
             start: startDate,
             end: endDate,
-          },
-        })
-      }
-
-      // Bar chart: Activity by area
-      const areaCounts: Record<string, number> = {}
-      Object.values(data).forEach(dayData => {
-        if (dayData.areas) {
-          dayData.areas.forEach(areaEntry => {
-            const areaName = areaEntry.area || 'Unknown'
-            areaCounts[areaName] = (areaCounts[areaName] || 0) + 1
-          })
-        }
-      })
-
-      if (Object.keys(areaCounts).length > 0) {
-        const areas = Object.keys(areaCounts)
-        const counts = areas.map(a => areaCounts[a])
-
-        charts.push({
-          chartType: 'bar' as const,
-          title: 'Days Active by Area',
-          data: {
-            labels: areas,
-            datasets: [{
-              label: 'Days',
-              data: counts,
-              color: '#34C759',
-            }],
           },
         })
       }

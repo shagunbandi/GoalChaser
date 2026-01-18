@@ -5,7 +5,7 @@
  * For time series data and trends
  */
 
-interface LineChartProps {
+export interface LineChartProps {
   title?: string
   labels: string[]
   datasets: Array<{

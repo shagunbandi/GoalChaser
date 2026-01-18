@@ -288,3 +288,59 @@ export function calculateMonthlyTotals(
 export function formatCurrency(amount: number, currency: string = '₹'): string {
   return `${currency}${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
 }
+
+/**
+ * Calculate running totals from start of month till a specific date (MTD - Month To Date)
+ */
+export function calculateRunningTotals(
+  dayData: Record<string, FinanceTransactionData>,
+  selectedDate: string
+): { totalExpenses: number; totalIncome: number; net: number; transactionCount: number } {
+  // Extract year and month from the selected date
+  const [year, month] = selectedDate.split('-')
+  const prefix = `${year}-${month}`
+
+  let totalExpenses = 0
+  let totalIncome = 0
+  let transactionCount = 0
+
+  // Get all dates from start of month up to and including selected date
+  Object.entries(dayData).forEach(([date, data]) => {
+    if (date.startsWith(prefix) && date <= selectedDate) {
+      const expenses = data.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0
+      const income = data.income?.reduce((sum, i) => sum + i.amount, 0) || 0
+      totalExpenses += expenses
+      totalIncome += income
+      transactionCount += (data.expenses?.length || 0) + (data.income?.length || 0)
+    }
+  })
+
+  return {
+    totalExpenses,
+    totalIncome,
+    net: totalIncome - totalExpenses,
+    transactionCount,
+  }
+}
+
+/**
+ * Calculate daily totals for a specific date
+ */
+export function calculateDailyTotals(
+  data: FinanceTransactionData | null
+): { totalExpenses: number; totalIncome: number; net: number; transactionCount: number } {
+  if (!data) {
+    return { totalExpenses: 0, totalIncome: 0, net: 0, transactionCount: 0 }
+  }
+
+  const totalExpenses = data.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0
+  const totalIncome = data.income?.reduce((sum, i) => sum + i.amount, 0) || 0
+  const transactionCount = (data.expenses?.length || 0) + (data.income?.length || 0)
+
+  return {
+    totalExpenses,
+    totalIncome,
+    net: totalIncome - totalExpenses,
+    transactionCount,
+  }
+}

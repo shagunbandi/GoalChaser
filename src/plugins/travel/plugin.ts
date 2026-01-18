@@ -1,4 +1,5 @@
 import type { Plugin, PluginAnalyticsChartData } from '@/sdk'
+import { generateDateRange, formatDateLabel } from '@/sdk'
 import { TravelDataProvider } from './data-provider'
 import { TravelDetailProviderImpl } from './detail-provider'
 import TravelPage from './pages/TravelPage'
@@ -137,6 +138,7 @@ export const TravelPlugin: Plugin = {
   analytics: {
     getAnalyticsData: (startDate, endDate, data) => {
       const charts: PluginAnalyticsChartData[] = []
+      const dates = generateDateRange(startDate, endDate)
 
       // Extract unique travel plans from day-based data
       const allPlans: TravelPlan[] = []
@@ -151,44 +153,84 @@ export const TravelPlugin: Plugin = {
         }
       })
 
-      if (allPlans.length === 0) {
-        return charts
-      }
-
-      // Generate date labels
-      const dates: string[] = []
-      const start = new Date(startDate)
-      const end = new Date(endDate)
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        dates.push(d.toISOString().split('T')[0])
-      }
-
-      // Heat map: Days traveled
-      const heatmapData: Record<string, number> = {}
+      // Count travel days in range
+      let travelDaysCount = 0
       dates.forEach(date => {
         const isTravel = allPlans.some(plan => 
           date >= plan.startDate && date <= plan.endDate
         )
-        if (isTravel) {
-          heatmapData[date] = 1
-        }
+        if (isTravel) travelDaysCount++
+      })
+
+      // Calculate total days for all trips
+      const totalTripDays = allPlans.reduce((sum, plan) => {
+        const start = new Date(plan.startDate)
+        const end = new Date(plan.endDate)
+        return sum + Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      }, 0)
+
+      // Metric cards
+      charts.push({
+        chartType: 'metric',
+        title: 'Total Trips',
+        metricData: {
+          label: 'Total Trips',
+          value: allPlans.length,
+          icon: '✈️',
+          color: '#F97316',
+          subtitle: 'In date range',
+        },
       })
 
       charts.push({
-        chartType: 'heatmap' as const,
+        chartType: 'metric',
         title: 'Travel Days',
-        data: {
-          labels: [],
-          datasets: [],
-        },
-        heatmapData,
-        dateRange: {
-          start: startDate,
-          end: endDate,
+        metricData: {
+          label: 'Days Traveling',
+          value: travelDaysCount,
+          unit: 'days',
+          icon: '🗓️',
+          color: '#EA580C',
+          subtitle: `Out of ${dates.length} days`,
         },
       })
 
-      // Pie chart: Destinations
+      if (allPlans.length > 0) {
+        // Average trip duration
+        const avgTripDuration = totalTripDays / allPlans.length
+        charts.push({
+          chartType: 'metric',
+          title: 'Avg Trip Duration',
+          metricData: {
+            label: 'Avg Duration',
+            value: avgTripDuration.toFixed(1),
+            unit: 'days',
+            icon: '⏱️',
+            color: '#D97706',
+            subtitle: 'Per trip',
+          },
+        })
+
+        // Unique destinations
+        const uniqueDestinations = new Set(allPlans.map(p => p.destination || p.title))
+        charts.push({
+          chartType: 'metric',
+          title: 'Destinations',
+          metricData: {
+            label: 'Destinations',
+            value: uniqueDestinations.size,
+            icon: '🗺️',
+            color: '#F59E0B',
+            subtitle: 'Unique places',
+          },
+        })
+      }
+
+      if (allPlans.length === 0) {
+        return charts
+      }
+
+      // Pie chart: Destinations (show first for visual variety)
       const destinationCounts: Record<string, number> = {}
       allPlans.forEach(plan => {
         const dest = plan.destination || plan.title || 'Unknown'
@@ -200,14 +242,15 @@ export const TravelPlugin: Plugin = {
         const counts = destinations.map(d => destinationCounts[d])
 
         charts.push({
-          chartType: 'pie' as const,
+          chartType: 'pie',
           title: 'Trips by Destination',
+          size: 'medium',
           data: {
             labels: destinations,
             datasets: [{
               label: 'Trips',
               data: counts,
-              color: '#8E44AD',
+              color: '#F97316',
             }],
           },
         })
@@ -224,15 +267,38 @@ export const TravelPlugin: Plugin = {
       const tripNames = allPlans.map(plan => plan.destination || plan.title || 'Trip')
 
       charts.push({
-        chartType: 'bar' as const,
+        chartType: 'bar',
         title: 'Trip Duration (Days)',
+        size: 'medium',
         data: {
           labels: tripNames,
           datasets: [{
             label: 'Days',
             data: durations,
-            color: '#8E44AD',
+            color: '#F97316',
           }],
+        },
+      })
+
+      // Heat map: Days traveled
+      const heatmapData: Record<string, number> = {}
+      dates.forEach(date => {
+        const isTravel = allPlans.some(plan => 
+          date >= plan.startDate && date <= plan.endDate
+        )
+        if (isTravel) {
+          heatmapData[date] = 1
+        }
+      })
+
+      charts.push({
+        chartType: 'heatmap',
+        title: 'Travel Days',
+        size: 'large',
+        heatmapData,
+        dateRange: {
+          start: startDate,
+          end: endDate,
         },
       })
 

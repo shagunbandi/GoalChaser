@@ -23,6 +23,7 @@ export type {
   CalendarSummaryAction,
   PluginAnalyticsMetric,
   PluginAnalyticsChartData,
+  ChartSize,
   StatItem as SDKStatItem,
   StatSection,
   ListItem,
@@ -88,3 +89,43 @@ export type {
   DayRenderInfo,
   MonthCalendarProps
 } from './ui'
+
+// Analytics components and utilities
+export {
+  // Charts
+  LineChart,
+  BarChart,
+  PieChart,
+  HeatMap,
+  // Analytics components
+  MetricCard,
+  StreakDisplay,
+  // Filter components
+  DateRangeSelector,
+  PluginFilter,
+  // Utility functions
+  calculateStreak,
+  calculateAverage,
+  calculateSum,
+  calculateTrend,
+  generateDateRange,
+  formatDateLabel,
+} from './analytics'
+
+// Analytics types
+export type {
+  LineChartProps,
+  BarChartProps,
+  PieChartProps,
+  HeatMapProps,
+  MetricCardProps,
+  StreakDisplayProps,
+  DateRangeSelectorProps,
+  DateRange,
+  DateRangePreset,
+  PluginFilterProps,
+  PluginFilterItem,
+  MetricDataConfig,
+  StreakDataConfig,
+  AnalyticsChartType,
+} from './analytics'

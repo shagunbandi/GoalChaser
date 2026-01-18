@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useState, useMemo, type ReactNode } from 'react'
 import type { PluginDetailProvider } from '@/sdk'
 import { NotesField } from '@/sdk'
 import type {
@@ -18,7 +18,12 @@ import { ExpenseForm } from './components/ExpenseForm'
 import { IncomeForm } from './components/IncomeForm'
 import { EditTransactionModal, type EditAction, type EditedTransactionData } from './components/EditTransactionModal'
 import { TransactionSettingsModal } from './components/TransactionSettingsModal'
-import { isRecurringTransaction } from './utils/recurring-utils'
+import {
+  isRecurringTransaction,
+  calculateDailyTotals,
+  calculateRunningTotals,
+  formatCurrency,
+} from './utils/recurring-utils'
 
 // Type for form data from ExpenseForm/IncomeForm
 export type TransactionFormData = {
@@ -59,9 +64,133 @@ export interface FinanceDetailContext {
   allDayData?: Record<string, FinanceTransactionData>
 }
 
-// Format currency with symbol
+// Format amount helper (wrapper for formatCurrency)
 function formatAmount(amount: number, currency: Currency = '₹'): string {
-  return `${currency}${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+  return formatCurrency(amount, currency)
+}
+
+// Statistics Card Component
+function StatCard({
+  icon,
+  label,
+  value,
+  color,
+  bgColor,
+}: {
+  icon: string
+  label: string
+  value: string
+  color: string
+  bgColor: string
+}) {
+  return (
+    <div
+      className="flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all hover:scale-[1.02]"
+      style={{
+        backgroundColor: bgColor,
+        borderColor: `${color}30`,
+      }}
+    >
+      <span className="text-base">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <div className="text-[10px] uppercase tracking-wider text-white/50 font-medium">
+          {label}
+        </div>
+        <div className="text-sm font-bold" style={{ color }}>
+          {value}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Statistics Section Component
+function FinanceStats({
+  dailyTotals,
+  runningTotals,
+  currency,
+  transactionCountToday,
+  transactionCountMTD,
+}: {
+  dailyTotals: { totalExpenses: number; totalIncome: number; net: number }
+  runningTotals: { totalExpenses: number; totalIncome: number; net: number }
+  currency: Currency
+  transactionCountToday: number
+  transactionCountMTD: number
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Today Stats */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold">
+            Today
+          </span>
+          <span className="text-[10px] text-white/30">
+            {transactionCountToday} transaction{transactionCountToday !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <StatCard
+            icon="💰"
+            label="Income"
+            value={`+${formatAmount(dailyTotals.totalIncome, currency)}`}
+            color="#34D399"
+            bgColor="rgba(52, 211, 153, 0.08)"
+          />
+          <StatCard
+            icon="🛒"
+            label="Expenses"
+            value={formatAmount(dailyTotals.totalExpenses, currency)}
+            color="#F87171"
+            bgColor="rgba(248, 113, 113, 0.08)"
+          />
+          <StatCard
+            icon={dailyTotals.net >= 0 ? '📈' : '📉'}
+            label="Net"
+            value={`${dailyTotals.net >= 0 ? '+' : ''}${formatAmount(dailyTotals.net, currency)}`}
+            color={dailyTotals.net >= 0 ? '#34D399' : '#F87171'}
+            bgColor={dailyTotals.net >= 0 ? 'rgba(52, 211, 153, 0.08)' : 'rgba(248, 113, 113, 0.08)'}
+          />
+        </div>
+      </div>
+
+      {/* Running MTD Stats */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold">
+            This Month (Running)
+          </span>
+          <span className="text-[10px] text-white/30">
+            {transactionCountMTD} transaction{transactionCountMTD !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <StatCard
+            icon="💵"
+            label="Income"
+            value={`+${formatAmount(runningTotals.totalIncome, currency)}`}
+            color="#34D399"
+            bgColor="rgba(52, 211, 153, 0.05)"
+          />
+          <StatCard
+            icon="🧾"
+            label="Expenses"
+            value={formatAmount(runningTotals.totalExpenses, currency)}
+            color="#F87171"
+            bgColor="rgba(248, 113, 113, 0.05)"
+          />
+          <StatCard
+            icon={runningTotals.net >= 0 ? '📊' : '📉'}
+            label="Net"
+            value={`${runningTotals.net >= 0 ? '+' : ''}${formatAmount(runningTotals.net, currency)}`}
+            color={runningTotals.net >= 0 ? '#34D399' : '#F87171'}
+            bgColor={runningTotals.net >= 0 ? 'rgba(52, 211, 153, 0.05)' : 'rgba(248, 113, 113, 0.05)'}
+          />
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // Component wrapper that handles state
@@ -88,9 +217,17 @@ function FinanceDetailView({
 
   const expenses = data?.expenses || []
   const income = data?.income || []
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
-  const totalIncome = income.reduce((sum, i) => sum + i.amount, 0)
-  const netFlow = totalIncome - totalExpenses
+
+  // Calculate daily totals
+  const dailyTotals = useMemo(() => calculateDailyTotals(data), [data])
+
+  // Calculate running totals (MTD)
+  const runningTotals = useMemo(() => {
+    if (!context?.allDayData) {
+      return dailyTotals
+    }
+    return calculateRunningTotals(context.allDayData, date)
+  }, [context?.allDayData, date, dailyTotals])
 
   // Get settings with defaults
   const settings = context?.transactionSettings || {
@@ -153,50 +290,61 @@ function FinanceDetailView({
     type: 'expense' | 'income'
   ) => {
     const isExpense = type === 'expense'
-    const accentColor = isExpense ? '#FF453A' : '#32D74B'
+    const accentColor = isExpense ? '#F87171' : '#34D399'
     const isRecurring = isRecurringTransaction(transaction)
     const currency = transaction.currency || defaultCurrency
+    const icon = isExpense ? '🛒' : '💵'
 
     return (
       <div
         key={transaction.id}
-        className="group flex items-center justify-between px-3 py-2.5 rounded-xl transition-all"
+        className="group flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 hover:scale-[1.01]"
         style={{
-          backgroundColor: `${accentColor}10`,
+          background: `linear-gradient(135deg, ${accentColor}08, transparent)`,
           borderWidth: 1,
-          borderColor: `${accentColor}20`,
+          borderColor: `${accentColor}15`,
         }}
       >
+        {/* Icon */}
+        <div
+          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-sm"
+          style={{ backgroundColor: `${accentColor}15` }}
+        >
+          {icon}
+        </div>
+
+        {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <div className="text-sm text-white/80 truncate">
+            <div className="text-sm font-medium text-white/85 truncate">
               {transaction.description || 'No description'}
             </div>
             {isRecurring && (
               <span
-                className="text-xs px-1.5 py-0.5 rounded"
+                className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
                 style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
               >
-                🔄
+                🔄 Recurring
               </span>
             )}
           </div>
-          <div className="text-xs text-white/40">{transaction.categoryName}</div>
+          <div className="text-xs text-white/40 mt-0.5">{transaction.categoryName}</div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="text-sm font-semibold" style={{ color: accentColor }}>
+        {/* Amount & Actions */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="text-sm font-bold" style={{ color: accentColor }}>
             {isExpense ? '-' : '+'}
             {formatAmount(transaction.amount, currency)}
           </div>
 
           {/* Edit/Delete Buttons */}
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
             <button
               onClick={() =>
                 setEditingTransaction({ transaction, type, mode: 'edit' })
               }
-              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/80 transition-all"
+              className="p-1.5 rounded-lg hover:bg-white/10 text-white/30 hover:text-white/70 transition-all"
               title="Edit"
             >
               <svg
@@ -217,7 +365,7 @@ function FinanceDetailView({
               onClick={() =>
                 setEditingTransaction({ transaction, type, mode: 'delete' })
               }
-              className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-all"
+              className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/30 hover:text-red-400 transition-all"
               title="Delete"
             >
               <svg
@@ -240,26 +388,42 @@ function FinanceDetailView({
     )
   }
 
+  // Determine status badge
+  const getStatusBadge = () => {
+    if (dailyTotals.net > 0) return { label: 'Surplus', color: '#34D399', bg: 'rgba(52, 211, 153, 0.15)' }
+    if (dailyTotals.net < 0) return { label: 'Deficit', color: '#F87171', bg: 'rgba(248, 113, 113, 0.15)' }
+    return { label: 'Balanced', color: '#FBBF24', bg: 'rgba(251, 191, 36, 0.15)' }
+  }
+
+  const statusBadge = getStatusBadge()
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-green-500/30 flex items-center justify-center text-xl">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500/20 via-green-500/20 to-teal-500/20 flex items-center justify-center text-xl shadow-lg shadow-emerald-500/10">
             💰
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white/90">Finance</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-white/95">Finance</h3>
+              <span
+                className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider"
+                style={{ backgroundColor: statusBadge.bg, color: statusBadge.color }}
+              >
+                {statusBadge.label}
+              </span>
+            </div>
             <p className="text-xs text-white/50">
-              {expenses.length + income.length} transaction
-              {expenses.length + income.length !== 1 ? 's' : ''} today
+              {dailyTotals.transactionCount} today, {runningTotals.transactionCount} this month
             </p>
           </div>
         </div>
         {/* Settings Button */}
         <button
           onClick={() => setShowSettings(true)}
-          className="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.08] border border-white/10 text-white/60 hover:text-white/80 transition-all"
+          className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white/50 hover:text-white/80 transition-all duration-200 hover:border-white/15"
           title="Manage Transactions"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -279,6 +443,17 @@ function FinanceDetailView({
         </button>
       </div>
 
+      {/* Statistics Section */}
+      <div className="p-4 rounded-2xl bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/[0.06] backdrop-blur-sm">
+        <FinanceStats
+          dailyTotals={dailyTotals}
+          runningTotals={runningTotals}
+          currency={defaultCurrency}
+          transactionCountToday={dailyTotals.transactionCount}
+          transactionCountMTD={runningTotals.transactionCount}
+        />
+      </div>
+
       {/* Notes */}
       <NotesField
         value={data?.notes || ''}
@@ -291,15 +466,17 @@ function FinanceDetailView({
       />
 
       {/* Transactions Section */}
-      <div className="space-y-4 p-4 rounded-xl bg-white/[0.02] border border-white/10">
+      <div className="space-y-4 p-4 rounded-2xl bg-gradient-to-br from-white/[0.02] to-transparent border border-white/[0.06]">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-white/70 flex items-center gap-2">
-            <span>💳</span>
+          <h4 className="text-sm font-semibold text-white/80 flex items-center gap-2">
+            <span className="text-base">💳</span>
             Transactions
           </h4>
-          <span className="text-xs text-white/40">
-            {defaultCurrency} {expenses.length + income.length > 0 ? `• ${expenses.length + income.length} items` : ''}
-          </span>
+          {(expenses.length > 0 || income.length > 0) && (
+            <span className="text-[10px] px-2 py-1 rounded-lg bg-white/[0.05] text-white/40 font-medium">
+              {expenses.length + income.length} items
+            </span>
+          )}
         </div>
 
         {/* Add Transaction Buttons */}
@@ -307,25 +484,25 @@ function FinanceDetailView({
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => setShowExpenseForm(true)}
-              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all text-sm font-medium"
+              className="group flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-gradient-to-br from-red-500/10 to-rose-500/5 border border-red-500/20 text-red-400 hover:from-red-500/15 hover:to-rose-500/10 hover:border-red-500/30 transition-all duration-200 text-sm font-semibold shadow-lg shadow-red-500/5"
             >
-              <span>📉</span>
-              Expense
+              <span className="group-hover:scale-110 transition-transform">📉</span>
+              Add Expense
             </button>
             <button
               onClick={() => setShowIncomeForm(true)}
-              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-all text-sm font-medium"
+              className="group flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-gradient-to-br from-emerald-500/10 to-green-500/5 border border-emerald-500/20 text-emerald-400 hover:from-emerald-500/15 hover:to-green-500/10 hover:border-emerald-500/30 transition-all duration-200 text-sm font-semibold shadow-lg shadow-emerald-500/5"
             >
-              <span>📈</span>
-              Income
+              <span className="group-hover:scale-110 transition-transform">📈</span>
+              Add Income
             </button>
           </div>
         )}
 
         {/* Expense Form */}
         {showExpenseForm && (
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-red-500/20">
-            <h4 className="text-sm font-medium text-white/80 mb-4 flex items-center gap-2">
+          <div className="p-4 rounded-xl bg-gradient-to-br from-red-500/[0.03] to-transparent border border-red-500/20">
+            <h4 className="text-sm font-semibold text-white/85 mb-4 flex items-center gap-2">
               <span className="text-red-400">📉</span>
               Add Expense
             </h4>
@@ -344,8 +521,8 @@ function FinanceDetailView({
 
         {/* Income Form */}
         {showIncomeForm && (
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-emerald-500/20">
-            <h4 className="text-sm font-medium text-white/80 mb-4 flex items-center gap-2">
+          <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/[0.03] to-transparent border border-emerald-500/20">
+            <h4 className="text-sm font-semibold text-white/85 mb-4 flex items-center gap-2">
               <span className="text-emerald-400">📈</span>
               Add Income
             </h4>
@@ -364,7 +541,7 @@ function FinanceDetailView({
 
         {/* Transaction List */}
         {(expenses.length > 0 || income.length > 0) && !showExpenseForm && !showIncomeForm && (
-          <div className="space-y-2 pt-2">
+          <div className="space-y-2.5 pt-3">
             {income.map((item) => renderTransactionItem(item, 'income'))}
             {expenses.map((item) => renderTransactionItem(item, 'expense'))}
           </div>
@@ -372,39 +549,13 @@ function FinanceDetailView({
 
         {/* Empty State */}
         {expenses.length === 0 && income.length === 0 && !showExpenseForm && !showIncomeForm && (
-          <div className="text-center text-white/40 py-4">
-            <p className="text-sm">No transactions yet</p>
-            <p className="text-xs mt-1">Add an expense or income above</p>
+          <div className="text-center py-8">
+            <div className="text-4xl mb-3 opacity-50">💸</div>
+            <p className="text-sm text-white/50 font-medium">No transactions yet</p>
+            <p className="text-xs text-white/30 mt-1">Add an expense or income to get started</p>
           </div>
         )}
       </div>
-
-      {/* Summary Stats */}
-      {(totalIncome > 0 || totalExpenses > 0) && (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="px-3 py-3 rounded-xl bg-white/[0.03] border border-white/5">
-            <div className="text-xs text-white/40 mb-1">Income</div>
-            <div className="text-sm font-semibold text-emerald-400">
-              +{formatAmount(totalIncome, defaultCurrency)}
-            </div>
-          </div>
-          <div className="px-3 py-3 rounded-xl bg-white/[0.03] border border-white/5">
-            <div className="text-xs text-white/40 mb-1">Expenses</div>
-            <div className="text-sm font-semibold text-red-400">
-              -{formatAmount(totalExpenses, defaultCurrency)}
-            </div>
-          </div>
-          <div className="px-3 py-3 rounded-xl bg-white/[0.03] border border-white/5">
-            <div className="text-xs text-white/40 mb-1">Net</div>
-            <div
-              className={`text-sm font-semibold ${netFlow >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
-            >
-              {netFlow >= 0 ? '+' : ''}
-              {formatAmount(netFlow, defaultCurrency)}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Edit/Delete Modal */}
       {editingTransaction && (

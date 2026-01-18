@@ -5,7 +5,7 @@
  * For distributions and proportions
  */
 
-interface PieChartProps {
+export interface PieChartProps {
   title?: string
   data: Array<{
     label: string

@@ -4,12 +4,30 @@
  * Track study hours spent per day across different subjects and topics.
  */
 
-import type { Plugin } from '@/sdk'
+import type { Plugin, PluginAnalyticsChartData } from '@/sdk'
+import { calculateStreak, calculateSum, generateDateRange } from '@/sdk'
 import { StudyDataProvider } from './data-provider'
 import { StudyDetailProviderImpl } from './detail-provider'
 import StudyPage from './pages/StudyPage'
 import type { StudyDayData, StudyConfig } from './types'
 import { buildPluginUrl } from '@/lib/plugin-url-utils'
+
+// Helper to get total hours for a day
+function getDayHours(dayData: StudyDayData | undefined): number {
+  if (!dayData) return 0
+  const subjectHours = dayData.subjects?.reduce((sum, entry) => sum + (entry.hours || 0), 0) || 0
+  return subjectHours > 0 ? subjectHours : (dayData.directHours || 0)
+}
+
+// Helper to format hours
+function formatHours(hours: number): string {
+  if (hours === 0) return '0h'
+  const totalMinutes = Math.round(hours * 60)
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
+}
 
 export const StudyPlugin: Plugin<StudyDayData, StudyConfig> = {
   id: 'study',
@@ -42,20 +60,10 @@ export const StudyPlugin: Plugin<StudyDayData, StudyConfig> = {
       }
 
       // Calculate total hours
-      const subjectHours = data.subjects?.reduce((sum, entry) => sum + (entry.hours || 0), 0) || 0
-      const totalHours = subjectHours > 0 ? subjectHours : (data.directHours || 0)
+      const totalHours = getDayHours(data)
 
       if (totalHours === 0) {
         return null
-      }
-
-      // Format hours to h/m
-      const formatHours = (hours: number) => {
-        const totalMinutes = Math.round(hours * 60)
-        const h = Math.floor(totalMinutes / 60)
-        const m = totalMinutes % 60
-        if (m === 0) return `${h}h`
-        return `${h}h ${m}m`
       }
 
       // Build navigation URL
@@ -127,85 +135,134 @@ export const StudyPlugin: Plugin<StudyDayData, StudyConfig> = {
   // Analytics integration
   analytics: {
     getAnalyticsData: (startDate, endDate, data) => {
-      const charts = []
+      const charts: PluginAnalyticsChartData[] = []
+      const dates = generateDateRange(startDate, endDate)
 
-      // Generate date labels
-      const dates: string[] = []
-      const start = new Date(startDate)
-      const end = new Date(endDate)
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        dates.push(d.toISOString().split('T')[0])
-      }
+      // Calculate totals
+      const totalHours = calculateSum(data, getDayHours)
+      const daysStudied = Object.values(data).filter(d => getDayHours(d) > 0).length
 
-      // Calculate daily hours
-      const dailyHours = dates.map(date => {
-        const dayData = data[date]
-        if (!dayData) return 0
-        const subjectHours = dayData.subjects?.reduce((sum, entry) => sum + (entry.hours || 0), 0) || 0
-        return subjectHours > 0 ? subjectHours : (dayData.directHours || 0)
-      })
+      // Calculate streak (consecutive study days)
+      const studyStreak = calculateStreak(data, (d) => getDayHours(d) > 0)
 
-      // Line chart: Study hours per day
-      charts.push({
-        chartType: 'line' as const,
-        title: 'Study Hours per Day',
-        data: {
-          labels: dates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
-          datasets: [{
-            label: 'Hours',
-            data: dailyHours,
-            color: '#007AFF',
-          }],
-        },
-      })
+      // Calculate daily hours for heatmap
+      const dailyHours = dates.map(date => getDayHours(data[date]))
 
-      // Pie chart: Hours by subject
-      const subjectTotals: Record<string, number> = {}
+      // Calculate subject statistics
+      const subjectStats: Record<string, { hours: number; days: number; topics: Set<string> }> = {}
+      
       Object.values(data).forEach(dayData => {
         if (dayData.subjects) {
           dayData.subjects.forEach(entry => {
-            subjectTotals[entry.subject] = (subjectTotals[entry.subject] || 0) + (entry.hours || 0)
+            const subject = entry.subject
+            if (!subjectStats[subject]) {
+              subjectStats[subject] = { hours: 0, days: 0, topics: new Set() }
+            }
+            subjectStats[subject].hours += entry.hours || 0
+            subjectStats[subject].days++
+            if (entry.topics) {
+              entry.topics.forEach(topic => subjectStats[subject].topics.add(topic))
+            }
           })
         }
       })
 
-      if (Object.keys(subjectTotals).length > 0) {
-        const subjects = Object.keys(subjectTotals)
-        const hours = subjects.map(s => subjectTotals[s])
+      const uniqueSubjects = Object.keys(subjectStats).length
+      const uniqueTopics = Object.values(subjectStats).reduce((sum, s) => sum + s.topics.size, 0)
+
+      // Metric cards
+      if (totalHours > 0 || daysStudied > 0) {
+        charts.push({
+          chartType: 'metric',
+          title: 'Total Study Hours',
+          metricData: {
+            label: 'Total Hours',
+            value: formatHours(totalHours),
+            icon: '📚',
+            color: '#A855F7',
+            subtitle: `Over ${dates.length} days`,
+          },
+        })
 
         charts.push({
-          chartType: 'pie' as const,
-          title: 'Study Hours by Subject',
-          data: {
-            labels: subjects,
-            datasets: [{
-              label: 'Hours',
-              data: hours,
-              color: '#007AFF',
-            }],
+          chartType: 'metric',
+          title: 'Days Studied',
+          metricData: {
+            label: 'Days Studied',
+            value: daysStudied,
+            icon: '📅',
+            color: '#8B5CF6',
+            subtitle: `Out of ${dates.length} days`,
+          },
+        })
+
+        // Average hours per study day
+        const avgHoursPerStudyDay = daysStudied > 0 ? totalHours / daysStudied : 0
+        charts.push({
+          chartType: 'metric',
+          title: 'Avg Hours/Day',
+          metricData: {
+            label: 'Avg per Day',
+            value: formatHours(avgHoursPerStudyDay),
+            icon: '⏱️',
+            color: '#7C3AED',
+            subtitle: 'When studying',
+          },
+        })
+
+        // Subjects tracked
+        if (uniqueSubjects > 0) {
+          charts.push({
+            chartType: 'metric',
+            title: 'Subjects',
+            metricData: {
+              label: 'Subjects Studied',
+              value: uniqueSubjects,
+              icon: '📖',
+              color: '#6366F1',
+              subtitle: `${uniqueTopics} topics covered`,
+            },
+          })
+        }
+      }
+
+      // Streak display
+      if (studyStreak.longest > 0) {
+        charts.push({
+          chartType: 'streak',
+          title: 'Study Streak',
+          size: 'medium',
+          streakData: {
+            currentStreak: studyStreak.current,
+            longestStreak: studyStreak.longest,
+            unit: 'days',
+            icon: '🔥',
+            color: '#A855F7',
+            description: 'Consecutive study days',
           },
         })
       }
 
       // Heat map: Daily study hours
-      const heatmapData: Record<string, number> = {}
-      dates.forEach((date, index) => {
-        heatmapData[date] = dailyHours[index]
-      })
+      if (dailyHours.some(h => h > 0)) {
+        const heatmapData: Record<string, number> = {}
+        dates.forEach((date, index) => {
+          if (dailyHours[index] > 0) {
+            heatmapData[date] = dailyHours[index]
+          }
+        })
 
-      charts.push({
-        chartType: 'heatmap' as const,
-        title: 'Study Hours Activity',
-        data: {
-          labels: [],
-          datasets: [],
-        },
-        heatmapData,
-        dateRange: {
-          start: startDate,
-          end: endDate,
-        },
-      })
+        charts.push({
+          chartType: 'heatmap',
+          title: 'Study Activity',
+          size: 'small',
+          heatmapData,
+          dateRange: {
+            start: startDate,
+            end: endDate,
+          },
+        })
+      }
 
       return charts
     },

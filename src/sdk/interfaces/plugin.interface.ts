@@ -402,18 +402,29 @@ export interface PluginAnalyticsMetric {
 }
 
 /**
+ * Chart size for layout purposes
+ * - small: 1/4 width (metric cards)
+ * - medium: 1/2 width (pie charts, streak)
+ * - large: full width (line charts, heatmaps)
+ */
+export type ChartSize = 'small' | 'medium' | 'large'
+
+/**
  * Analytics Chart Data
  * Configuration for rendering a chart in the analytics dashboard
  */
 export interface PluginAnalyticsChartData {
   /** Type of chart to render */
-  chartType: 'line' | 'bar' | 'pie' | 'heatmap'
+  chartType: 'line' | 'bar' | 'pie' | 'heatmap' | 'metric' | 'streak'
 
   /** Chart title */
   title: string
 
-  /** Chart data */
-  data: {
+  /** Size hint for layout (default: based on chart type) */
+  size?: ChartSize
+
+  /** Chart data (for line, bar, pie charts) */
+  data?: {
     /** Labels for x-axis or categories */
     labels: string[]
 
@@ -437,6 +448,43 @@ export interface PluginAnalyticsChartData {
   dateRange?: {
     start: string
     end: string
+  }
+
+  /** Optional: For metric card display */
+  metricData?: {
+    /** Label for the metric */
+    label: string
+    /** The value to display */
+    value: number | string
+    /** Optional unit (e.g., "/10", "hrs", "$") */
+    unit?: string
+    /** Optional icon emoji */
+    icon?: string
+    /** Primary color */
+    color?: string
+    /** Optional subtitle */
+    subtitle?: string
+    /** Trend information */
+    trend?: {
+      direction: 'up' | 'down' | 'neutral'
+      value: number
+    }
+  }
+
+  /** Optional: For streak display */
+  streakData?: {
+    /** Current active streak */
+    currentStreak: number
+    /** Longest streak achieved */
+    longestStreak: number
+    /** Unit label (e.g., "days", "sessions") */
+    unit?: string
+    /** Icon emoji */
+    icon?: string
+    /** Primary color */
+    color?: string
+    /** Description of what counts as a streak day */
+    description?: string
   }
 }
 

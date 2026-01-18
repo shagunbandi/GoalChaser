@@ -43,8 +43,20 @@ export {
   type MonthCalendarProps,
 } from './MonthCalendar'
 
-// Chart components for analytics
-export * from './charts'
+// Chart components for analytics - re-export from analytics module
+export {
+  LineChart,
+  BarChart,
+  PieChart,
+  HeatMap,
+} from '../analytics/charts'
+
+export type {
+  LineChartProps,
+  BarChartProps,
+  PieChartProps,
+  HeatMapProps,
+} from '../analytics/charts'
 
 // Notes field component
 export { NotesField, type NotesFieldProps } from './NotesField'

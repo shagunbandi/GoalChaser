@@ -5,7 +5,7 @@
  * For comparisons and categorical data
  */
 
-interface BarChartProps {
+export interface BarChartProps {
   title?: string
   labels: string[]
   datasets: Array<{

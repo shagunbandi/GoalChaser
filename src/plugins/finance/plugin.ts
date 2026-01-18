@@ -1,4 +1,5 @@
-import type { Plugin } from '@/sdk'
+import type { Plugin, PluginAnalyticsChartData } from '@/sdk'
+import { generateDateRange, formatDateLabel, calculateSum } from '@/sdk'
 import { FinanceDataProvider } from './data-provider'
 import { FinanceDetailProviderImpl } from './detail-provider'
 import FinancePage from './pages/FinancePage'
@@ -174,17 +175,20 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
   // Analytics integration
   analytics: {
     getAnalyticsData: (startDate, endDate, data) => {
-      const charts = []
+      const charts: PluginAnalyticsChartData[] = []
+      const dates = generateDateRange(startDate, endDate)
 
-      // Generate date labels
-      const dates: string[] = []
-      const start = new Date(startDate)
-      const end = new Date(endDate)
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        dates.push(d.toISOString().split('T')[0])
-      }
+      // Calculate totals
+      const totalIncome = calculateSum(data, (d) => d?.income?.reduce((sum, i) => sum + i.amount, 0) || 0)
+      const totalExpenses = calculateSum(data, (d) => d?.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0)
+      const netSavings = totalIncome - totalExpenses
 
-      // Calculate daily income and expenses
+      // Count transactions
+      const totalTransactions = calculateSum(data, (d) => 
+        (d?.income?.length || 0) + (d?.expenses?.length || 0)
+      )
+
+      // Calculate daily income and expenses for charts
       const dailyIncome = dates.map(date => {
         const dayData = data[date]
         return dayData?.income?.reduce((sum, i) => sum + i.amount, 0) || 0
@@ -195,15 +199,65 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
         return dayData?.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0
       })
 
-      const hasData = dailyIncome.some(v => v > 0) || dailyExpenses.some(v => v > 0)
+      const hasData = totalIncome > 0 || totalExpenses > 0
 
+      // Metric cards
       if (hasData) {
+        charts.push({
+          chartType: 'metric',
+          title: 'Total Income',
+          metricData: {
+            label: 'Total Income',
+            value: `₹${totalIncome.toLocaleString('en-IN')}`,
+            icon: '💵',
+            color: '#22C55E',
+            subtitle: `${dates.length} days`,
+          },
+        })
+
+        charts.push({
+          chartType: 'metric',
+          title: 'Total Expenses',
+          metricData: {
+            label: 'Total Expenses',
+            value: `₹${totalExpenses.toLocaleString('en-IN')}`,
+            icon: '💸',
+            color: '#EF4444',
+            subtitle: `${dates.length} days`,
+          },
+        })
+
+        charts.push({
+          chartType: 'metric',
+          title: 'Net Savings',
+          metricData: {
+            label: 'Net Savings',
+            value: `₹${netSavings.toLocaleString('en-IN')}`,
+            icon: netSavings >= 0 ? '📈' : '📉',
+            color: netSavings >= 0 ? '#22C55E' : '#EF4444',
+            subtitle: netSavings >= 0 ? 'Surplus' : 'Deficit',
+          },
+        })
+
+        charts.push({
+          chartType: 'metric',
+          title: 'Transactions',
+          metricData: {
+            label: 'Total Transactions',
+            value: totalTransactions,
+            icon: '📝',
+            color: '#007AFF',
+            subtitle: 'In date range',
+          },
+        })
+
         // Line chart: Income vs Expenses
         charts.push({
-          chartType: 'line' as const,
+          chartType: 'line',
           title: 'Income vs Expenses',
+          size: 'large',
           data: {
-            labels: dates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+            labels: dates.map(d => formatDateLabel(d)),
             datasets: [
               {
                 label: 'Income',
@@ -222,10 +276,11 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
         // Bar chart: Net savings per day
         const dailyNet = dates.map((_, i) => dailyIncome[i] - dailyExpenses[i])
         charts.push({
-          chartType: 'bar' as const,
-          title: 'Daily Net (Income - Expenses)',
+          chartType: 'bar',
+          title: 'Daily Net',
+          size: 'medium',
           data: {
-            labels: dates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+            labels: dates.map(d => formatDateLabel(d)),
             datasets: [{
               label: 'Net Amount',
               data: dailyNet,
@@ -250,8 +305,9 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
           const amounts = categories.map(c => categoryTotals[c])
 
           charts.push({
-            chartType: 'pie' as const,
+            chartType: 'pie',
             title: 'Expenses by Category',
+            size: 'medium',
             data: {
               labels: categories,
               datasets: [{
@@ -273,12 +329,9 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
         })
 
         charts.push({
-          chartType: 'heatmap' as const,
+          chartType: 'heatmap',
           title: 'Transaction Activity',
-          data: {
-            labels: [],
-            datasets: [],
-          },
+          size: 'large',
           heatmapData,
           dateRange: {
             start: startDate,

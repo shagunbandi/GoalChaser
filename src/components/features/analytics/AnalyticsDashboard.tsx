@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { PluginMetricsAggregator } from './PluginMetricsAggregator'
 import { usePluginRegistry } from '@/core/plugin-registry/hooks'
 import { useGoalData } from '@/hooks/useGoalData'
 import { useAuth } from '@/hooks/useAuth'
 import { useAddonsConfig } from '@/hooks/useAddonsConfig'
-import type { Plugin } from '@/sdk/interfaces/plugin.interface'
+import { useAnalyticsConfig } from '@/hooks/useAnalyticsConfig'
+import { DateRangeSelector, PluginFilter } from '@/sdk/analytics'
+import type { DateRange, PluginFilterItem } from '@/sdk/analytics'
 
 interface AnalyticsDashboardProps {
   goalId: string
@@ -17,12 +19,13 @@ export function AnalyticsDashboard({ goalId }: AnalyticsDashboardProps) {
   const { registry } = usePluginRegistry()
   const { goal, pluginData: rawPluginData, isLoading: loading } = useGoalData(goalId)
   const { enabledAddons } = useAddonsConfig(user?.uid, goalId)
+  const { visiblePlugins: savedVisiblePlugins, isLoading: configLoading, saveVisiblePlugins } = useAnalyticsConfig(user?.uid, goalId)
   
   // Get all plugins from registry
   const plugins = registry.getAllPlugins()
 
   // Date range state
-  const [dateRange, setDateRange] = useState(() => {
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
     const end = new Date()
     const start = new Date()
     start.setDate(start.getDate() - 30) // Default: last 30 days
@@ -31,6 +34,31 @@ export function AnalyticsDashboard({ goalId }: AnalyticsDashboardProps) {
       end: end.toISOString().split('T')[0]
     }
   })
+
+  // Plugin visibility state (which plugins are shown in analytics)
+  const [visiblePlugins, setVisiblePlugins] = useState<Set<string>>(() => new Set())
+  const [initialized, setInitialized] = useState(false)
+
+  // Initialize visible plugins from Firebase config or enabled addons
+  useEffect(() => {
+    if (initialized || configLoading) return
+    
+    if (savedVisiblePlugins && savedVisiblePlugins.length > 0) {
+      // Only include plugins that are still enabled
+      const validPlugins = savedVisiblePlugins.filter(id => enabledAddons?.includes(id as any))
+      if (validPlugins.length > 0) {
+        setVisiblePlugins(new Set(validPlugins))
+        setInitialized(true)
+        return
+      }
+    }
+    
+    // Fallback: show all enabled addons
+    if (enabledAddons && enabledAddons.length > 0 && !configLoading) {
+      setVisiblePlugins(new Set(enabledAddons))
+      setInitialized(true)
+    }
+  }, [savedVisiblePlugins, enabledAddons, configLoading, initialized])
 
   // Filter plugin data by date range
   const pluginData = useMemo(() => {
@@ -58,24 +86,54 @@ export function AnalyticsDashboard({ goalId }: AnalyticsDashboardProps) {
 
   // Get list of enabled plugin IDs
   const enabledPluginIds = useMemo(() => {
-    return Object.keys(enabledAddons || {})
+    return enabledAddons || []
   }, [enabledAddons])
 
-  const handleDateRangeChange = (type: 'start' | 'end', value: string) => {
-    setDateRange(prev => ({ ...prev, [type]: value }))
-  }
+  // Get visible plugin IDs (after filter)
+  const visiblePluginIds = useMemo(() => {
+    return Array.from(visiblePlugins)
+  }, [visiblePlugins])
 
-  const setPresetRange = (days: number) => {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(start.getDate() - days)
-    setDateRange({
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
+  // Build plugin filter items
+  const pluginFilterItems: PluginFilterItem[] = useMemo(() => {
+    return enabledPluginIds
+      .map(pluginId => {
+        const plugin = plugins.find(p => p.id === pluginId)
+        if (!plugin) return null
+        return {
+          id: plugin.id,
+          name: plugin.metadata.name,
+          icon: plugin.metadata.icon,
+          enabled: visiblePlugins.has(plugin.id)
+        }
+      })
+      .filter((item): item is PluginFilterItem => item !== null)
+  }, [enabledPluginIds, plugins, visiblePlugins])
+
+  // Handler for toggling plugin visibility
+  const handlePluginToggle = (pluginId: string) => {
+    setVisiblePlugins(prev => {
+      const next = new Set(prev)
+      if (next.has(pluginId)) {
+        next.delete(pluginId)
+      } else {
+        next.add(pluginId)
+      }
+      // Save to Firebase
+      saveVisiblePlugins(Array.from(next))
+      return next
     })
   }
 
-  if (loading) {
+  // Handler for toggling all plugins
+  const handleToggleAll = (enabled: boolean) => {
+    const next = enabled ? new Set(enabledPluginIds) : new Set<string>()
+    setVisiblePlugins(next)
+    // Save to Firebase
+    saveVisiblePlugins(Array.from(next))
+  }
+
+  if (loading || configLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-white/60">Loading analytics...</div>
@@ -98,54 +156,27 @@ export function AnalyticsDashboard({ goalId }: AnalyticsDashboardProps) {
         <h1 className="text-2xl font-bold text-white/90">Analytics</h1>
         
         {/* Date Range Selector */}
-        <div className="glass-panel rounded-lg p-4 space-y-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-white/60">From:</label>
-              <input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => handleDateRangeChange('start', e.target.value)}
-                className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-white/90 text-sm"
-              />
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-white/60">To:</label>
-              <input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => handleDateRangeChange('end', e.target.value)}
-                className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-white/90 text-sm"
-              />
-            </div>
-          </div>
+        <DateRangeSelector
+          value={dateRange}
+          onChange={setDateRange}
+          showCustomInputs={true}
+        />
 
-          {/* Preset ranges */}
-          <div className="flex flex-wrap gap-2">
-            {[
-              { label: 'Last 7 days', days: 7 },
-              { label: 'Last 30 days', days: 30 },
-              { label: 'Last 90 days', days: 90 },
-              { label: 'Last 6 months', days: 180 },
-              { label: 'Last year', days: 365 }
-            ].map((preset) => (
-              <button
-                key={preset.days}
-                onClick={() => setPresetRange(preset.days)}
-                className="px-3 py-1.5 text-sm rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Plugin Filter */}
+        {pluginFilterItems.length > 1 && (
+          <PluginFilter
+            plugins={pluginFilterItems}
+            onToggle={handlePluginToggle}
+            onToggleAll={handleToggleAll}
+          />
+        )}
       </div>
 
       {/* Analytics Content */}
       <PluginMetricsAggregator
         plugins={plugins}
         enabledPluginIds={enabledPluginIds}
+        visiblePluginIds={visiblePluginIds}
         startDate={dateRange.start}
         endDate={dateRange.end}
         pluginData={pluginData}
