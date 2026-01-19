@@ -1,7 +1,7 @@
 'use client'
 
 import type { PluginPageProps } from '@/sdk'
-import { usePluginPage, LoadingState, NotFoundState } from '@/sdk'
+import { usePluginPage, LoadingState, NotFoundState, ContentLoader } from '@/sdk'
 import { TravelHeader, YearView, TravelMonthView } from '../components'
 import { enumerateDateRange } from '@/utils'
 import type { TravelPlan, TravelPlanInput, TravelDayData } from '../types'
@@ -20,17 +20,14 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
     navigateToNextYear,
     navigateToYear,
     navigateToMonth,
+    jumpToMonth,
+    hasData,
     year: currentYear,
   } = usePluginPage<TravelDayData>({
     pluginId: 'travel',
     params,
     year,
   })
-
-  const handleJumpToDay = (iso: string) => {
-    const [y, m] = iso.split('-').map(Number)
-    navigateToMonth(y, m, iso)
-  }
 
   const handleAddTravel = async (travel: TravelPlanInput) => {
     const dates = enumerateDateRange(
@@ -119,20 +116,9 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
     }
   }
 
-  // Check if we have any data yet (for initial load vs navigation)
-  const hasData = Object.keys(pluginDayData).length > 0
-
   // Only show full-page loading on TRUE initial load (no goal AND no cached data)
-  // This prevents the header from disappearing during navigation
   if (!goal && isLoading && !hasData) return <LoadingState />
   if (!goal && !isLoading) return <NotFoundState />
-
-  // Content loading indicator (shown inline when switching years)
-  const ContentLoader = () => (
-    <div className="flex items-center justify-center py-20">
-      <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
 
   return (
     <div className="space-y-6">
@@ -149,7 +135,7 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
 
       {/* Content - shows inline loader when switching years */}
       {isLoading && !hasData ? (
-        <ContentLoader />
+        <ContentLoader color="#007AFF" />
       ) : month ? (
         <TravelMonthView
           plugin={TravelPlugin}
@@ -174,7 +160,7 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
           onNextYear={navigateToNextYear}
           onAddTravel={handleAddTravel}
           onUpdateDay={updateDayData}
-          onJumpToDay={handleJumpToDay}
+          onJumpToDay={jumpToMonth}
           onMonthClick={navigateToMonth}
           initialSelectedDay={initialSelectedDay}
         />

@@ -40,7 +40,11 @@ interface UsePluginPageResult<TDayData = any, TConfig = any> {
   navigateToPrevMonth: (currentYear: number, currentMonth: number) => void
   navigateToNextMonth: (currentYear: number, currentMonth: number) => void
   jumpToDay: (iso: string) => void
+  jumpToMonth: (iso: string) => void
   navigateToYear: (year: number) => void
+  
+  // Computed helpers
+  hasData: boolean
 }
 
 /**
@@ -145,9 +149,20 @@ export function usePluginPage<TDayData = any, TConfig = any>({
     router.replace(`${currentPath}?date=${iso}`, { scroll: false })
   }
 
+  /**
+   * Jump to a specific date's month view (extracts year/month from ISO date)
+   */
+  const jumpToMonth = (iso: string) => {
+    const [y, m] = iso.split('-').map(Number)
+    navigateToMonth(y, m, iso)
+  }
+
   const navigateToYear = (targetYear: number) => {
     router.push(`/goal/${goalId}/${pluginId}/${targetYear}`)
   }
+
+  // Helper to check if data has been loaded
+  const hasData = Object.keys(pluginDayData).length > 0 || pluginConfig !== null
 
   return {
     goal,
@@ -168,5 +183,7 @@ export function usePluginPage<TDayData = any, TConfig = any>({
     navigateToPrevMonth,
     navigateToNextMonth,
     jumpToDay,
+    jumpToMonth,
+    hasData,
   }
 }

@@ -5,7 +5,7 @@
 'use client'
 
 import type { PluginPageProps } from '@/sdk'
-import { usePluginPage, LoadingState, NotFoundState } from '@/sdk'
+import { usePluginPage, LoadingState, NotFoundState, ContentLoader } from '@/sdk'
 import { StudyHeader, StudyView, StudyMonthView } from '../components'
 import type { StudyDayData, StudyConfig } from '../types'
 import { StudyPlugin } from '../plugin'
@@ -29,17 +29,14 @@ export default function StudyPage({
     navigateToNextYear,
     navigateToYear,
     navigateToMonth,
+    jumpToMonth,
+    hasData,
     year: currentYear,
   } = usePluginPage<StudyDayData, StudyConfig>({
     pluginId: 'study',
     params,
     year,
   })
-
-  const handleJumpToDay = (iso: string) => {
-    const [y, m] = iso.split('-').map(Number)
-    navigateToMonth(y, m, iso)
-  }
 
   const subjectConfigs = pluginConfig?.subjects || []
   const maxHours = pluginConfig?.maxHours || 14
@@ -125,20 +122,9 @@ export default function StudyPage({
     )
   }
 
-  // Check if we have any data yet (for initial load vs navigation)
-  const hasData = Object.keys(pluginDayData).length > 0 || pluginConfig !== null
-
   // Only show full-page loading on TRUE initial load (no goal AND no cached data)
-  // This prevents the header from disappearing during navigation
   if (!goal && isLoading && !hasData) return <LoadingState />
   if (!goal && !isLoading) return <NotFoundState />
-
-  // Content loading indicator (shown inline when switching years)
-  const ContentLoader = () => (
-    <div className="flex items-center justify-center py-20">
-      <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
 
   return (
     <div className="space-y-6">
@@ -162,7 +148,7 @@ export default function StudyPage({
 
       {/* Content - shows inline loader when switching years */}
       {isLoading && !hasData ? (
-        <ContentLoader />
+        <ContentLoader color="#8B5CF6" />
       ) : month ? (
         <StudyMonthView
           plugin={StudyPlugin}
@@ -195,7 +181,7 @@ export default function StudyPage({
           onPrevYear={navigateToPrevYear}
           onNextYear={navigateToNextYear}
           onUpdateDay={updateDayData}
-          onJumpToDay={handleJumpToDay}
+          onJumpToDay={jumpToMonth}
           onMonthClick={navigateToMonth}
           initialSelectedDay={initialSelectedDay}
           onAddSubject={handleAddSubject}

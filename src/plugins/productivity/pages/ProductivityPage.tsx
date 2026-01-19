@@ -5,7 +5,7 @@
 'use client'
 
 import type { PluginPageProps } from '@/sdk'
-import { usePluginPage, LoadingState, NotFoundState } from '@/sdk'
+import { usePluginPage, LoadingState, NotFoundState, ContentLoader } from '@/sdk'
 import {
   ProductivityHeader,
   ProductivityYearView,
@@ -33,17 +33,14 @@ export default function ProductivityPage({
     navigateToNextYear,
     navigateToYear,
     navigateToMonth,
+    jumpToMonth,
+    hasData,
     year: currentYear,
   } = usePluginPage<ProductivityDayData, ProductivityConfig>({
     pluginId: 'productivity',
     params,
     year,
   })
-
-  const handleJumpToDay = (iso: string) => {
-    const [y, m] = iso.split('-').map(Number)
-    navigateToMonth(y, m, iso)
-  }
 
   const areaConfigs = pluginConfig?.areas || []
 
@@ -126,20 +123,9 @@ export default function ProductivityPage({
     )
   }
 
-  // Check if we have any data yet (for initial load vs navigation)
-  const hasData = Object.keys(pluginDayData).length > 0 || pluginConfig !== null
-
   // Only show full-page loading on TRUE initial load (no goal AND no cached data)
-  // This prevents the header from disappearing during navigation
   if (!goal && isLoading && !hasData) return <LoadingState />
   if (!goal && !isLoading) return <NotFoundState />
-
-  // Content loading indicator (shown inline when switching years)
-  const ContentLoader = () => (
-    <div className="flex items-center justify-center py-20">
-      <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
 
   return (
     <div className="space-y-6">
@@ -162,7 +148,7 @@ export default function ProductivityPage({
 
       {/* Content - shows inline loader when switching years */}
       {isLoading && !hasData ? (
-        <ContentLoader />
+        <ContentLoader color="#007AFF" />
       ) : month ? (
         <ProductivityMonthView
           plugin={ProductivityPlugin}
@@ -192,7 +178,7 @@ export default function ProductivityPage({
           onPrevYear={navigateToPrevYear}
           onNextYear={navigateToNextYear}
           onUpdateDay={updateDayData}
-          onJumpToDay={handleJumpToDay}
+          onJumpToDay={jumpToMonth}
           onAddArea={handleAddArea}
           onRemoveArea={handleRemoveArea}
           onUpdateArea={handleUpdateArea}

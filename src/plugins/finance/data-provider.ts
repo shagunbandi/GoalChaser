@@ -1,34 +1,7 @@
 // Finance Plugin Data Provider
 import type { PluginDataProvider, PluginContext } from '@/sdk'
+import { removeUndefinedFields } from '@/sdk'
 import type { FinanceTransactionData } from './types'
-
-// Helper to remove undefined fields recursively
-function removeUndefinedFields(obj: any): any {
-  if (obj === null || obj === undefined) return obj
-  if (Array.isArray(obj)) {
-    return obj.map(item => 
-      typeof item === 'object' && item !== null ? removeUndefinedFields(item) : item
-    )
-  }
-  if (typeof obj === 'object') {
-    const cleaned: any = {}
-    Object.entries(obj).forEach(([key, value]) => {
-      if (value !== undefined) {
-        if (Array.isArray(value)) {
-          cleaned[key] = value.map(item => 
-            typeof item === 'object' && item !== null ? removeUndefinedFields(item) : item
-          )
-        } else if (value !== null && typeof value === 'object') {
-          cleaned[key] = removeUndefinedFields(value)
-        } else {
-          cleaned[key] = value
-        }
-      }
-    })
-    return cleaned
-  }
-  return obj
-}
 
 export class FinanceDataProvider implements PluginDataProvider<FinanceTransactionData> {
   async loadDayData(context: PluginContext, date: string): Promise<FinanceTransactionData | null> {

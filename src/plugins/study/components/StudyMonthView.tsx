@@ -3,6 +3,7 @@
 import { PluginMonthView } from '@/sdk'
 import type { DayCustomization } from '@/sdk'
 import type { StudyDayData } from '../types'
+import { getVibgyorColors } from '@/utils'
 
 interface StudyMonthViewProps {
   plugin: any
@@ -63,7 +64,6 @@ export function StudyMonthView({
     if (totalHours === 0) return null
 
     // Use VIBGYOR color based on progress (same as progress bar)
-    const { getVibgyorColors } = require('@/utils')
     const vibgyorColors = getVibgyorColors()
 
     const ratio = Math.min(totalHours / maxHours, 1)

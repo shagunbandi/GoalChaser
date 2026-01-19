@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from 'react'
 import type { PluginPageProps } from '@/sdk'
-import { usePluginPage, LoadingState, NotFoundState } from '@/sdk'
+import { usePluginPage, LoadingState, NotFoundState, ContentLoader } from '@/sdk'
 import { FinanceHeader, FinanceMonthView } from '../components'
 import type { EditAction, EditedTransactionData } from '../components/EditTransactionModal'
 import type {
@@ -67,17 +67,14 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
     navigateToNextYear,
     navigateToYear,
     navigateToMonth,
+    jumpToMonth,
+    hasData,
     year: currentYear,
   } = usePluginPage<FinanceTransactionData, FinanceConfig>({
     pluginId: 'finance',
     params,
     year,
   })
-
-  const handleJumpToDay = (iso: string) => {
-    const [y, m] = iso.split('-').map(Number)
-    navigateToMonth(y, m, iso)
-  }
 
   // Get transaction settings with defaults
   const transactionSettings: TransactionSettings = useMemo(() => {
@@ -390,19 +387,9 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
     [pluginDayData, updateDayData]
   )
 
-  // Check if we have any data yet (for initial load vs navigation)
-  const hasData = Object.keys(pluginDayData).length > 0 || pluginConfig !== null
-
   // Only show full-page loading on TRUE initial load (no goal AND no cached data)
   if (!goal && isLoading && !hasData) return <LoadingState />
   if (!goal && !isLoading) return <NotFoundState />
-
-  // Content loading indicator (shown inline when switching years)
-  const ContentLoader = () => (
-    <div className="flex items-center justify-center py-20">
-      <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
 
   return (
     <div className="space-y-6">
@@ -418,7 +405,7 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
 
       {/* Content - shows inline loader when switching years */}
       {isLoading && !hasData ? (
-        <ContentLoader />
+        <ContentLoader color="#007AFF" />
       ) : month ? (
         <FinanceMonthView
           plugin={FinancePlugin}
@@ -447,7 +434,7 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
           initialSelectedDay={initialSelectedDay}
           onPrevYear={navigateToPrevYear}
           onNextYear={navigateToNextYear}
-          onJumpToDay={handleJumpToDay}
+          onJumpToDay={jumpToMonth}
           onMonthClick={navigateToMonth}
         />
       )}
