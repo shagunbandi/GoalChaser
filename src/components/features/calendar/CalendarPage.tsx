@@ -249,10 +249,9 @@ export default function CalendarPage({
   }
 
   const handleJumpToPlugin = (pluginId: string, date: string) => {
-    // Navigate to plugin page with date context
-    const dateObj = new Date(date)
-    const year = dateObj.getFullYear()
-    router.push(`/goal/${goalId}/${pluginId}/${year}?date=${date}`)
+    // Navigate to plugin's month view with date context
+    const [year, month] = date.split('-').map(Number)
+    router.push(`/goal/${goalId}/${pluginId}/${year}/${month}?date=${date}`)
   }
 
   // Handle day click - update URL with selected date
@@ -329,7 +328,7 @@ export default function CalendarPage({
         />
 
         {/* Detail Panel */}
-        <div className="glass-panel p-6 rounded-lg">
+        <div className="glass-panel rounded-lg">
           {selectedDate ? (
             <CalendarDetailPanel
               selectedDate={selectedDate}
@@ -349,10 +348,10 @@ export default function CalendarPage({
               }
             />
           ) : (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full p-6">
               <div className="text-center text-white/40">
-                <div className="text-4xl mb-3">📅</div>
-                <p>Select a date to view details</p>
+                <div className="text-3xl sm:text-4xl mb-2 sm:mb-3">📅</div>
+                <p className="text-sm sm:text-base">Select a date to view details</p>
               </div>
             </div>
           )}

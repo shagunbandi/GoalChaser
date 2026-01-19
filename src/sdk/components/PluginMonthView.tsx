@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { MonthCalendar } from '../ui/MonthCalendar'
 import { useMonthCalendar } from '../hooks/useMonthCalendar'
@@ -76,6 +76,7 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
   footerContent,
 }: PluginMonthViewProps<TDayData>) {
   const router = useRouter()
+  const detailPanelRef = useRef<HTMLDivElement>(null)
 
   const {
     year,
@@ -90,6 +91,20 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
     initialMonth,
     initialSelectedDate, // Pass the initial selected date
   })
+
+  // Scroll to detail panel on mobile when there's an initial selected date
+  useEffect(() => {
+    if (initialSelectedDate && detailPanelRef.current) {
+      // Small delay to ensure layout is complete
+      const timer = setTimeout(() => {
+        // Only scroll on mobile (< 1024px which is lg breakpoint)
+        if (window.innerWidth < 1024) {
+          detailPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [initialSelectedDate])
 
   // Handle day click - update both local state AND URL
   const handleDayClick = useCallback(
@@ -242,7 +257,7 @@ export function PluginMonthView<TDayData extends PluginDayData = any>({
         </div>
 
         {/* Right: Detail Panel (1 column on large screens) */}
-        <div className="lg:col-span-1">{renderDetailPanel()}</div>
+        <div ref={detailPanelRef} className="lg:col-span-1">{renderDetailPanel()}</div>
       </div>
     </div>
   )
