@@ -18,6 +18,8 @@ services:
       - no-new-privileges:true
     expose:
       - "3000"
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
     networks:
