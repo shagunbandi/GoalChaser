@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { MonthCalendar, useMonthCalendar, createPluginContext } from '@/sdk'
+import { MonthCalendar, useMonthCalendar } from '@/sdk'
 import type { DayCustomization, AIPreviewData } from '@/sdk'
 import { CalendarDetailPanel } from './CalendarDetailPanel'
 import { AIWorkflowWizard } from './AIWorkflowWizard'
@@ -50,6 +50,7 @@ export default function CalendarPage({
     pluginData,
     pluginConfigs,
     handleUpdateData,
+    updateConfig,
   } = useGoalData(goalId)
   const { enabledAddons } = useAddonsConfig(user?.uid, goalId)
   const { registry } = usePluginRegistry()
@@ -369,12 +370,9 @@ export default function CalendarPage({
     pluginId: string,
     configUpdate: Record<string, unknown>
   ) => {
-    const plugin = registry.getPlugin(pluginId)
-    if (plugin?.dataProvider?.saveConfig && user?.uid) {
-      const ctx = createPluginContext({ userId: user.uid, goalId, pluginId })
-      await plugin.dataProvider.saveConfig(ctx, configUpdate)
-    }
-  }, [registry, user?.uid, goalId])
+    // Use updateConfig from useGoalData which handles React Query refetching
+    await updateConfig(pluginId, configUpdate as any)
+  }, [updateConfig])
 
   // Handle day click - update URL with selected date
   const handleDayClick = (date: string) => {

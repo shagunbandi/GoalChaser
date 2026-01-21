@@ -161,7 +161,13 @@ export function ProductivityWizardFlow({
       if (selectedNewAreas.size > 0) {
         setLocalAreaConfigs(newConfigs)
         setCreatedAreaNames(prev => new Set([...prev, ...newlyCreatedAreaNames]))
-        await onUpdateConfig({ areas: newConfigs })
+        try {
+          await onUpdateConfig({ areas: newConfigs })
+          console.log('[ProductivityWizard] Config updated successfully:', newConfigs)
+        } catch (error) {
+          console.error('[ProductivityWizard] Failed to update config:', error)
+          // Still proceed - local state is updated
+        }
       }
 
       // Check for new topics
