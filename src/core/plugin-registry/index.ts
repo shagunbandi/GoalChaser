@@ -1,4 +1,5 @@
 import type { Plugin, PluginContext } from '@/sdk/interfaces/plugin.interface'
+import type { PluginAISchema } from '@/sdk/types/ai.types'
 import { getDb } from '@/lib/firebase'
 import { createPluginFirestore, createPluginLogger } from '@/sdk/services'
 import type { Goal } from '@/types'
@@ -158,6 +159,73 @@ class PluginRegistry {
     }
 
     return routes
+  }
+
+  /**
+   * Get AI schemas from all enabled plugins that support AI integration
+   * @param enabledPluginIds List of enabled plugin IDs
+   * @param pluginConfigs Plugin configurations keyed by plugin ID
+   * @returns Array of AI schemas from plugins that support AI integration
+   */
+  getAISchemas(
+    enabledPluginIds: string[],
+    pluginConfigs: Record<string, unknown>
+  ): PluginAISchema[] {
+    const schemas: PluginAISchema[] = []
+
+    for (const pluginId of enabledPluginIds) {
+      const plugin = this.plugins.get(pluginId)
+      if (!plugin?.aiIntegration) continue
+
+      try {
+        const config = pluginConfigs[pluginId] || null
+        const schema = plugin.aiIntegration.getSchema(config)
+        schemas.push(schema)
+      } catch (error) {
+        console.error(`[PluginRegistry] Failed to get AI schema for ${pluginId}:`, error)
+      }
+    }
+
+    return schemas
+  }
+
+  /**
+   * Parse AI-extracted data for a specific plugin
+   * @param pluginId Plugin identifier
+   * @param extracted Raw data extracted by AI
+   * @param existingData Current day data for the plugin
+   * @param config Plugin configuration
+   * @returns Parsed data in plugin's format, or null if plugin doesn't support AI
+   */
+  parseAIData<TDayData = unknown, TConfig = unknown>(
+    pluginId: string,
+    extracted: Record<string, unknown>,
+    existingData: TDayData | null,
+    config: TConfig | null
+  ): Partial<TDayData> | null {
+    const plugin = this.plugins.get(pluginId)
+    if (!plugin?.aiIntegration) return null
+
+    try {
+      return plugin.aiIntegration.parseAIData(
+        extracted,
+        existingData,
+        config
+      ) as Partial<TDayData>
+    } catch (error) {
+      console.error(`[PluginRegistry] Failed to parse AI data for ${pluginId}:`, error)
+      return null
+    }
+  }
+
+  /**
+   * Get list of plugin IDs that support AI integration
+   */
+  getAIEnabledPluginIds(enabledPluginIds: string[]): string[] {
+    return enabledPluginIds.filter(id => {
+      const plugin = this.plugins.get(id)
+      return plugin?.aiIntegration !== undefined
+    })
   }
 }
 

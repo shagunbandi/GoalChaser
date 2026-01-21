@@ -140,9 +140,9 @@ export function MonthCalendar({
 
     return (
       <div className="mt-auto w-full flex justify-center gap-1">
-        {indicators.map((indicator) => (
+        {indicators.map((indicator, index) => (
           <div
-            key={indicator.id}
+            key={indicator.id || `${indicator.color}-${index}`}
             className="w-1.5 h-1.5 rounded-full"
             style={{ backgroundColor: indicator.color }}
             title={indicator.label}

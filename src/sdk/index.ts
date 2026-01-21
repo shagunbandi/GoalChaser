@@ -44,6 +44,16 @@ export type {
   TimeRange,
   ViewType,
   StatItem,
+  // AI integration types
+  AIFieldType,
+  AIInputField,
+  PluginAISchema,
+  AIExtractionResult,
+  AIExtractRequest,
+  AIExtractResponse,
+  PluginAIIntegration,
+  AIPreviewData,
+  AIWizardFlowProps,
 } from './types'
 
 // Services (for advanced use cases)

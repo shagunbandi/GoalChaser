@@ -363,3 +363,53 @@ body {
 .animate-fade-in {
   animation: fade-in-up 0.2s ease-out forwards;
 }
+
+/* Pixel/Glitch animation for rotating text */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(-10px);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05) translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes pixelGlow {
+  0%, 100% {
+    text-shadow: 
+      0 0 5px rgba(0, 122, 255, 0.5),
+      0 0 10px rgba(175, 82, 222, 0.3),
+      0 0 15px rgba(255, 45, 146, 0.2);
+  }
+  50% {
+    text-shadow: 
+      0 0 10px rgba(0, 122, 255, 0.8),
+      0 0 20px rgba(175, 82, 222, 0.5),
+      0 0 30px rgba(255, 45, 146, 0.3);
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.02);
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+.animate-pixel-glow {
+  animation: pixelGlow 2s ease-in-out infinite;
+}

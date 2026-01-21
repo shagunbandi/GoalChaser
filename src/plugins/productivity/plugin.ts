@@ -2,11 +2,13 @@
  * Productivity Plugin
  */
 
-import type { Plugin, PluginAnalyticsChartData } from '@/sdk'
+import React from 'react'
+import type { Plugin, PluginAnalyticsChartData, PluginAISchema, AIWizardFlowProps } from '@/sdk'
 import { calculateStreak, calculateAverage, generateDateRange } from '@/sdk'
 import { ProductivityDataProvider } from './data-provider'
 import { ProductivityDetailProviderImpl } from './detail-provider'
 import ProductivityPage from './pages/ProductivityPage'
+import { ProductivityWizardFlow } from './components'
 import type { ProductivityDayData, ProductivityConfig } from './types'
 import { buildPluginUrl } from '@/lib/plugin-url-utils'
 
@@ -265,6 +267,165 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
       }
 
       return charts
+    },
+  },
+
+  // AI integration for natural language data extraction
+  aiIntegration: {
+    getSchema: (config: ProductivityConfig | null): PluginAISchema => {
+      // Build detailed area information for AI matching
+      const areaDetails = config?.areas?.map(area => {
+        const topicsList = area.topics.length > 0 
+          ? ` (topics: ${area.topics.join(', ')})`
+          : ''
+        return `- "${area.name}"${topicsList}`
+      }).join('\n') || 'No existing areas configured'
+
+      const areasHint = config?.areas && config.areas.length > 0
+        ? `IMPORTANT: You MUST match user mentions to existing areas when possible. For example:
+- "running" or "went for a run" → use existing area "run" (if it exists)
+- "snowboarding" → use existing area "snowboard" (if it exists)  
+- "reading" → use existing area "Reading" (if it exists)
+- Match similar words: "coding" → "Coding", "exercise" → "Exercise", etc.
+
+Existing areas configured:
+${areaDetails}
+
+When the user mentions an activity that matches an existing area (even if worded differently), use the EXACT existing area name. Only create new area names if no similar existing area is found.`
+        : 'Any work areas or categories the user mentions. Extract the area name as mentioned by the user.'
+
+      return {
+        pluginId: 'productivity',
+        description: 'Tracks daily productivity score (1-10 scale) and work areas/topics covered during the day',
+        fields: [
+          {
+            key: 'status',
+            type: 'number',
+            label: 'Productivity Score',
+            aiHint: 'A score from 1-10 indicating how productive the day was. 1=very unproductive, 5=average, 10=extremely productive. Look for phrases like "productive day", "got a lot done", "felt lazy", or explicit ratings.',
+            validation: { min: 1, max: 10 },
+          },
+          {
+            key: 'areas',
+            type: 'array',
+            label: 'Work Areas',
+            aiHint: `Work areas or categories the user worked on. ${areasHint}
+
+For topics: If the user mentions a topic that matches an existing topic in an area, use the EXACT existing topic name. Otherwise, extract the topic as mentioned.`,
+            itemSchema: {
+              fields: [
+                {
+                  key: 'area',
+                  type: 'string',
+                  label: 'Area Name',
+                  aiHint: 'The name of the work area. MUST use existing area names when a match is found (even if worded differently).',
+                },
+                {
+                  key: 'topics',
+                  type: 'array',
+                  label: 'Topics',
+                  aiHint: 'Specific topics or tasks within this area. Use existing topic names when they match.',
+                },
+              ],
+            },
+          },
+          {
+            key: 'directHours',
+            type: 'number',
+            label: 'Hours Worked',
+            aiHint: 'Total hours worked or spent on productive activities. Look for mentions like "worked 8 hours", "spent 3 hours on..."',
+            validation: { min: 0, max: 24 },
+          },
+        ],
+        examples: [
+          {
+            input: 'Had a really productive day today, maybe 8/10. Worked on the frontend project for about 4 hours, mainly React components and styling.',
+            output: {
+              status: 8,
+              areas: [{ area: 'Frontend', topics: ['React components', 'styling'] }],
+              directHours: 4,
+            },
+          },
+          {
+            input: 'Not a great day, felt distracted. Only managed to do some reading and a bit of coding.',
+            output: {
+              status: 4,
+              areas: [
+                { area: 'Reading', topics: [] },
+                { area: 'Coding', topics: [] },
+              ],
+            },
+          },
+          {
+            input: 'I did running today, also did some snowboarding. I read for half an hour and spent around 50 mins on Sapiens.',
+            output: {
+              areas: [
+                { area: 'run', topics: [] }, // "running" matched to existing "run"
+                { area: 'snowboard', topics: [] }, // "snowboarding" matched to existing "snowboard"
+                { area: 'Reading', topics: ['Sapiens'] }, // "read" matched to existing "Reading"
+              ],
+            },
+          },
+        ],
+      }
+    },
+
+    parseAIData: (
+      extracted: Record<string, unknown>,
+      existingData: ProductivityDayData | null,
+      _config: ProductivityConfig | null
+    ): Partial<ProductivityDayData> => {
+      const result: Partial<ProductivityDayData> = {}
+
+      // Parse status (productivity score)
+      if (extracted.status !== undefined && extracted.status !== null) {
+        const status = Number(extracted.status)
+        if (!isNaN(status) && status >= 1 && status <= 10) {
+          result.status = Math.round(status)
+        }
+      }
+
+      // Parse areas
+      if (Array.isArray(extracted.areas) && extracted.areas.length > 0) {
+        result.areas = extracted.areas
+          .filter((item): item is Record<string, unknown> => 
+            typeof item === 'object' && item !== null && 'area' in item
+          )
+          .map(item => ({
+            area: String(item.area || ''),
+            topics: Array.isArray(item.topics)
+              ? item.topics.map(t => String(t))
+              : [],
+          }))
+          .filter(a => a.area.trim() !== '')
+      }
+
+      // Parse direct hours
+      if (extracted.directHours !== undefined && extracted.directHours !== null) {
+        const hours = Number(extracted.directHours)
+        if (!isNaN(hours) && hours >= 0 && hours <= 24) {
+          result.directHours = hours
+        }
+      }
+
+      // Preserve existing data for fields not extracted
+      if (existingData) {
+        if (result.status === undefined && existingData.status !== undefined) {
+          result.status = existingData.status
+        }
+        if (!result.areas && existingData.areas) {
+          result.areas = existingData.areas
+        }
+        if (result.directHours === undefined && existingData.directHours !== undefined) {
+          result.directHours = existingData.directHours
+        }
+      }
+
+      return result
+    },
+
+    renderWizard: (props: AIWizardFlowProps<ProductivityDayData, ProductivityConfig>) => {
+      return React.createElement(ProductivityWizardFlow, props)
     },
   },
 }

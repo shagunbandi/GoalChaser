@@ -72,3 +72,16 @@ export interface ActivityItem {
 
 // View-related types
 export type { ViewType, StatItem } from './view.types'
+
+// AI integration types
+export type {
+  AIFieldType,
+  AIInputField,
+  PluginAISchema,
+  AIExtractionResult,
+  AIExtractRequest,
+  AIExtractResponse,
+  PluginAIIntegration,
+  AIPreviewData,
+  AIWizardFlowProps,
+} from './ai.types'

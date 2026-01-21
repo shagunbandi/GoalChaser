@@ -3,6 +3,7 @@
 import { useGoals } from '@/hooks/useGoals'
 import { useAuth } from '@/hooks/useAuth'
 import { SignInView, Dashboard } from '@/components/features/home'
+import { LandingPage } from '@/components/features/landing'
 
 export default function Home() {
   const { user, isLoading: authLoading } = useAuth()
@@ -25,9 +26,9 @@ export default function Home() {
     )
   }
 
-  // Not authenticated - show sign in
+  // Not authenticated - show landing page
   if (!user) {
-    return <SignInView />
+    return <LandingPage />
   }
 
   // Authenticated - show dashboard

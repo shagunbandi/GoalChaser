@@ -1,9 +1,11 @@
-import type { Plugin, PluginAnalyticsChartData } from '@/sdk'
+import React from 'react'
+import type { Plugin, PluginAnalyticsChartData, PluginAISchema, AIWizardFlowProps } from '@/sdk'
 import { generateDateRange, formatDateLabel } from '@/sdk'
 import { TravelDataProvider } from './data-provider'
 import { TravelDetailProviderImpl } from './detail-provider'
 import TravelPage from './pages/TravelPage'
-import type { TravelPlan } from './types'
+import { TravelWizardFlow } from './components'
+import type { TravelPlan, TravelDayData } from './types'
 import { buildPluginUrl } from '@/lib/plugin-url-utils'
 
 export const TravelPlugin: Plugin = {
@@ -408,6 +410,134 @@ export const TravelPlugin: Plugin = {
       })
 
       return charts
+    },
+  },
+
+  // AI integration for natural language data extraction
+  aiIntegration: {
+    getSchema: (): PluginAISchema => {
+      return {
+        pluginId: 'travel',
+        description: 'Tracks travel plans, trips, and itineraries with destinations, dates, and notes',
+        fields: [
+          {
+            key: 'travelPlans',
+            type: 'array',
+            label: 'Travel Plans',
+            aiHint: 'Travel plans or trips mentioned by the user. Look for mentions of travel, trips, vacations, flights, destinations, etc.',
+            itemSchema: {
+              fields: [
+                {
+                  key: 'title',
+                  type: 'string',
+                  label: 'Trip Title',
+                  aiHint: 'A name or title for the trip (e.g., "Summer Vacation", "Business Trip")',
+                },
+                {
+                  key: 'destination',
+                  type: 'string',
+                  label: 'Destination',
+                  aiHint: 'The destination city, country, or place',
+                },
+                {
+                  key: 'startDate',
+                  type: 'date',
+                  label: 'Start Date',
+                  aiHint: 'When the trip starts (YYYY-MM-DD format). Use the context date if user says "today" or "tomorrow"',
+                },
+                {
+                  key: 'endDate',
+                  type: 'date',
+                  label: 'End Date',
+                  aiHint: 'When the trip ends (YYYY-MM-DD format). If not mentioned, assume same as start date for single-day trips',
+                },
+                {
+                  key: 'note',
+                  type: 'string',
+                  label: 'Notes',
+                  aiHint: 'Any additional notes about the trip',
+                },
+              ],
+            },
+          },
+        ],
+        examples: [
+          {
+            input: 'Flying to Paris tomorrow for a week-long vacation! So excited.',
+            output: {
+              travelPlans: [{
+                title: 'Paris Vacation',
+                destination: 'Paris',
+                note: 'So excited!',
+              }],
+            },
+          },
+          {
+            input: 'Had a great day trip to the mountains today.',
+            output: {
+              travelPlans: [{
+                title: 'Mountain Day Trip',
+                destination: 'Mountains',
+              }],
+            },
+          },
+        ],
+      }
+    },
+
+    parseAIData: (
+      extracted: Record<string, unknown>,
+      existingData: TravelDayData | null,
+    ): Partial<TravelDayData> => {
+      const result: Partial<TravelDayData> = {}
+
+      // Parse travel plans
+      if (Array.isArray(extracted.travelPlans) && extracted.travelPlans.length > 0) {
+        const newPlans: TravelPlan[] = extracted.travelPlans
+          .filter((item): item is Record<string, unknown> =>
+            typeof item === 'object' && item !== null
+          )
+          .map((item, index) => {
+            // Generate a unique ID for new plans
+            const id = `ai-${Date.now()}-${index}`
+            
+            return {
+              id,
+              title: String(item.title || item.destination || 'Trip'),
+              destination: item.destination ? String(item.destination) : undefined,
+              startDate: item.startDate ? String(item.startDate) : new Date().toISOString().split('T')[0],
+              endDate: item.endDate ? String(item.endDate) : (item.startDate ? String(item.startDate) : new Date().toISOString().split('T')[0]),
+              note: item.note ? String(item.note) : undefined,
+            }
+          })
+          .filter(plan => plan.title.trim() !== '' || (plan.destination && plan.destination.trim() !== ''))
+
+        // Merge with existing plans (avoid duplicates by checking title/destination)
+        const existingPlans = existingData?.travelPlans || []
+        const mergedPlans = [...existingPlans]
+
+        for (const newPlan of newPlans) {
+          const isDuplicate = existingPlans.some(
+            existing =>
+              (existing.title === newPlan.title && existing.destination === newPlan.destination) ||
+              (existing.startDate === newPlan.startDate && existing.endDate === newPlan.endDate && existing.destination === newPlan.destination)
+          )
+          if (!isDuplicate) {
+            mergedPlans.push(newPlan)
+          }
+        }
+
+        result.travelPlans = mergedPlans
+      } else if (existingData?.travelPlans) {
+        // Preserve existing travel plans if no new ones extracted
+        result.travelPlans = existingData.travelPlans
+      }
+
+      return result
+    },
+
+    renderWizard: (props: AIWizardFlowProps<TravelDayData, unknown>) => {
+      return React.createElement(TravelWizardFlow, props)
     },
   },
 }

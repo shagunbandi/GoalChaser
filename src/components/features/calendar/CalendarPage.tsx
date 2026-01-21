@@ -1,10 +1,11 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { MonthCalendar, useMonthCalendar } from '@/sdk'
-import type { DayCustomization, CalendarIndicator } from '@/sdk'
+import { MonthCalendar, useMonthCalendar, createPluginContext } from '@/sdk'
+import type { DayCustomization, AIPreviewData } from '@/sdk'
 import { CalendarDetailPanel } from './CalendarDetailPanel'
+import { AIWorkflowWizard } from './AIWorkflowWizard'
 import {
   PluginSummaryAggregator,
   usePluginIndicators,
@@ -26,7 +27,6 @@ import {
   saveCalendarFilters,
 } from '@/lib/api/calendar-filters-api'
 import { getFirestore } from 'firebase/firestore'
-import { Card } from '@/components/ui/Card'
 
 interface CalendarPageProps {
   context: any // PluginContext from SDK, but calendar is core so we just need minimal info
@@ -48,11 +48,20 @@ export default function CalendarPage({
     goal,
     isLoading: loading,
     pluginData,
+    pluginConfigs,
     handleUpdateData,
   } = useGoalData(goalId)
   const { enabledAddons } = useAddonsConfig(user?.uid, goalId)
   const { registry } = usePluginRegistry()
   const plugins = registry.getAllPlugins()
+
+  // Check if AI fill is available (at least one plugin with AI integration)
+  const aiEnabledPlugins = registry.getAIEnabledPluginIds(enabledAddons)
+  const aiEnabled = aiEnabledPlugins.length > 0
+
+  // AI Preview modal state
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
+  const [previewData, setPreviewData] = useState<AIPreviewData[]>([])
 
   // Filter state - initialize all visible
   const [visibleIndicators, setVisibleIndicators] = useState<Set<string>>(
@@ -254,6 +263,119 @@ export default function CalendarPage({
     router.push(`/goal/${goalId}/${pluginId}/${year}/${month}?date=${date}`)
   }
 
+  // Handle AI Fill - extract data from notes and show preview modal
+  const handleAIFill = async (notes: string): Promise<{ success: boolean; message?: string }> => {
+    if (!selectedDate) {
+      return { success: false, message: 'No date selected' }
+    }
+
+    try {
+      // Collect schemas from enabled plugins on the client side
+      const schemas = registry.getAISchemas(aiEnabledPlugins, pluginConfigs)
+      
+      if (schemas.length === 0) {
+        return { success: false, message: 'No plugins with AI support enabled' }
+      }
+
+      const response = await fetch('/api/ai/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes,
+          date: selectedDate,
+          goalId,
+          schemas,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!data.success) {
+        return { success: false, message: data.error || 'Extraction failed' }
+      }
+
+      // Build preview data for all AI-enabled plugins
+      const preview: AIPreviewData[] = aiEnabledPlugins.map(pluginId => {
+        const plugin = registry.getPlugin(pluginId)
+        const result = data.results.find((r: { pluginId: string }) => r.pluginId === pluginId)
+        const rawData = result?.data || {}
+        
+        // Get existing data for this plugin and date
+        const existingData = pluginData?.[pluginId]?.[selectedDate] || null
+        const config = pluginConfigs?.[pluginId] || null
+        
+        // Parse the raw AI data using the plugin's parseAIData method
+        const parsedData = rawData && Object.keys(rawData).length > 0
+          ? registry.parseAIData(pluginId, rawData, existingData, config) || {}
+          : {}
+        
+        return {
+          pluginId,
+          pluginName: plugin?.metadata.name || pluginId,
+          pluginIcon: plugin?.metadata.icon || '📦',
+          rawData,
+          parsedData: parsedData as Record<string, unknown>,
+          hasData: Object.keys(parsedData).length > 0,
+        }
+      })
+
+      // Show preview modal
+      setPreviewData(preview)
+      setIsPreviewModalOpen(true)
+
+      return { success: true, message: 'Review the extracted data below' }
+    } catch (error) {
+      console.error('[calendar] AI extraction error:', error)
+      return { success: false, message: 'Failed to process notes' }
+    }
+  }
+
+  // Handle confirming the AI preview - save all plugin data
+  const handleConfirmPreview = async (confirmedData: AIPreviewData[]): Promise<void> => {
+    if (!selectedDate) return
+
+    for (const item of confirmedData) {
+      if (item.hasData && Object.keys(item.parsedData).length > 0) {
+        await handleUpdateData(item.pluginId, selectedDate, item.parsedData)
+      }
+    }
+  }
+
+  // Render plugin wizard flow using the plugin's renderWizard method if available
+  const renderPluginWizard = useCallback((
+    pluginId: string,
+    extractedData: Record<string, unknown>,
+    existingData: unknown,
+    config: unknown,
+    onComplete: (data: Record<string, unknown>) => void,
+    onSkip: () => void,
+    onUpdateConfig: (config: Record<string, unknown>) => Promise<void>
+  ) => {
+    const plugin = registry.getPlugin(pluginId)
+    if (!plugin?.aiIntegration?.renderWizard) return null
+    
+    return plugin.aiIntegration.renderWizard({
+      extractedData,
+      config,
+      existingDayData: existingData,
+      onComplete,
+      onSkip,
+      onUpdateConfig,
+    })
+  }, [registry])
+
+  // Handle updating plugin config from wizard
+  const handleUpdatePluginConfig = useCallback(async (
+    pluginId: string,
+    configUpdate: Record<string, unknown>
+  ) => {
+    const plugin = registry.getPlugin(pluginId)
+    if (plugin?.dataProvider?.saveConfig && user?.uid) {
+      const ctx = createPluginContext({ userId: user.uid, goalId, pluginId })
+      await plugin.dataProvider.saveConfig(ctx, configUpdate)
+    }
+  }, [registry, user?.uid, goalId])
+
   // Handle day click - update URL with selected date
   const handleDayClick = (date: string) => {
     setSelectedDate(date)
@@ -334,6 +456,8 @@ export default function CalendarPage({
               selectedDate={selectedDate}
               notes={selectedDateNotes}
               onUpdateNotes={(notes) => handleNotesUpdate(selectedDate, notes)}
+              aiEnabled={aiEnabled}
+              onAIFill={handleAIFill}
               pluginSummariesElement={
                 <PluginSummaryAggregator
                   plugins={plugins}
@@ -357,6 +481,18 @@ export default function CalendarPage({
           )}
         </div>
       </div>
+
+      {/* AI Workflow Wizard */}
+      <AIWorkflowWizard
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        onComplete={handleConfirmPreview}
+        previewData={previewData}
+        existingDayData={selectedDate ? pluginDataByDate[selectedDate] || {} : {}}
+        pluginConfigs={pluginConfigs || {}}
+        renderPluginWizard={renderPluginWizard}
+        onUpdateConfig={handleUpdatePluginConfig}
+      />
     </div>
   )
 }

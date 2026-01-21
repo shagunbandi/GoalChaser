@@ -7,6 +7,10 @@ interface CalendarDetailPanelProps {
   notes: string
   onUpdateNotes: (notes: string) => Promise<void>
   pluginSummariesElement?: React.ReactNode
+  /** Optional: Callback to trigger AI-powered data extraction from notes */
+  onAIFill?: (notes: string) => Promise<{ success: boolean; message?: string }>
+  /** Whether AI Fill feature is available */
+  aiEnabled?: boolean
 }
 
 /**
@@ -19,16 +23,21 @@ export function CalendarDetailPanel({
   notes,
   onUpdateNotes,
   pluginSummariesElement,
+  onAIFill,
+  aiEnabled = false,
 }: CalendarDetailPanelProps) {
   const [localNotes, setLocalNotes] = useState(notes)
   const [isSaving, setIsSaving] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isAIProcessing, setIsAIProcessing] = useState(false)
+  const [aiMessage, setAIMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Update local notes when date changes or notes prop changes
   useEffect(() => {
     console.log('[calendar] Initializing notes for:', selectedDate, notes)
     setLocalNotes(notes)
     setHasUnsavedChanges(false)
+    setAIMessage(null)
   }, [selectedDate, notes])
 
   const handleNotesChange = (value: string) => {
@@ -57,6 +66,31 @@ export function CalendarDetailPanel({
     console.log('[calendar] Changes cancelled')
     setLocalNotes(notes)
     setHasUnsavedChanges(false)
+  }
+
+  const handleAIFill = async () => {
+    if (!onAIFill || !localNotes.trim()) return
+
+    setIsAIProcessing(true)
+    setAIMessage(null)
+
+    try {
+      console.log('[calendar] Starting AI extraction from notes')
+      const result = await onAIFill(localNotes)
+      
+      if (result.success) {
+        setAIMessage({ type: 'success', text: result.message || 'Data extracted successfully!' })
+        // Clear message after 3 seconds
+        setTimeout(() => setAIMessage(null), 3000)
+      } else {
+        setAIMessage({ type: 'error', text: result.message || 'Failed to extract data' })
+      }
+    } catch (error) {
+      console.error('[calendar] AI extraction failed:', error)
+      setAIMessage({ type: 'error', text: 'An error occurred while processing' })
+    } finally {
+      setIsAIProcessing(false)
+    }
   }
 
   const formattedDate = new Date(selectedDate).toLocaleDateString('en-US', {
@@ -116,6 +150,42 @@ export function CalendarDetailPanel({
             {isSaving ? 'Saving...' : 'Save Notes'}
           </button>
         </div>
+
+        {/* AI Fill Button */}
+        {aiEnabled && onAIFill && (
+          <div className="space-y-2">
+            <button
+              onClick={handleAIFill}
+              disabled={isAIProcessing || !localNotes.trim()}
+              className="w-full px-4 py-2.5 rounded-xl text-sm bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 transition-all duration-200 font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isAIProcessing ? (
+                <>
+                  <span className="animate-spin">⚡</span>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <span>✨</span>
+                  AI Fill Plugins
+                </>
+              )}
+            </button>
+            
+            {/* AI Message */}
+            {aiMessage && (
+              <div
+                className={`text-xs px-3 py-2 rounded-lg ${
+                  aiMessage.type === 'success'
+                    ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                    : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                }`}
+              >
+                {aiMessage.text}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Plugin Summaries Section */}

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { PluginAIIntegration } from '../types/ai.types'
 
 /**
  * Core plugin interface that all plugins must implement
@@ -60,6 +61,9 @@ export interface Plugin<TDayData = any, TConfig = any> {
       data: Record<string, TDayData>
     ) => PluginAnalyticsChartData[]
   }
+
+  /** Optional: AI integration for natural language data extraction */
+  aiIntegration?: PluginAIIntegration<TDayData, TConfig>
 }
 
 /**
