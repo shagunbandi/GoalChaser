@@ -9,6 +9,13 @@ export interface TravelPlan extends ActivityItem {
   color?: string
   destination?: string
   parentTravelId?: string
+  // Google Places data
+  placeId?: string
+  placeCoordinates?: {
+    lat: number
+    lng: number
+  }
+  placeAddress?: string
 }
 
 export interface TravelPlanInput {
@@ -19,6 +26,13 @@ export interface TravelPlanInput {
   color?: string
   destination?: string
   parentTravelId?: string
+  // Google Places data
+  placeId?: string
+  placeCoordinates?: {
+    lat: number
+    lng: number
+  }
+  placeAddress?: string
 }
 
 export interface TravelDayData extends PluginDayData {

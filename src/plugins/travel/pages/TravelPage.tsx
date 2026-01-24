@@ -61,6 +61,9 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
       ...(travel.color && { color: travel.color }),
       ...(trimmedDestination && { destination: trimmedDestination }),
       ...(travel.parentTravelId && { parentTravelId: travel.parentTravelId }),
+      ...(travel.placeId && { placeId: travel.placeId }),
+      ...(travel.placeCoordinates && { placeCoordinates: travel.placeCoordinates }),
+      ...(travel.placeAddress && { placeAddress: travel.placeAddress }),
     }
 
     for (const date of dates) {

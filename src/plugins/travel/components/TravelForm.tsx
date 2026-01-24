@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { TravelPlan } from '@/plugins/travel/types'
+import { PlaceAutocomplete } from './PlaceAutocomplete'
 
 interface TravelFormProps {
   initialData?: Partial<TravelPlan>
@@ -11,6 +12,9 @@ interface TravelFormProps {
     color: string
     note: string
     parentTravelId?: string
+    placeId?: string
+    placeCoordinates?: { lat: number; lng: number }
+    placeAddress?: string
   }) => void | Promise<void>
   onCancel: () => void
   isSubmitting?: boolean
@@ -49,6 +53,13 @@ export function TravelForm({
   const [note, setNote] = useState(initialData?.note || '')
   const [parentTravelId, setParentTravelId] = useState(initialData?.parentTravelId || '')
   const [error, setError] = useState<string | null>(null)
+  
+  // Google Places data
+  const [placeId, setPlaceId] = useState(initialData?.placeId || '')
+  const [placeCoordinates, setPlaceCoordinates] = useState<{ lat: number; lng: number } | undefined>(
+    initialData?.placeCoordinates
+  )
+  const [placeAddress, setPlaceAddress] = useState(initialData?.placeAddress || '')
 
   // Update form when initialData changes
   useEffect(() => {
@@ -60,6 +71,9 @@ export function TravelForm({
       setColor(initialData.color || '#0EA5E9')
       setNote(initialData.note || '')
       setParentTravelId(initialData.parentTravelId || '')
+      setPlaceId(initialData.placeId || '')
+      setPlaceCoordinates(initialData.placeCoordinates)
+      setPlaceAddress(initialData.placeAddress || '')
     }
   }, [initialData])
 
@@ -96,7 +110,22 @@ export function TravelForm({
       color,
       note: note.trim(),
       parentTravelId: parentTravelId || undefined,
+      placeId: placeId || undefined,
+      placeCoordinates: placeCoordinates,
+      placeAddress: placeAddress || undefined,
     })
+  }
+
+  const handlePlaceSelect = (place: {
+    name: string
+    placeId: string
+    address: string
+    coordinates: { lat: number; lng: number }
+  }) => {
+    setDestination(place.name)
+    setPlaceId(place.placeId)
+    setPlaceCoordinates(place.coordinates)
+    setPlaceAddress(place.address)
   }
 
   return (
@@ -126,16 +155,17 @@ export function TravelForm({
           <label className="text-xs text-white/60">
             Destination (optional)
           </label>
-          <input
+          <PlaceAutocomplete
             value={destination}
-            onChange={(e) => setDestination(e.target.value)}
+            onChange={setDestination}
+            onPlaceSelect={handlePlaceSelect}
             placeholder="City or country"
+            disabled={isSubmitting}
             className="
               w-full rounded-xl border border-white/10 bg-white/5
               px-3 py-2 text-sm text-white placeholder-white/40
               focus:border-[#AF52DE]/60 focus:outline-none
             "
-            disabled={isSubmitting}
           />
         </div>
       </div>

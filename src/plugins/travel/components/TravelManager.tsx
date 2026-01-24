@@ -52,6 +52,9 @@ export function TravelManager({
     color: string
     note: string
     parentTravelId?: string
+    placeId?: string
+    placeCoordinates?: { lat: number; lng: number }
+    placeAddress?: string
   }) => {
     await onAddTravel({
       title: data.title,
@@ -61,6 +64,9 @@ export function TravelManager({
       color: data.color,
       note: data.note,
       parentTravelId: data.parentTravelId,
+      placeId: data.placeId,
+      placeCoordinates: data.placeCoordinates,
+      placeAddress: data.placeAddress,
     })
     setShowAddForm(false)
   }
@@ -73,6 +79,9 @@ export function TravelManager({
     color: string
     note: string
     parentTravelId?: string
+    placeId?: string
+    placeCoordinates?: { lat: number; lng: number }
+    placeAddress?: string
   }) => {
     if (!editingTravel) return
     await onUpdateTravel({
@@ -84,6 +93,9 @@ export function TravelManager({
       color: data.color,
       note: data.note,
       parentTravelId: data.parentTravelId,
+      placeId: data.placeId,
+      placeCoordinates: data.placeCoordinates,
+      placeAddress: data.placeAddress,
     })
     setEditingTravel(null)
   }

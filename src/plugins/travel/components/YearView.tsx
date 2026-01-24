@@ -110,6 +110,9 @@ export function YearView({
     color: string
     note: string
     parentTravelId?: string
+    placeId?: string
+    placeCoordinates?: { lat: number; lng: number }
+    placeAddress?: string
   }) => {
     setIsSavingTravel(true)
     try {
@@ -128,6 +131,9 @@ export function YearView({
           color: formData.color || undefined,
           destination: formData.destination || undefined,
           parentTravelId: formData.parentTravelId || undefined,
+          placeId: formData.placeId || undefined,
+          placeCoordinates: formData.placeCoordinates,
+          placeAddress: formData.placeAddress || undefined,
         }
 
         const oldDates = enumerateDateRange(
@@ -167,6 +173,9 @@ export function YearView({
           color: formData.color || undefined,
           destination: formData.destination || undefined,
           parentTravelId: formData.parentTravelId || undefined,
+          placeId: formData.placeId || undefined,
+          placeCoordinates: formData.placeCoordinates,
+          placeAddress: formData.placeAddress || undefined,
         })
       }
 

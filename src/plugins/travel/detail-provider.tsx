@@ -39,6 +39,9 @@ function EmptyTravelState({
     color: string
     note: string
     parentTravelId?: string
+    placeId?: string
+    placeCoordinates?: { lat: number; lng: number }
+    placeAddress?: string
   }) => {
     if (onAddTravel) {
       await onAddTravel(data)
@@ -173,6 +176,9 @@ function TravelPlanCard({
     color: string
     note: string
     parentTravelId?: string
+    placeId?: string
+    placeCoordinates?: { lat: number; lng: number }
+    placeAddress?: string
   }) => {
     if (onEdit) {
       await onEdit({
@@ -184,6 +190,9 @@ function TravelPlanCard({
         color: data.color,
         note: data.note,
         parentTravelId: data.parentTravelId,
+        placeId: data.placeId,
+        placeCoordinates: data.placeCoordinates,
+        placeAddress: data.placeAddress,
       })
     }
     setIsEditing(false)
@@ -409,6 +418,9 @@ function TravelPlansView({
     color: string
     note: string
     parentTravelId?: string
+    placeId?: string
+    placeCoordinates?: { lat: number; lng: number }
+    placeAddress?: string
   }) => {
     if (onAddTravel) {
       await onAddTravel(data)
