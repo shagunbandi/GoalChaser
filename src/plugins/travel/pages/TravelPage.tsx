@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import type { PluginPageProps } from '@/sdk'
 import { usePluginPage, LoadingState, NotFoundState, ContentLoader } from '@/sdk'
 import { TravelHeader, YearView, TravelMonthView } from '../components'
@@ -29,6 +30,19 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
     year,
   })
 
+  // Extract all unique travels for parent selection
+  const allTravels = useMemo(() => {
+    const planMap = new Map<string, TravelPlan>()
+    Object.values(pluginDayData).forEach((data) => {
+      data?.travelPlans?.forEach((plan) => {
+        if (!planMap.has(plan.id)) {
+          planMap.set(plan.id, plan)
+        }
+      })
+    })
+    return Array.from(planMap.values())
+  }, [pluginDayData])
+
   const handleAddTravel = async (travel: TravelPlanInput) => {
     const dates = enumerateDateRange(
       travel.startDate as string,
@@ -46,6 +60,7 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
       ...(trimmedNote && { note: trimmedNote }),
       ...(travel.color && { color: travel.color }),
       ...(trimmedDestination && { destination: trimmedDestination }),
+      ...(travel.parentTravelId && { parentTravelId: travel.parentTravelId }),
     }
 
     for (const date of dates) {
@@ -131,6 +146,7 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
         onAddTravel={handleAddTravel}
         onUpdateTravel={handleUpdateTravel}
         onDeleteTravel={handleDeleteTravel}
+        allTravels={allTravels}
       />
 
       {/* Content - shows inline loader when switching years */}
@@ -150,6 +166,7 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
           onEditTravel={handleUpdateTravel}
           onDeleteTravel={handleDeleteTravel}
           onAddTravel={handleAddTravel}
+          allTravels={allTravels}
         />
       ) : (
         <YearView
@@ -163,6 +180,7 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
           onJumpToDay={jumpToMonth}
           onMonthClick={navigateToMonth}
           initialSelectedDay={initialSelectedDay}
+          allTravels={allTravels}
         />
       )}
     </div>

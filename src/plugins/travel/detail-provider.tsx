@@ -12,6 +12,7 @@ interface TravelDetailContext {
   onDeleteTravel?: (travelId: string) => void | Promise<void>
   onAddTravel?: (travel: TravelPlanInput) => void | Promise<void>
   selectedDate?: string
+  allTravels?: TravelPlan[]
 }
 
 // Component for empty state with add travel option
@@ -20,11 +21,13 @@ function EmptyTravelState({
   notes,
   onAddTravel,
   onSaveNotes,
+  allTravels,
 }: {
   date: string
   notes: string
   onAddTravel?: (travel: TravelPlanInput) => void | Promise<void>
   onSaveNotes: (notes: string) => void | Promise<void>
+  allTravels?: TravelPlan[]
 }) {
   const [isAdding, setIsAdding] = useState(false)
 
@@ -35,6 +38,7 @@ function EmptyTravelState({
     endDate: string
     color: string
     note: string
+    parentTravelId?: string
   }) => {
     if (onAddTravel) {
       await onAddTravel(data)
@@ -64,6 +68,7 @@ function EmptyTravelState({
             }}
             onSubmit={handleSubmit}
             onCancel={() => setIsAdding(false)}
+            availableTravels={allTravels}
           />
         </div>
       </div>
@@ -138,11 +143,13 @@ function TravelPlanCard({
   currentDate,
   onEdit,
   onDelete,
+  allTravels,
 }: {
   plan: TravelPlan
   currentDate: string
   onEdit?: (travel: TravelPlan) => void
   onDelete?: (travelId: string) => void
+  allTravels?: TravelPlan[]
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -150,6 +157,13 @@ function TravelPlanCard({
   const { totalDays, currentDay, status } = getTripStats(plan, currentDate)
   const progress = (currentDay / totalDays) * 100
   const planColor = plan.color || '#0EA5E9'
+  
+  // Check if this is a sub-trip and get parent info
+  const isSubTrip = !!plan.parentTravelId
+  const parentTrip = isSubTrip && allTravels 
+    ? allTravels.find(t => t.id === plan.parentTravelId)
+    : null
+  const parentColor = parentTrip?.color || planColor
 
   const handleEdit = async (data: {
     title: string
@@ -158,6 +172,7 @@ function TravelPlanCard({
     endDate: string
     color: string
     note: string
+    parentTravelId?: string
   }) => {
     if (onEdit) {
       await onEdit({
@@ -168,6 +183,7 @@ function TravelPlanCard({
         endDate: data.endDate,
         color: data.color,
         note: data.note,
+        parentTravelId: data.parentTravelId,
       })
     }
     setIsEditing(false)
@@ -189,6 +205,7 @@ function TravelPlanCard({
             initialData={plan}
             onSubmit={handleEdit}
             onCancel={() => setIsEditing(false)}
+            availableTravels={allTravels}
           />
         </div>
       </div>
@@ -200,8 +217,24 @@ function TravelPlanCard({
       className="group rounded-2xl border border-white/10 overflow-hidden backdrop-blur-sm transition-all duration-300 hover:border-white/20"
       style={{
         background: `linear-gradient(135deg, ${planColor}15, ${planColor}05)`,
+        borderTopWidth: isSubTrip ? '4px' : '1px',
+        borderTopColor: isSubTrip ? parentColor : undefined,
       }}
     >
+      {/* Sub-trip header bar */}
+      {isSubTrip && parentTrip && (
+        <div 
+          className="px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
+          style={{
+            backgroundColor: `${parentColor}20`,
+            color: parentColor,
+          }}
+        >
+          <span>📎</span>
+          <span>DURING: {parentTrip.title.toUpperCase()}</span>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="px-4 py-3 border-b border-white/10 bg-white/[0.02]">
         <div className="flex items-center gap-3">
@@ -355,6 +388,7 @@ function TravelPlansView({
   onDeleteTravel,
   onAddTravel,
   onSaveNotes,
+  allTravels,
 }: {
   plans: TravelPlan[]
   date: string
@@ -363,6 +397,7 @@ function TravelPlansView({
   onDeleteTravel?: (travelId: string) => void | Promise<void>
   onAddTravel?: (travel: TravelPlanInput) => void | Promise<void>
   onSaveNotes: (notes: string) => void | Promise<void>
+  allTravels?: TravelPlan[]
 }) {
   const [isAdding, setIsAdding] = useState(false)
 
@@ -373,6 +408,7 @@ function TravelPlansView({
     endDate: string
     color: string
     note: string
+    parentTravelId?: string
   }) => {
     if (onAddTravel) {
       await onAddTravel(data)
@@ -435,6 +471,7 @@ function TravelPlansView({
             }}
             onSubmit={handleSubmit}
             onCancel={() => setIsAdding(false)}
+            availableTravels={allTravels}
           />
         </div>
       )}
@@ -447,6 +484,7 @@ function TravelPlansView({
           currentDate={date}
           onEdit={onEditTravel}
           onDelete={onDeleteTravel}
+          allTravels={allTravels}
         />
       ))}
     </div>
@@ -476,6 +514,7 @@ export class TravelDetailProviderImpl
           notes={notes}
           onAddTravel={context?.onAddTravel}
           onSaveNotes={handleSaveNotes}
+          allTravels={context?.allTravels}
         />
       )
     }
@@ -489,6 +528,7 @@ export class TravelDetailProviderImpl
         onDeleteTravel={context?.onDeleteTravel}
         onAddTravel={context?.onAddTravel}
         onSaveNotes={handleSaveNotes}
+        allTravels={context?.allTravels}
       />
     )
   }

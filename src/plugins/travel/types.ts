@@ -8,6 +8,7 @@ export interface TravelPlan extends ActivityItem {
   note?: string
   color?: string
   destination?: string
+  parentTravelId?: string
 }
 
 export interface TravelPlanInput {
@@ -17,6 +18,7 @@ export interface TravelPlanInput {
   note?: string
   color?: string
   destination?: string
+  parentTravelId?: string
 }
 
 export interface TravelDayData extends PluginDayData {

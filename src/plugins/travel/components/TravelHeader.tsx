@@ -14,6 +14,7 @@ interface TravelHeaderProps {
   onAddTravel?: (travel: TravelPlanInput) => void | Promise<void>
   onUpdateTravel?: (travel: TravelPlan) => void | Promise<void>
   onDeleteTravel?: (travelId: string) => void | Promise<void>
+  allTravels?: TravelPlan[]
 }
 
 export function TravelHeader({
@@ -24,6 +25,7 @@ export function TravelHeader({
   onAddTravel,
   onUpdateTravel,
   onDeleteTravel,
+  allTravels,
 }: TravelHeaderProps) {
   const [showTravelManager, setShowTravelManager] = useState(false)
 
@@ -79,6 +81,7 @@ export function TravelHeader({
           onUpdateTravel={onUpdateTravel}
           onDeleteTravel={onDeleteTravel}
           onClose={() => setShowTravelManager(false)}
+          allTravels={allTravels}
         />
       )}
     </>

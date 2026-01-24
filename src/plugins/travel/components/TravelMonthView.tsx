@@ -18,6 +18,7 @@ interface TravelMonthViewProps {
   onEditTravel?: (travel: TravelPlan) => void | Promise<void>
   onDeleteTravel?: (travelId: string) => void | Promise<void>
   onAddTravel?: (travel: TravelPlanInput) => void | Promise<void>
+  allTravels?: TravelPlan[]
 }
 
 export function TravelMonthView({
@@ -33,6 +34,7 @@ export function TravelMonthView({
   onEditTravel,
   onDeleteTravel,
   onAddTravel,
+  allTravels,
 }: TravelMonthViewProps) {
   // Build day customizations based on travel plans
   const buildDayCustomization = (
@@ -70,6 +72,7 @@ export function TravelMonthView({
         onEditTravel,
         onDeleteTravel,
         onAddTravel,
+        allTravels,
       }}
     />
   )

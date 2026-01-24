@@ -25,6 +25,7 @@ interface YearViewProps {
   onJumpToDay?: (iso: string) => void
   onMonthClick?: (year: number, month: number) => void
   initialSelectedDay?: string | null
+  allTravels?: TravelPlan[]
 }
 
 export function YearView({
@@ -38,6 +39,7 @@ export function YearView({
   onJumpToDay,
   onMonthClick,
   initialSelectedDay,
+  allTravels,
 }: YearViewProps) {
   const [showTravelModal, setShowTravelModal] = useState(false)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
@@ -107,6 +109,7 @@ export function YearView({
     endDate: string
     color: string
     note: string
+    parentTravelId?: string
   }) => {
     setIsSavingTravel(true)
     try {
@@ -124,6 +127,7 @@ export function YearView({
           note: formData.note || undefined,
           color: formData.color || undefined,
           destination: formData.destination || undefined,
+          parentTravelId: formData.parentTravelId || undefined,
         }
 
         const oldDates = enumerateDateRange(
@@ -162,6 +166,7 @@ export function YearView({
           note: formData.note || undefined,
           color: formData.color || undefined,
           destination: formData.destination || undefined,
+          parentTravelId: formData.parentTravelId || undefined,
         })
       }
 
@@ -439,6 +444,7 @@ export function YearView({
           onSubmit={handleSaveTravel}
           onCancel={handleCloseTravelModal}
           isSubmitting={isSavingTravel}
+          availableTravels={allTravels}
         />
       </Modal>
     </>

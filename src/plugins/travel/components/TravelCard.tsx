@@ -4,10 +4,14 @@ import { formatShortDate } from '@/utils'
 interface TravelCardProps {
   travel: TravelPlan & { days?: string[] }
   onClick?: () => void
+  allTravels?: TravelPlan[]
 }
 
-export function TravelCard({ travel, onClick }: TravelCardProps) {
+export function TravelCard({ travel, onClick, allTravels = [] }: TravelCardProps) {
   const dayCount = travel.days?.length || 0
+  const parentTravel = travel.parentTravelId
+    ? allTravels.find(t => t.id === travel.parentTravelId)
+    : null
 
   return (
     <button
@@ -34,6 +38,12 @@ export function TravelCard({ travel, onClick }: TravelCardProps) {
         {travel.destination && <span>{travel.destination} • </span>}
         {formatShortDate(travel.startDate)} → {formatShortDate(travel.endDate)}
       </div>
+      {parentTravel && (
+        <div className="mt-1.5 text-xs text-white/40 flex items-center gap-1">
+          <span>📎</span>
+          <span>During: {parentTravel.title}</span>
+        </div>
+      )}
       {dayCount > 0 && (
         <div className="mt-2 text-[11px] text-white/50">
           {dayCount} day{dayCount === 1 ? '' : 's'}

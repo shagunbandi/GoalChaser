@@ -13,6 +13,7 @@ interface TravelManagerProps {
   onUpdateTravel: (travel: TravelPlan) => void | Promise<void>
   onDeleteTravel: (travelId: string) => void | Promise<void>
   onClose: () => void
+  allTravels?: TravelPlan[]
 }
 
 export function TravelManager({
@@ -22,6 +23,7 @@ export function TravelManager({
   onUpdateTravel,
   onDeleteTravel,
   onClose,
+  allTravels,
 }: TravelManagerProps) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingTravel, setEditingTravel] = useState<TravelPlan | null>(null)
@@ -49,6 +51,7 @@ export function TravelManager({
     endDate: string
     color: string
     note: string
+    parentTravelId?: string
   }) => {
     await onAddTravel({
       title: data.title,
@@ -57,6 +60,7 @@ export function TravelManager({
       endDate: data.endDate,
       color: data.color,
       note: data.note,
+      parentTravelId: data.parentTravelId,
     })
     setShowAddForm(false)
   }
@@ -68,6 +72,7 @@ export function TravelManager({
     endDate: string
     color: string
     note: string
+    parentTravelId?: string
   }) => {
     if (!editingTravel) return
     await onUpdateTravel({
@@ -78,6 +83,7 @@ export function TravelManager({
       endDate: data.endDate,
       color: data.color,
       note: data.note,
+      parentTravelId: data.parentTravelId,
     })
     setEditingTravel(null)
   }
@@ -132,6 +138,7 @@ export function TravelManager({
           <TravelForm
             onSubmit={handleAddTravel}
             onCancel={() => setShowAddForm(false)}
+            availableTravels={allTravels || travelPlans}
           />
         </div>
       )}
@@ -144,6 +151,7 @@ export function TravelManager({
             initialData={editingTravel}
             onSubmit={handleUpdateTravel}
             onCancel={() => setEditingTravel(null)}
+            availableTravels={allTravels || travelPlans}
           />
         </div>
       )}
@@ -162,7 +170,14 @@ export function TravelManager({
           </div>
         ) : (
           <div className="space-y-3">
-            {travelPlans.map((travel) => (
+            {travelPlans.map((travel) => {
+              const isSubTrip = !!travel.parentTravelId
+              const parentTrip = isSubTrip 
+                ? travelPlans.find(t => t.id === travel.parentTravelId)
+                : null
+              const parentColor = parentTrip?.color || travel.color || '#007AFF'
+              
+              return (
               <div
                 key={travel.id}
                 className="
@@ -173,7 +188,25 @@ export function TravelManager({
                   transition-all duration-200
                   hover:shadow-lg hover:shadow-black/20
                 "
+                style={{
+                  borderTopWidth: isSubTrip ? '4px' : '1px',
+                  borderTopColor: isSubTrip ? parentColor : undefined,
+                }}
               >
+                {/* Sub-trip header bar */}
+                {isSubTrip && parentTrip && (
+                  <div 
+                    className="mb-3 -mx-4 -mt-4 sm:-mx-5 sm:-mt-5 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
+                    style={{
+                      backgroundColor: `${parentColor}20`,
+                      color: parentColor,
+                    }}
+                  >
+                    <span>📎</span>
+                    <span>DURING: {parentTrip.title.toUpperCase()}</span>
+                  </div>
+                )}
+                
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
@@ -254,7 +287,8 @@ export function TravelManager({
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
