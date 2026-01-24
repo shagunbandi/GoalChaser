@@ -147,12 +147,14 @@ function TravelPlanCard({
   onEdit,
   onDelete,
   allTravels,
+  subTrips = [],
 }: {
   plan: TravelPlan
   currentDate: string
   onEdit?: (travel: TravelPlan) => void
   onDelete?: (travelId: string) => void
   allTravels?: TravelPlan[]
+  subTrips?: TravelPlan[]
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -160,13 +162,6 @@ function TravelPlanCard({
   const { totalDays, currentDay, status } = getTripStats(plan, currentDate)
   const progress = (currentDay / totalDays) * 100
   const planColor = plan.color || '#0EA5E9'
-  
-  // Check if this is a sub-trip and get parent info
-  const isSubTrip = !!plan.parentTravelId
-  const parentTrip = isSubTrip && allTravels 
-    ? allTravels.find(t => t.id === plan.parentTravelId)
-    : null
-  const parentColor = parentTrip?.color || planColor
 
   const handleEdit = async (data: {
     title: string
@@ -226,24 +221,8 @@ function TravelPlanCard({
       className="group rounded-2xl border border-white/10 overflow-hidden backdrop-blur-sm transition-all duration-300 hover:border-white/20"
       style={{
         background: `linear-gradient(135deg, ${planColor}15, ${planColor}05)`,
-        borderTopWidth: isSubTrip ? '4px' : '1px',
-        borderTopColor: isSubTrip ? parentColor : undefined,
       }}
     >
-      {/* Sub-trip header bar */}
-      {isSubTrip && parentTrip && (
-        <div 
-          className="px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
-          style={{
-            backgroundColor: `${parentColor}20`,
-            color: parentColor,
-          }}
-        >
-          <span>📎</span>
-          <span>DURING: {parentTrip.title.toUpperCase()}</span>
-        </div>
-      )}
-      
       {/* Header */}
       <div className="px-4 py-3 border-b border-white/10 bg-white/[0.02]">
         <div className="flex items-center gap-3">
@@ -384,6 +363,84 @@ function TravelPlanCard({
           </div>
         </div>
       )}
+      
+      {/* Sub-trips section */}
+      {subTrips.length > 0 && (
+        <div className="border-t border-white/10 bg-white/[0.01] p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-semibold text-white/50 uppercase tracking-wide">Sub-trips</span>
+            <div className="h-px flex-1 bg-white/5" />
+          </div>
+          <div className="space-y-3">
+            {subTrips.map((subTrip) => {
+              const { totalDays: subTotalDays, currentDay: subCurrentDay } = getTripStats(subTrip, currentDate)
+              const subProgress = (subCurrentDay / subTotalDays) * 100
+              const subColor = subTrip.color || planColor
+              
+              return (
+                <div
+                  key={subTrip.id}
+                  className="rounded-xl border border-white/5 bg-white/[0.02] p-3 hover:bg-white/[0.04] transition-all"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: subColor }}
+                        />
+                        <h5 className="text-sm font-semibold text-white/80 truncate">
+                          {subTrip.title}
+                        </h5>
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0"
+                          style={{
+                            backgroundColor: `${subColor}20`,
+                            color: subColor,
+                          }}
+                        >
+                          Day {subCurrentDay}/{subTotalDays}
+                        </span>
+                      </div>
+                      {subTrip.destination && (
+                        <p className="text-xs text-white/40 flex items-center gap-1 mb-2">
+                          <span>📍</span> {subTrip.destination}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-3 text-xs text-white/40">
+                        <span>📅 {formatTravelDate(subTrip.startDate)} → {formatTravelDate(subTrip.endDate)}</span>
+                      </div>
+                    </div>
+                    
+                    {(onEdit || onDelete) && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        {onEdit && (
+                          <button
+                            onClick={() => onEdit(subTrip)}
+                            className="p-1.5 rounded-lg text-white/30 hover:text-[#FF9500] hover:bg-[#FF9500]/10 transition-all text-xs"
+                            title="Edit"
+                          >
+                            ✏️
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            onClick={() => onDelete(subTrip.id)}
+                            className="p-1.5 rounded-lg text-white/30 hover:text-[#FF3B30] hover:bg-[#FF3B30]/10 transition-all text-xs"
+                            title="Delete"
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -489,16 +546,31 @@ function TravelPlansView({
       )}
 
       {/* Travel Cards */}
-      {plans.map((plan) => (
-        <TravelPlanCard
-          key={plan.id}
-          plan={plan}
-          currentDate={date}
-          onEdit={onEditTravel}
-          onDelete={onDeleteTravel}
-          allTravels={allTravels}
-        />
-      ))}
+      {(() => {
+        // Separate parent trips and orphan trips (no parent or parent doesn't exist on this day)
+        const parentTrips = plans.filter(p => !p.parentTravelId)
+        const subTrips = plans.filter(p => p.parentTravelId)
+        
+        // Group sub-trips by their parent
+        const subTripsByParent = subTrips.reduce((acc, trip) => {
+          const parentId = trip.parentTravelId!
+          if (!acc[parentId]) acc[parentId] = []
+          acc[parentId].push(trip)
+          return acc
+        }, {} as Record<string, typeof plans>)
+        
+        return parentTrips.map((plan) => (
+          <TravelPlanCard
+            key={plan.id}
+            plan={plan}
+            currentDate={date}
+            onEdit={onEditTravel}
+            onDelete={onDeleteTravel}
+            allTravels={allTravels}
+            subTrips={subTripsByParent[plan.id] || []}
+          />
+        ))
+      })()}
     </div>
   )
 }
