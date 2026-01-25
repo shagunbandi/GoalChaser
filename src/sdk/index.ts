@@ -54,7 +54,17 @@ export type {
   PluginAIIntegration,
   AIPreviewData,
   AIWizardFlowProps,
+  // Insights types
+  PluginQuickStats,
+  PluginPeriodInsights,
+  StreakStat,
+  MetricStat,
+  InsightChart,
+  BreakdownItem,
+  TimeRangeOption,
 } from './types'
+
+export { DEFAULT_TIME_RANGES } from './types'
 
 // Services (for advanced use cases)
 export { createPluginLogger, createPluginFirestore } from './services'

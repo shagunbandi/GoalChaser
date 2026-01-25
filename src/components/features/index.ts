@@ -19,6 +19,9 @@ export { ModalRenderer } from './year-view/renderers/ModalRenderer'
 // Analytics components
 export * from './analytics'
 
+// Insights components
+export * from './insights'
+
 // Home
 export { Dashboard } from './home'
 export { CreateGoalForm } from './home'

@@ -70,11 +70,11 @@ export function GroupedTabBar({
         route: `/goal/${goalId}`,
     },
     {
-      id: 'analytics' as AddonId,
-      name: 'Analytics',
-      icon: '📊',
+      id: 'insights' as AddonId,
+      name: 'Insights',
+      icon: '📈',
       isPrimary: true,
-        route: `/goal/${goalId}/analytics`,
+        route: `/goal/${goalId}/insights`,
     },
       // Enabled plugins
     ...enabledAddons

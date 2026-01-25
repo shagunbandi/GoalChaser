@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Drawer } from '@/sdk'
-import type { AreaConfig } from '@/plugins/productivity/types'
+import type { AreaConfig, StreakType } from '@/plugins/productivity/types'
 
 interface AreaManagerProps {
   isOpen: boolean
@@ -14,6 +14,8 @@ interface AreaManagerProps {
   onAddTopic: (areaId: string, topic: string) => void
   onRemoveTopic: (areaId: string, topic: string) => void
   onUpdateTopic: (areaId: string, oldTopic: string, newTopic: string) => void
+  onUpdateAreaGoal: (id: string, streakType: StreakType, targetFrequency?: number) => void
+  onToggleTrackStreaks: (id: string) => void
   isTopicInUse: (areaId: string, topic: string) => boolean
   onClose: () => void
 }
@@ -28,6 +30,8 @@ export function AreaManager({
   onAddTopic,
   onRemoveTopic,
   onUpdateTopic,
+  onUpdateAreaGoal,
+  onToggleTrackStreaks,
   isTopicInUse,
   onClose,
 }: AreaManagerProps) {
@@ -322,6 +326,104 @@ export function AreaManager({
                 {/* Expanded Topics */}
                 {expandedAreaId === area.id && (
                   <div className="border-t border-white/5 bg-black/10 p-4 sm:p-5 space-y-5">
+                    {/* Track Streaks Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-white/[0.02] rounded-xl border border-white/5">
+                      <div className="flex-1 pr-4">
+                        <label className="text-sm font-medium text-white/80">
+                          Track Streaks
+                        </label>
+                        <p className="text-xs text-white/40 mt-1 leading-relaxed">
+                          {area.trackStreaks ?? true
+                            ? 'Calculate and display streaks for this area'
+                            : 'Streaks disabled - only track visits/hours'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => onToggleTrackStreaks(area.id)}
+                        className={`
+                          relative w-14 h-8 rounded-full transition-all duration-300
+                          ${
+                            area.trackStreaks ?? true
+                              ? 'bg-[#007AFF] shadow-lg shadow-[#007AFF]/30'
+                              : 'bg-white/20'
+                          }
+                        `}
+                      >
+                        <span
+                          className={`
+                            absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg
+                            transition-all duration-300
+                            ${area.trackStreaks ?? true ? 'left-7' : 'left-1'}
+                          `}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Streak Goal Configuration - Only show if tracking is enabled */}
+                    {(area.trackStreaks ?? true) && (
+                      <div className="p-4 bg-white/[0.02] rounded-xl border border-white/5 space-y-3">
+                        <label className="text-sm font-medium text-white/80">
+                          Streak Goal
+                        </label>
+                        
+                        {/* Streak Type Selector */}
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['daily', 'weekly', 'monthly'] as const).map((type) => (
+                            <button
+                              key={type}
+                              onClick={() => {
+                                const freq = type === 'daily' ? undefined : (area.targetFrequency || 1)
+                                onUpdateAreaGoal(area.id, type, freq)
+                              }}
+                              className={`
+                                px-3 py-2 rounded-lg text-xs font-medium transition-all
+                                ${(area.streakType || 'daily') === type
+                                  ? 'bg-[#007AFF] text-white'
+                                  : 'bg-white/5 hover:bg-white/10 text-white/60'
+                                }
+                              `}
+                            >
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                        
+                        {/* Target Frequency (for weekly/monthly) */}
+                        {(area.streakType === 'weekly' || area.streakType === 'monthly') && (
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-white/60">Target:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="30"
+                              value={area.targetFrequency || 1}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value)
+                                if (val >= 1 && val <= 30) {
+                                  onUpdateAreaGoal(area.id, area.streakType!, val)
+                                }
+                              }}
+                              className="
+                                w-16 px-2 py-1 text-center
+                                bg-white/5 border border-white/10 rounded-lg
+                                text-white text-sm
+                                focus:outline-none focus:border-[#007AFF]/50
+                              "
+                            />
+                            <span className="text-xs text-white/60">
+                              times per {area.streakType === 'weekly' ? 'week' : 'month'}
+                            </span>
+                          </div>
+                        )}
+                        
+                        <p className="text-xs text-white/40 leading-relaxed">
+                          {area.streakType === 'daily' && 'Track consecutive days with activity'}
+                          {area.streakType === 'weekly' && `Track consecutive weeks with ${area.targetFrequency || 1}+ activities`}
+                          {area.streakType === 'monthly' && `Track consecutive months with ${area.targetFrequency || 1}+ activities`}
+                        </p>
+                      </div>
+                    )}
+                  
                     {/* Has Topics Toggle */}
                     <div className="flex items-center justify-between p-4 bg-white/[0.02] rounded-xl border border-white/5">
                       <div className="flex-1 pr-4">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { SubjectEntry, SubjectConfig } from '@/plugins/study/types'
+import type { SubjectEntry, SubjectConfig, StreakType } from '@/plugins/study/types'
 import type { YearViewConfig } from '@/types/year-view-config'
 import { GenericYearView } from '@/components/features/year-view/GenericYearView'
 import { StudySummary } from './StudySummary'
@@ -26,6 +26,8 @@ interface StudyViewProps {
   onRemoveTopic: (subjectId: string, topic: string) => void
   onUpdateTopic: (subjectId: string, oldTopic: string, newTopic: string) => void
   isTopicInUse: (subjectId: string, topic: string) => boolean
+  onUpdateSubjectGoal?: (subjectId: string, streakType: StreakType, targetFrequency?: number) => void
+  onToggleTrackStreaks?: (subjectId: string) => void
   onJumpToDay?: (iso: string) => void
   onMonthClick?: (year: number, month: number) => void
   initialSelectedDay?: string | null
@@ -49,6 +51,8 @@ export function StudyView({
   onRemoveTopic,
   onUpdateTopic,
   isTopicInUse,
+  onUpdateSubjectGoal,
+  onToggleTrackStreaks,
   onJumpToDay,
   initialSelectedDay,
 }: StudyViewProps) {
@@ -325,6 +329,8 @@ export function StudyView({
           onRemoveTopic={onRemoveTopic}
           onUpdateTopic={onUpdateTopic}
           isTopicInUse={isTopicInUse}
+          onUpdateSubjectGoal={onUpdateSubjectGoal}
+          onToggleTrackStreaks={onToggleTrackStreaks}
           onClose={() => setShowSubjectManager(false)}
         />
       )}

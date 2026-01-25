@@ -3,14 +3,23 @@
  */
 
 import React from 'react'
-import type { Plugin, PluginAnalyticsChartData, PluginAISchema, AIWizardFlowProps } from '@/sdk'
-import { calculateStreak, calculateAverage, generateDateRange } from '@/sdk'
+import type { Plugin, PluginAISchema, AIWizardFlowProps, PluginQuickStats, PluginPeriodInsights } from '@/sdk'
+import { generateDateRange } from '@/sdk'
 import { ProductivityDataProvider } from './data-provider'
 import { ProductivityDetailProviderImpl } from './detail-provider'
 import ProductivityPage from './pages/ProductivityPage'
 import { ProductivityWizardFlow } from './components'
 import type { ProductivityDayData, ProductivityConfig } from './types'
 import { buildPluginUrl } from '@/lib/plugin-url-utils'
+import {
+  calculateAreaStreaks,
+  calculateAllTimeAverage,
+  countUniqueAreas,
+  calculatePeriodAverage,
+  countHighDays,
+  buildAreaBreakdown,
+} from './insights-utils'
+
 
 export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig> = {
   id: 'productivity',
@@ -126,148 +135,94 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
     },
   },
 
-  // Analytics integration
-  analytics: {
-    getAnalyticsData: (startDate, endDate, data) => {
-      const charts: PluginAnalyticsChartData[] = []
+  // Insights integration (new system)
+  insights: {
+    getQuickStats: (allData, config) => {
+      // Calculate streaks per area with config
+      const areaStreaks = calculateAreaStreaks(allData, config?.areas)
+      
+      // Calculate all-time metrics
+      const totalDays = Object.keys(allData).filter(
+        date => allData[date]?.status !== null || allData[date]?.areas?.length
+      ).length
+      const avgScore = calculateAllTimeAverage(allData)
+      const totalAreas = countUniqueAreas(allData)
+      
+      const stats: PluginQuickStats = {
+        streaks: areaStreaks,
+        metrics: [
+          {
+            label: 'Total Days Tracked',
+            value: totalDays,
+            subtitle: 'Days with data',
+            icon: '📅',
+            color: '#06B6D4',
+          },
+          {
+            label: 'All-Time Average',
+            value: avgScore > 0 ? `${avgScore.toFixed(1)}/10` : 'N/A',
+            subtitle: 'Overall score',
+            icon: '📊',
+            color: '#3B82F6',
+          },
+          {
+            label: 'Areas Covered',
+            value: totalAreas,
+            subtitle: 'Unique areas',
+            icon: '🎯',
+            color: '#8B5CF6',
+          },
+        ],
+      }
+      
+      return stats
+    },
+    
+    getPeriodInsights: (startDate, endDate, data, config) => {
       const dates = generateDateRange(startDate, endDate)
-
-      // Calculate daily productivity scores
-      const dailyScores = dates.map(date => {
-        const dayData = data[date]
-        return dayData?.status ?? null
-      }).filter((score): score is number => score !== null)
-
-      const daysTracked = dailyScores.length
-      const avgScore = calculateAverage(data, (d) => d?.status ?? null)
-
-      // Calculate streak for high productivity days (score >= 7)
-      const highProductivityStreak = calculateStreak(
-        data,
-        (d) => d?.status !== null && d?.status !== undefined && d.status >= 7
-      )
-
-      // Calculate area and topic statistics
-      const areaStats: Record<string, { days: number; topics: Set<string> }> = {}
-
-      Object.values(data).forEach(dayData => {
-        if (dayData.areas) {
-          dayData.areas.forEach(areaEntry => {
-            const areaName = areaEntry.area || 'Unknown'
-            if (!areaStats[areaName]) {
-              areaStats[areaName] = { days: 0, topics: new Set() }
-            }
-            areaStats[areaName].days++
-            if (areaEntry.topics) {
-              areaEntry.topics.forEach(topic => {
-                areaStats[areaName].topics.add(topic)
-              })
-            }
-          })
-        }
-      })
-
-      const uniqueAreas = Object.keys(areaStats).length
-      const uniqueTopics = Object.values(areaStats).reduce((sum, s) => sum + s.topics.size, 0)
-
-      // Metric cards
-      if (daysTracked > 0) {
-        charts.push({
-          chartType: 'metric',
-          title: 'Average Score',
-          metricData: {
-            label: 'Average Productivity',
-            value: avgScore.toFixed(1),
-            unit: '/10',
+      
+      // Summary metrics
+      const avgScore = calculatePeriodAverage(data)
+      const daysTracked = Object.keys(data).filter(
+        date => data[date]?.status !== null || data[date]?.areas?.length
+      ).length
+      const highDays = countHighDays(data)
+      
+      const insights: PluginPeriodInsights = {
+        summary: [
+          {
+            label: 'Average Score',
+            value: avgScore > 0 ? `${avgScore.toFixed(1)}/10` : 'N/A',
+            subtitle: `${daysTracked} days tracked`,
             icon: '📊',
             color: avgScore >= 7 ? '#34C759' : avgScore >= 4 ? '#FF9500' : '#FF3B30',
-            subtitle: `Based on ${daysTracked} days`,
           },
-        })
-
-        charts.push({
-          chartType: 'metric',
-          title: 'Days Tracked',
-          metricData: {
+          {
             label: 'Days Tracked',
             value: daysTracked,
+            subtitle: `${((daysTracked / dates.length) * 100).toFixed(0)}% of period`,
             icon: '📅',
             color: '#007AFF',
-            subtitle: `Out of ${dates.length} days`,
           },
-        })
-
-        // High productivity days count
-        const highDays = dailyScores.filter(s => s >= 7).length
-        charts.push({
-          chartType: 'metric',
-          title: 'High Productivity Days',
-          metricData: {
-            label: 'High Productivity',
+          {
+            label: 'High Days (7+)',
             value: highDays,
+            subtitle: daysTracked > 0 ? `${((highDays / daysTracked) * 100).toFixed(0)}%` : '0%',
             icon: '🔥',
             color: '#34C759',
-            subtitle: `Score 7+`,
           },
-        })
-
-        // Areas tracked
-        if (uniqueAreas > 0) {
-          charts.push({
-            chartType: 'metric',
-            title: 'Areas Tracked',
-            metricData: {
-              label: 'Unique Areas',
-              value: uniqueAreas,
-              icon: '🎯',
-              color: '#06B6D4',
-              subtitle: `${uniqueTopics} unique topics`,
-            },
-          })
-        }
+        ],
+        breakdown: buildAreaBreakdown(data),
       }
-
-      // Streak display
-      if (highProductivityStreak.longest > 0) {
-        charts.push({
-          chartType: 'streak',
-          title: 'High Productivity Streak',
-          size: 'medium',
-          streakData: {
-            currentStreak: highProductivityStreak.current,
-            longestStreak: highProductivityStreak.longest,
-            unit: 'days',
-            icon: '🔥',
-            color: '#FF9500',
-            description: 'Consecutive days with score 7+',
-          },
-        })
-      }
-
-      // Heat map: Productivity activity
-      if (dailyScores.length > 0) {
-        const heatmapData: Record<string, number> = {}
-        dates.forEach(date => {
-          const score = data[date]?.status
-          if (score !== null && score !== undefined) {
-            heatmapData[date] = score
-          }
-        })
-
-        charts.push({
-          chartType: 'heatmap',
-          title: 'Productivity Heat Map',
-          size: 'small',
-          heatmapData,
-          dateRange: {
-            start: startDate,
-            end: endDate,
-          },
-        })
-      }
-
-      return charts
+      
+      return insights
     },
+    
+    defaultTimeRanges: [
+      { label: 'Last 7 days', days: 7, id: 'last-7' },
+      { label: 'Last 30 days', days: 30, id: 'last-30' },
+      { label: 'Last 90 days', days: 90, id: 'last-90' },
+    ],
   },
 
   // AI integration for natural language data extraction

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { HeaderRenderer } from '@/components/features/year-view/renderers/HeaderRenderer'
 import { AreaManager } from './AreaManager'
 import { buildProductivityHeaderConfig } from '../utils/header-config'
-import type { ProductivityDayData, AreaConfig } from '../types'
+import type { ProductivityDayData, AreaConfig, StreakType } from '../types'
 
 interface ProductivityHeaderProps {
   year: number
@@ -19,6 +19,8 @@ interface ProductivityHeaderProps {
   onAddTopic: (areaId: string, topic: string) => void
   onRemoveTopic: (areaId: string, topic: string) => void
   onUpdateTopic: (areaId: string, oldTopic: string, newTopic: string) => void
+  onUpdateAreaGoal: (id: string, streakType: StreakType, targetFrequency?: number) => void
+  onToggleTrackStreaks: (id: string) => void
   isTopicInUse: (areaId: string, topic: string) => boolean
 }
 
@@ -35,6 +37,8 @@ export function ProductivityHeader({
   onAddTopic,
   onRemoveTopic,
   onUpdateTopic,
+  onUpdateAreaGoal,
+  onToggleTrackStreaks,
   isTopicInUse,
 }: ProductivityHeaderProps) {
 
@@ -70,6 +74,8 @@ export function ProductivityHeader({
           onAddTopic={onAddTopic}
           onRemoveTopic={onRemoveTopic}
           onUpdateTopic={onUpdateTopic}
+          onUpdateAreaGoal={onUpdateAreaGoal}
+          onToggleTrackStreaks={onToggleTrackStreaks}
           isTopicInUse={isTopicInUse}
           onClose={() => setShowAreaManager(false)}
         />

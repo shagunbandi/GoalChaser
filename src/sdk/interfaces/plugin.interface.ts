@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { PluginAIIntegration } from '../types/ai.types'
+import type { PluginQuickStats, PluginPeriodInsights, TimeRangeOption } from '../types/insights.types'
 
 /**
  * Core plugin interface that all plugins must implement
@@ -60,6 +61,38 @@ export interface Plugin<TDayData = any, TConfig = any> {
       endDate: string,
       data: Record<string, TDayData>
     ) => PluginAnalyticsChartData[]
+  }
+
+  /** Optional: Insights integration (replaces analytics in new system) */
+  insights?: {
+    /**
+     * Time-agnostic insights (streaks, all-time totals)
+     * @param allData All available data for this plugin (no date filtering)
+     * @param config Plugin configuration (optional)
+     * @returns Quick stats to display
+     */
+    getQuickStats?: (allData: Record<string, TDayData>, config?: TConfig | null) => PluginQuickStats
+    
+    /**
+     * Period-specific insights
+     * @param startDate ISO date string (YYYY-MM-DD)
+     * @param endDate ISO date string (YYYY-MM-DD)
+     * @param data Date-indexed data for the date range
+     * @param config Plugin configuration (optional)
+     * @returns Period insights to display
+     */
+    getPeriodInsights?: (
+      startDate: string,
+      endDate: string,
+      data: Record<string, TDayData>,
+      config?: TConfig | null
+    ) => PluginPeriodInsights
+    
+    /**
+     * Default time range options for this plugin
+     * If not provided, uses global defaults
+     */
+    defaultTimeRanges?: TimeRangeOption[]
   }
 
   /** Optional: AI integration for natural language data extraction */

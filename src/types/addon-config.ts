@@ -1,4 +1,4 @@
-export type AddonId = 'calendar' | 'productivity' | 'hours' | 'finance' | 'travel' | 'analytics'
+export type AddonId = 'calendar' | 'productivity' | 'hours' | 'finance' | 'travel' | 'analytics' | 'insights'
 
 export type AddonCategory = {
   id: AddonId

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Drawer } from '@/sdk'
-import type { SubjectConfig } from '@/plugins/study/types'
+import type { SubjectConfig, StreakType } from '@/plugins/study/types'
 
 interface SubjectManagerProps {
   isOpen: boolean
@@ -15,6 +15,8 @@ interface SubjectManagerProps {
   onRemoveTopic: (subjectId: string, topic: string) => void
   onUpdateTopic: (subjectId: string, oldTopic: string, newTopic: string) => void
   isTopicInUse: (subjectId: string, topic: string) => boolean
+  onUpdateSubjectGoal?: (subjectId: string, streakType: StreakType, targetFrequency?: number) => void
+  onToggleTrackStreaks?: (subjectId: string) => void
   onClose: () => void
 }
 
@@ -29,6 +31,8 @@ export function SubjectManager({
   onRemoveTopic,
   onUpdateTopic,
   isTopicInUse,
+  onUpdateSubjectGoal,
+  onToggleTrackStreaks,
   onClose,
 }: SubjectManagerProps) {
   const [newSubjectInput, setNewSubjectInput] = useState('')
@@ -303,6 +307,104 @@ export function SubjectManager({
                 {/* Expanded Topics - Implementation continues... */}
                 {expandedSubjectId === subject.id && (
                   <div className="border-t border-white/5 bg-black/10 p-4 sm:p-5 space-y-5">
+                    {/* Track Streaks Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-white/[0.02] rounded-xl border border-white/5">
+                      <div className="flex-1 pr-4">
+                        <label className="text-sm font-medium text-white/80">
+                          Track Streaks
+                        </label>
+                        <p className="text-xs text-white/40 mt-1 leading-relaxed">
+                          {subject.trackStreaks ?? false
+                            ? 'Calculate and display streaks for this subject'
+                            : 'Streaks disabled - only track hours/sessions'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => onToggleTrackStreaks?.(subject.id)}
+                        className={`
+                          relative w-14 h-8 rounded-full transition-all duration-300
+                          ${
+                            subject.trackStreaks ?? false
+                              ? 'bg-[#A855F7] shadow-lg shadow-[#A855F7]/30'
+                              : 'bg-white/20'
+                          }
+                        `}
+                      >
+                        <span
+                          className={`
+                            absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg
+                            transition-all duration-300
+                            ${subject.trackStreaks ?? false ? 'left-7' : 'left-1'}
+                          `}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Streak Goal Configuration - Only show if tracking is enabled */}
+                    {(subject.trackStreaks ?? false) && (
+                      <div className="p-4 bg-white/[0.02] rounded-xl border border-white/5 space-y-3">
+                        <label className="text-sm font-medium text-white/80">
+                          Streak Goal
+                        </label>
+                        
+                        {/* Streak Type Selector */}
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['daily', 'weekly', 'monthly'] as const).map((type) => (
+                            <button
+                              key={type}
+                              onClick={() => {
+                                const freq = type === 'daily' ? undefined : (subject.targetFrequency || 1)
+                                onUpdateSubjectGoal?.(subject.id, type, freq)
+                              }}
+                              className={`
+                                px-3 py-2 rounded-lg text-xs font-medium transition-all
+                                ${(subject.streakType || 'daily') === type
+                                  ? 'bg-[#A855F7] text-white'
+                                  : 'bg-white/5 hover:bg-white/10 text-white/60'
+                                }
+                              `}
+                            >
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                        
+                        {/* Target Frequency (for weekly/monthly) */}
+                        {(subject.streakType === 'weekly' || subject.streakType === 'monthly') && (
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-white/60">Target:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="30"
+                              value={subject.targetFrequency || 1}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value)
+                                if (val >= 1 && val <= 30) {
+                                  onUpdateSubjectGoal?.(subject.id, subject.streakType!, val)
+                                }
+                              }}
+                              className="
+                                w-16 px-2 py-1 text-center
+                                bg-white/5 border border-white/10 rounded-lg
+                                text-white text-sm
+                                focus:outline-none focus:border-[#A855F7]/50
+                              "
+                            />
+                            <span className="text-xs text-white/60">
+                              times per {subject.streakType === 'weekly' ? 'week' : 'month'}
+                            </span>
+                          </div>
+                        )}
+                        
+                        <p className="text-xs text-white/40 leading-relaxed">
+                          {subject.streakType === 'daily' && 'Track consecutive days with study sessions'}
+                          {subject.streakType === 'weekly' && `Track consecutive weeks with ${subject.targetFrequency || 1}+ study sessions`}
+                          {subject.streakType === 'monthly' && `Track consecutive months with ${subject.targetFrequency || 1}+ study sessions`}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Has Topics Toggle */}
                     <div className="flex items-center justify-between p-4 bg-white/[0.02] rounded-xl border border-white/5">
                       <div className="flex-1 pr-4">

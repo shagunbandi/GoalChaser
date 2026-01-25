@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import type { AreaConfig, AreaEntry } from '@/plugins/productivity/types'
+import type { AreaConfig, AreaEntry, StreakType } from '@/plugins/productivity/types'
 import type { YearViewConfig } from '@/types/year-view-config'
 import { GenericYearView } from '@/components/features/year-view/GenericYearView'
 import { StatusSelector } from './StatusSelector'
@@ -24,6 +24,8 @@ interface ProductivityYearViewProps {
   onAddTopic: (areaId: string, topic: string) => void
   onRemoveTopic: (areaId: string, topic: string) => void
   onUpdateTopic: (areaId: string, oldTopic: string, newTopic: string) => void
+  onUpdateAreaGoal: (id: string, streakType: StreakType, targetFrequency?: number) => void
+  onToggleTrackStreaks: (id: string) => void
   isTopicInUse: (areaId: string, topic: string) => boolean
   onJumpToDay?: (iso: string) => void
   onMonthClick?: (year: number, month: number) => void
@@ -45,6 +47,8 @@ export function ProductivityYearView({
   onAddTopic,
   onRemoveTopic,
   onUpdateTopic,
+  onUpdateAreaGoal,
+  onToggleTrackStreaks,
   isTopicInUse,
   onJumpToDay,
   onMonthClick,
@@ -374,6 +378,8 @@ export function ProductivityYearView({
           onAddTopic={onAddTopic}
           onRemoveTopic={onRemoveTopic}
           onUpdateTopic={onUpdateTopic}
+          onUpdateAreaGoal={onUpdateAreaGoal}
+          onToggleTrackStreaks={onToggleTrackStreaks}
           isTopicInUse={isTopicInUse}
           onClose={() => setShowAreaManager(false)}
         />

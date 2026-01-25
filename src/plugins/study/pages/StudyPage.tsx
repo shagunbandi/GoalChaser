@@ -7,7 +7,7 @@
 import type { PluginPageProps } from '@/sdk'
 import { usePluginPage, LoadingState, NotFoundState, ContentLoader } from '@/sdk'
 import { StudyHeader, StudyView, StudyMonthView } from '../components'
-import type { StudyDayData, StudyConfig } from '../types'
+import type { StudyDayData, StudyConfig, StreakType } from '../types'
 import { StudyPlugin } from '../plugin'
 
 export default function StudyPage({
@@ -122,6 +122,30 @@ export default function StudyPage({
     )
   }
 
+  const handleUpdateSubjectGoal = (
+    subjectId: string,
+    streakType: StreakType,
+    targetFrequency?: number
+  ) => {
+    updateConfig({
+      subjects: subjectConfigs.map((s: any) =>
+        s.id === subjectId
+          ? { ...s, streakType, targetFrequency }
+          : s
+      ),
+    })
+  }
+
+  const handleToggleTrackStreaks = (subjectId: string) => {
+    updateConfig({
+      subjects: subjectConfigs.map((s: any) =>
+        s.id === subjectId
+          ? { ...s, trackStreaks: !(s.trackStreaks ?? false) }
+          : s
+      ),
+    })
+  }
+
   // Only show full-page loading on TRUE initial load (no goal AND no cached data)
   if (!goal && isLoading && !hasData) return <LoadingState />
   if (!goal && !isLoading) return <NotFoundState />
@@ -144,6 +168,8 @@ export default function StudyPage({
         onRemoveTopic={handleRemoveTopic}
         onUpdateTopic={handleUpdateTopic}
         isTopicInUse={isTopicInUse}
+        onUpdateSubjectGoal={handleUpdateSubjectGoal}
+        onToggleTrackStreaks={handleToggleTrackStreaks}
       />
 
       {/* Content - shows inline loader when switching years */}
@@ -192,6 +218,8 @@ export default function StudyPage({
           onRemoveTopic={handleRemoveTopic}
           onUpdateTopic={handleUpdateTopic}
           isTopicInUse={isTopicInUse}
+          onUpdateSubjectGoal={handleUpdateSubjectGoal}
+          onToggleTrackStreaks={handleToggleTrackStreaks}
         />
       )}
     </div>

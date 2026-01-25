@@ -11,7 +11,7 @@ import {
   ProductivityYearView,
   ProductivityMonthView,
 } from '../components'
-import type { ProductivityDayData, ProductivityConfig } from '../types'
+import type { ProductivityDayData, ProductivityConfig, StreakType } from '../types'
 import { ProductivityPlugin } from '../plugin'
 
 export default function ProductivityPage({
@@ -113,6 +113,28 @@ export default function ProductivityPage({
     })
   }
 
+  const handleUpdateAreaGoal = (
+    id: string,
+    streakType: StreakType,
+    targetFrequency?: number,
+  ) => {
+    updateConfig({
+      areas: areaConfigs.map((a: any) =>
+        a.id === id
+          ? { ...a, streakType, targetFrequency }
+          : a,
+      ),
+    })
+  }
+
+  const handleToggleTrackStreaks = (id: string) => {
+    updateConfig({
+      areas: areaConfigs.map((a: any) =>
+        a.id === id ? { ...a, trackStreaks: !(a.trackStreaks ?? true) } : a,
+      ),
+    })
+  }
+
   const isAreaTopicInUse = (areaId: string, topic: string) => {
     return Object.values(pluginDayData).some((details: any) =>
       details?.areas?.some(
@@ -143,6 +165,8 @@ export default function ProductivityPage({
         onAddTopic={handleAddAreaTopic}
         onRemoveTopic={handleRemoveAreaTopic}
         onUpdateTopic={handleUpdateAreaTopic}
+        onUpdateAreaGoal={handleUpdateAreaGoal}
+        onToggleTrackStreaks={handleToggleTrackStreaks}
         isTopicInUse={isAreaTopicInUse}
       />
 
@@ -186,6 +210,8 @@ export default function ProductivityPage({
           onAddTopic={handleAddAreaTopic}
           onRemoveTopic={handleRemoveAreaTopic}
           onUpdateTopic={handleUpdateAreaTopic}
+          onUpdateAreaGoal={handleUpdateAreaGoal}
+          onToggleTrackStreaks={handleToggleTrackStreaks}
           isTopicInUse={isAreaTopicInUse}
           onMonthClick={navigateToMonth}
         />

@@ -85,3 +85,16 @@ export type {
   AIPreviewData,
   AIWizardFlowProps,
 } from './ai.types'
+
+// Insights types
+export type {
+  PluginQuickStats,
+  PluginPeriodInsights,
+  StreakStat,
+  MetricStat,
+  InsightChart,
+  BreakdownItem,
+  TimeRangeOption,
+} from './insights.types'
+
+export { DEFAULT_TIME_RANGES } from './insights.types'

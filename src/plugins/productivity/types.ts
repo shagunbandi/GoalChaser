@@ -6,6 +6,8 @@ import type { PluginDayData, PluginConfigData } from '@/sdk'
 
 export type DayStatus = number | null
 
+export type StreakType = 'daily' | 'weekly' | 'monthly'
+
 export interface AreaEntry {
   area: string
   topics: string[]
@@ -18,6 +20,10 @@ export interface AreaConfig {
   topics: string[]
   hasTopics?: boolean
   color?: string
+  // Goal configuration
+  streakType?: StreakType  // Default: 'daily'
+  targetFrequency?: number // For weekly/monthly: how many times (e.g., 2 = 2x per week)
+  trackStreaks?: boolean   // Default: true - whether to track streaks for this area
 }
 
 export interface ProductivityDayData extends PluginDayData {

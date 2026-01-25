@@ -4,6 +4,8 @@
 
 import type { PluginDayData, PluginConfigData } from '@/sdk'
 
+export type StreakType = 'daily' | 'weekly' | 'monthly'
+
 export interface SubjectEntry {
   subject: string
   topics: string[]
@@ -16,6 +18,10 @@ export interface SubjectConfig {
   topics: string[]
   hasTopics?: boolean // If false, subject doesn't need topics (default: true)
   color?: string
+  // Goal configuration
+  streakType?: StreakType  // Default: 'daily'
+  targetFrequency?: number // For weekly/monthly: how many times (e.g., 2 = 2x per week)
+  trackStreaks?: boolean   // Default: false - whether to track streaks for this subject
 }
 
 export interface StudyDayData extends PluginDayData {

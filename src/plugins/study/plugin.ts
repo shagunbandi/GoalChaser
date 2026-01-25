@@ -4,29 +4,31 @@
  * Track study hours spent per day across different subjects and topics.
  */
 
-import type { Plugin, PluginAnalyticsChartData } from '@/sdk'
-import { calculateStreak, calculateSum, generateDateRange } from '@/sdk'
+import type { Plugin, PluginQuickStats, PluginPeriodInsights } from '@/sdk'
+import { generateDateRange } from '@/sdk'
 import { StudyDataProvider } from './data-provider'
 import { StudyDetailProviderImpl } from './detail-provider'
 import StudyPage from './pages/StudyPage'
 import type { StudyDayData, StudyConfig } from './types'
 import { buildPluginUrl } from '@/lib/plugin-url-utils'
+import {
+  calculateSubjectStreaks,
+  calculateAllTimeTotal,
+  countUniqueSubjects,
+  calculatePeriodTotal,
+  calculatePeriodAverage,
+  buildSubjectBreakdown,
+  formatHours,
+  calculateAvgHoursPerDay,
+  calculateAvgHoursPerWeek,
+  calculateAvgHoursPerMonth,
+} from './insights-utils'
 
 // Helper to get total hours for a day
 function getDayHours(dayData: StudyDayData | undefined): number {
   if (!dayData) return 0
   const subjectHours = dayData.subjects?.reduce((sum, entry) => sum + (entry.hours || 0), 0) || 0
   return subjectHours > 0 ? subjectHours : (dayData.directHours || 0)
-}
-
-// Helper to format hours
-function formatHours(hours: number): string {
-  if (hours === 0) return '0h'
-  const totalMinutes = Math.round(hours * 60)
-  const h = Math.floor(totalMinutes / 60)
-  const m = totalMinutes % 60
-  if (m === 0) return `${h}h`
-  return `${h}h ${m}m`
 }
 
 export const StudyPlugin: Plugin<StudyDayData, StudyConfig> = {
@@ -132,140 +134,134 @@ export const StudyPlugin: Plugin<StudyDayData, StudyConfig> = {
     },
   },
 
-  // Analytics integration
-  analytics: {
-    getAnalyticsData: (startDate, endDate, data) => {
-      const charts: PluginAnalyticsChartData[] = []
-      const dates = generateDateRange(startDate, endDate)
-
-      // Calculate totals
-      const totalHours = calculateSum(data, getDayHours)
-      const daysStudied = Object.values(data).filter(d => getDayHours(d) > 0).length
-
-      // Calculate streak (consecutive study days)
-      const studyStreak = calculateStreak(data, (d) => getDayHours(d) > 0)
-
-      // Calculate daily hours for heatmap
-      const dailyHours = dates.map(date => getDayHours(data[date]))
-
-      // Calculate subject statistics
-      const subjectStats: Record<string, { hours: number; days: number; topics: Set<string> }> = {}
+  // Insights integration (new system)
+  insights: {
+    getQuickStats: (allData, config) => {
+      // Calculate streaks per subject with config
+      const subjectStreaks = calculateSubjectStreaks(allData, config?.subjects)
       
-      Object.values(data).forEach(dayData => {
-        if (dayData.subjects) {
-          dayData.subjects.forEach(entry => {
-            const subject = entry.subject
-            if (!subjectStats[subject]) {
-              subjectStats[subject] = { hours: 0, days: 0, topics: new Set() }
-            }
-            subjectStats[subject].hours += entry.hours || 0
-            subjectStats[subject].days++
-            if (entry.topics) {
-              entry.topics.forEach(topic => subjectStats[subject].topics.add(topic))
-            }
-          })
-        }
-      })
-
-      const uniqueSubjects = Object.keys(subjectStats).length
-      const uniqueTopics = Object.values(subjectStats).reduce((sum, s) => sum + s.topics.size, 0)
-
-      // Metric cards
-      if (totalHours > 0 || daysStudied > 0) {
-        charts.push({
-          chartType: 'metric',
-          title: 'Total Study Hours',
-          metricData: {
+      // Calculate all-time metrics
+      const totalDays = Object.keys(allData).filter(
+        date => allData[date]?.subjects?.length || allData[date]?.directHours
+      ).length
+      const totalHours = calculateAllTimeTotal(allData)
+      const totalSubjects = countUniqueSubjects(allData)
+      const avgHoursPerDay = calculateAvgHoursPerDay(allData)
+      const avgHoursPerWeek = calculateAvgHoursPerWeek(allData)
+      const avgHoursPerMonth = calculateAvgHoursPerMonth(allData)
+      
+      const stats: PluginQuickStats = {
+        streaks: subjectStreaks,
+        metrics: [
+          {
+            label: 'Total Days Studied',
+            value: totalDays,
+            subtitle: 'Days with data',
+            icon: '📅',
+            color: '#A855F7',
+          },
+          {
             label: 'Total Hours',
             value: formatHours(totalHours),
+            subtitle: 'All-time total',
+            icon: '📚',
+            color: '#8B5CF6',
+          },
+          {
+            label: 'Subjects Covered',
+            value: totalSubjects,
+            subtitle: 'Unique subjects',
+            icon: '📖',
+            color: '#7C3AED',
+          },
+          {
+            label: 'Average Hours',
+            value: {
+              daily: formatHours(avgHoursPerDay),
+              weekly: formatHours(avgHoursPerWeek),
+              monthly: formatHours(avgHoursPerMonth),
+            },
+            subtitle: 'Study time averages',
+            icon: '📊',
+            color: '#9333EA',
+          },
+        ],
+      }
+      
+      return stats
+    },
+    
+    getPeriodInsights: (startDate, endDate, data, config) => {
+      const dates = generateDateRange(startDate, endDate)
+      
+      // Summary metrics
+      const totalHours = calculatePeriodTotal(data)
+      const avgHoursPerDay = calculatePeriodAverage(data)
+      const daysStudied = Object.keys(data).filter(
+        date => data[date]?.subjects?.length || data[date]?.directHours
+      ).length
+      
+      // Calculate period-specific averages
+      const avgHoursPerWeek = calculateAvgHoursPerWeek(data)
+      const avgHoursPerMonth = calculateAvgHoursPerMonth(data)
+      const uniqueSubjects = countUniqueSubjects(data)
+      
+      const insights: PluginPeriodInsights = {
+        summary: [
+          {
+            label: 'Total Hours',
+            value: formatHours(totalHours),
+            subtitle: `${daysStudied} days studied`,
             icon: '📚',
             color: '#A855F7',
-            subtitle: `Over ${dates.length} days`,
           },
-        })
-
-        charts.push({
-          chartType: 'metric',
-          title: 'Days Studied',
-          metricData: {
+          {
             label: 'Days Studied',
             value: daysStudied,
+            subtitle: `${((daysStudied / dates.length) * 100).toFixed(0)}% of period`,
             icon: '📅',
             color: '#8B5CF6',
-            subtitle: `Out of ${dates.length} days`,
           },
-        })
-
-        // Average hours per study day
-        const avgHoursPerStudyDay = daysStudied > 0 ? totalHours / daysStudied : 0
-        charts.push({
-          chartType: 'metric',
-          title: 'Avg Hours/Day',
-          metricData: {
-            label: 'Avg per Day',
-            value: formatHours(avgHoursPerStudyDay),
-            icon: '⏱️',
+          {
+            label: 'Subjects Covered',
+            value: uniqueSubjects,
+            subtitle: 'Unique subjects',
+            icon: '📖',
             color: '#7C3AED',
-            subtitle: 'When studying',
           },
-        })
-
-        // Subjects tracked
-        if (uniqueSubjects > 0) {
-          charts.push({
-            chartType: 'metric',
-            title: 'Subjects',
-            metricData: {
-              label: 'Subjects Studied',
-              value: uniqueSubjects,
-              icon: '📖',
-              color: '#6366F1',
-              subtitle: `${uniqueTopics} topics covered`,
-            },
-          })
-        }
-      }
-
-      // Streak display
-      if (studyStreak.longest > 0) {
-        charts.push({
-          chartType: 'streak',
-          title: 'Study Streak',
-          size: 'medium',
-          streakData: {
-            currentStreak: studyStreak.current,
-            longestStreak: studyStreak.longest,
-            unit: 'days',
-            icon: '🔥',
-            color: '#A855F7',
-            description: 'Consecutive study days',
+          {
+            label: 'Avg Hours/Day',
+            value: formatHours(avgHoursPerDay),
+            subtitle: daysStudied > 0 ? 'Per study day' : 'N/A',
+            icon: '⏱️',
+            color: '#9333EA',
           },
-        })
-      }
-
-      // Heat map: Daily study hours
-      if (dailyHours.some(h => h > 0)) {
-        const heatmapData: Record<string, number> = {}
-        dates.forEach((date, index) => {
-          if (dailyHours[index] > 0) {
-            heatmapData[date] = dailyHours[index]
-          }
-        })
-
-        charts.push({
-          chartType: 'heatmap',
-          title: 'Study Activity',
-          size: 'small',
-          heatmapData,
-          dateRange: {
-            start: startDate,
-            end: endDate,
+          {
+            label: 'Avg Hours/Week',
+            value: formatHours(avgHoursPerWeek),
+            subtitle: 'Per week',
+            icon: '📊',
+            color: '#7E22CE',
           },
-        })
+          {
+            label: 'Avg Hours/Month',
+            value: formatHours(avgHoursPerMonth),
+            subtitle: 'Per month',
+            icon: '📈',
+            color: '#6B21A8',
+          },
+        ],
+        breakdown: buildSubjectBreakdown(data),
       }
-
-      return charts
+      
+      return insights
     },
+    
+    defaultTimeRanges: [
+      { label: 'Last 7 days', days: 7, id: 'last-7' },
+      { label: 'Last 30 days', days: 30, id: 'last-30' },
+      { label: 'Last 90 days', days: 90, id: 'last-90' },
+    ],
   },
 }
 

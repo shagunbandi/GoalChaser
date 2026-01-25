@@ -87,9 +87,10 @@ export default function GoalLayout({ children }: GoalLayoutProps) {
   }
 
   // Determine current plugin and year from URL
-  // Check if we're on the analytics route (separate from catch-all plugin route)
+  // Check if we're on the insights or analytics route (separate from catch-all plugin route)
+  const isInsightsRoute = pathname?.endsWith('/insights')
   const isAnalyticsRoute = pathname?.endsWith('/analytics')
-  const currentPlugin = isAnalyticsRoute ? 'analytics' : (pluginSegments[0] || 'calendar')
+  const currentPlugin = isInsightsRoute ? 'insights' : isAnalyticsRoute ? 'analytics' : (pluginSegments[0] || 'calendar')
   const currentYear =
     pluginSegments[1] && !isNaN(parseInt(pluginSegments[1]))
       ? parseInt(pluginSegments[1])

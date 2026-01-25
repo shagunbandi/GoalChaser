@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { HeaderRenderer } from '@/components/features/year-view/renderers/HeaderRenderer'
 import { SubjectManager } from './SubjectManager'
-import type { StudyDayData, SubjectConfig } from '../types'
+import type { StudyDayData, SubjectConfig, StreakType } from '../types'
 
 interface StudyHeaderProps {
   year: number
@@ -20,6 +20,8 @@ interface StudyHeaderProps {
   onRemoveTopic?: (subjectId: string, topic: string) => void
   onUpdateTopic?: (subjectId: string, oldTopic: string, newTopic: string) => void
   isTopicInUse?: (subjectId: string, topic: string) => boolean
+  onUpdateSubjectGoal?: (subjectId: string, streakType: StreakType, targetFrequency?: number) => void
+  onToggleTrackStreaks?: (subjectId: string) => void
 }
 
 export function StudyHeader({
@@ -37,6 +39,8 @@ export function StudyHeader({
   onRemoveTopic,
   onUpdateTopic,
   isTopicInUse,
+  onUpdateSubjectGoal,
+  onToggleTrackStreaks,
 }: StudyHeaderProps) {
   const [showSubjectManager, setShowSubjectManager] = useState(false)
 
@@ -124,6 +128,8 @@ export function StudyHeader({
           onRemoveTopic={onRemoveTopic!}
           onUpdateTopic={onUpdateTopic!}
           isTopicInUse={isTopicInUse!}
+          onUpdateSubjectGoal={onUpdateSubjectGoal}
+          onToggleTrackStreaks={onToggleTrackStreaks}
           onClose={() => setShowSubjectManager(false)}
         />
       )}
