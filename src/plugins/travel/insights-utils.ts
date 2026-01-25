@@ -1,0 +1,342 @@
+/**
+ * Travel Insights Utilities
+ * 
+ * Helper functions for calculating travel insights
+ */
+
+import type { TravelDayData, TravelPlan } from './types'
+import type { BreakdownItem } from '@/sdk'
+
+// ============================================================================
+// Trip Calculation Functions
+// ============================================================================
+
+/**
+ * Get all unique trips from data (excluding sub-trips)
+ */
+export function getAllTrips(allData: Record<string, TravelDayData>): TravelPlan[] {
+  const tripMap = new Map<string, TravelPlan>()
+  
+  Object.values(allData).forEach(dayData => {
+    if (dayData?.travelPlans) {
+      dayData.travelPlans.forEach(trip => {
+        // Skip sub-trips (they have a parentTravelId)
+        if (trip.parentTravelId) {
+          return
+        }
+        
+        // Use a combination of title, startDate, and destination as unique key
+        const key = `${trip.title}-${trip.startDate}-${trip.destination || ''}`
+        if (!tripMap.has(key)) {
+          tripMap.set(key, trip)
+        }
+      })
+    }
+  })
+  
+  return Array.from(tripMap.values())
+}
+
+/**
+ * Count total unique trips
+ */
+export function countTotalTrips(allData: Record<string, TravelDayData>): number {
+  return getAllTrips(allData).length
+}
+
+/**
+ * Count unique destinations (places)
+ */
+export function countUniquePlaces(allData: Record<string, TravelDayData>): number {
+  const placeSet = new Set<string>()
+  
+  Object.values(allData).forEach(dayData => {
+    if (dayData?.travelPlans) {
+      dayData.travelPlans.forEach(trip => {
+        if (trip.placeId) {
+          placeSet.add(trip.placeId)
+        } else if (trip.destination) {
+          placeSet.add(trip.destination)
+        }
+      })
+    }
+  })
+  
+  return placeSet.size
+}
+
+/**
+ * Calculate total days traveled
+ */
+export function calculateTotalDaysTraveled(allData: Record<string, TravelDayData>): number {
+  const trips = getAllTrips(allData)
+  
+  return trips.reduce((total, trip) => {
+    const start = new Date(trip.startDate)
+    const end = new Date(trip.endDate)
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    return total + days
+  }, 0)
+}
+
+/**
+ * Get top 3 most visited destinations (excluding sub-trips, deduplicated by trip ID)
+ */
+export function getTopVisitedDestinations(
+  allData: Record<string, TravelDayData>
+): Array<{ name: string; visits: number; days: number; rank: number }> {
+  const destinationMap = new Map<string, { visits: Set<string>; days: number }>()
+  
+  // First pass: collect unique trip IDs per destination
+  Object.values(allData).forEach(dayData => {
+    if (dayData?.travelPlans) {
+      dayData.travelPlans.forEach(trip => {
+        // Skip sub-trips (they have a parentTravelId)
+        if (trip.parentTravelId) {
+          return
+        }
+        
+        const dest = trip.destination || trip.title
+        
+        if (!destinationMap.has(dest)) {
+          destinationMap.set(dest, { visits: new Set(), days: 0 })
+        }
+        
+        const stat = destinationMap.get(dest)!
+        // Add trip ID to Set (automatically deduplicates)
+        stat.visits.add(trip.id)
+      })
+    }
+  })
+  
+  if (destinationMap.size === 0) return []
+  
+  // Second pass: calculate total days per destination
+  const processedTrips = new Set<string>()
+  Object.values(allData).forEach(dayData => {
+    if (dayData?.travelPlans) {
+      dayData.travelPlans.forEach(trip => {
+        // Skip sub-trips and already processed trips
+        if (trip.parentTravelId || processedTrips.has(trip.id)) {
+          return
+        }
+        
+        processedTrips.add(trip.id)
+        const dest = trip.destination || trip.title
+        const stat = destinationMap.get(dest)
+        
+        if (stat) {
+          // Calculate trip duration in days
+          const start = new Date(trip.startDate)
+          const end = new Date(trip.endDate)
+          const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+          stat.days += days
+        }
+      })
+    }
+  })
+  
+  // Convert to array and sort by visits (descending), then by days (descending)
+  const sorted = Array.from(destinationMap.entries())
+    .map(([name, stat]) => ({
+      name,
+      visits: stat.visits.size,
+      days: stat.days,
+    }))
+    .sort((a, b) => {
+      // Sort by visits first, then by days
+      if (b.visits !== a.visits) return b.visits - a.visits
+      return b.days - a.days
+    })
+  
+  // Return top 3 with rank
+  return sorted.slice(0, 3).map((dest, index) => ({
+    ...dest,
+    rank: index + 1,
+  }))
+}
+
+/**
+ * Get most visited destination (legacy - kept for compatibility)
+ */
+export function getMostVisitedDestination(
+  allData: Record<string, TravelDayData>
+): { name: string; visits: number; days: number } | null {
+  const top = getTopVisitedDestinations(allData)
+  return top.length > 0 ? top[0] : null
+}
+
+// ============================================================================
+// Period Analysis Functions
+// ============================================================================
+
+/**
+ * Count trips in a specific period
+ */
+export function countTripsInPeriod(data: Record<string, TravelDayData>): number {
+  return getAllTrips(data).length
+}
+
+/**
+ * Calculate days traveled in period
+ */
+export function calculateDaysTraveledInPeriod(data: Record<string, TravelDayData>): number {
+  const dateSet = new Set<string>()
+  
+  Object.keys(data).forEach(date => {
+    if (data[date]?.travelPlans && data[date].travelPlans!.length > 0) {
+      dateSet.add(date)
+    }
+  })
+  
+  return dateSet.size
+}
+
+/**
+ * Calculate average trip duration
+ */
+export function calculateAverageTripDuration(data: Record<string, TravelDayData>): number {
+  const trips = getAllTrips(data)
+  
+  if (trips.length === 0) return 0
+  
+  const totalDays = trips.reduce((total, trip) => {
+    const start = new Date(trip.startDate)
+    const end = new Date(trip.endDate)
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    return total + days
+  }, 0)
+  
+  return Math.round(totalDays / trips.length)
+}
+
+/**
+ * Build destination breakdown including sub-trips (deduplicated by trip ID)
+ */
+export function buildDestinationBreakdown(
+  data: Record<string, TravelDayData>
+): BreakdownItem[] {
+  // Build a map of all trips (both parent and sub-trips)
+  const tripMap = new Map<string, TravelPlan>()
+  
+  Object.values(data).forEach(dayData => {
+    if (dayData?.travelPlans) {
+      dayData.travelPlans.forEach(trip => {
+        if (!tripMap.has(trip.id)) {
+          tripMap.set(trip.id, trip)
+        }
+      })
+    }
+  })
+  
+  if (tripMap.size === 0) return []
+  
+  // Build parent-child relationships
+  const parentMap = new Map<string, TravelPlan[]>() // parentId -> children
+  const parentTrips: TravelPlan[] = []
+  
+  tripMap.forEach(trip => {
+    if (!trip.parentTravelId) {
+      parentTrips.push(trip)
+    } else {
+      if (!parentMap.has(trip.parentTravelId)) {
+        parentMap.set(trip.parentTravelId, [])
+      }
+      parentMap.get(trip.parentTravelId)!.push(trip)
+    }
+  })
+  
+  // Helper to calculate trip days
+  const getTripDays = (trip: TravelPlan): number => {
+    const start = new Date(trip.startDate)
+    const end = new Date(trip.endDate)
+    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  }
+  
+  // Build breakdown items with parent and sub-trip structure
+  const items: BreakdownItem[] = []
+  
+  // Count parent trips per destination
+  const destMap = new Map<string, { trips: TravelPlan[]; days: number }>()
+  
+  parentTrips.forEach(trip => {
+    const dest = trip.destination || trip.title
+    if (!destMap.has(dest)) {
+      destMap.set(dest, { trips: [], days: 0 })
+    }
+    const stat = destMap.get(dest)!
+    stat.trips.push(trip)
+    stat.days += getTripDays(trip)
+  })
+  
+  // Sort destinations by trip count
+  const sortedDests = Array.from(destMap.entries()).sort((a, b) => b[1].trips.length - a[1].trips.length)
+  
+  // Calculate max count for percentage
+  const maxCount = Math.max(...sortedDests.map(([_, stat]) => stat.trips.length))
+  
+  // Build items with sub-trips
+  sortedDests.forEach(([dest, stat]) => {
+    const count = stat.trips.length
+    
+    // Add parent destination item
+    items.push({
+      label: dest,
+      value: `${count} trip${count !== 1 ? 's' : ''}`,
+      count,
+      details: `${stat.days} day${stat.days !== 1 ? 's' : ''}`,
+      percentage: maxCount > 0 ? (count / maxCount) * 100 : 0,
+      color: '#3B82F6',
+    })
+    
+    // Add sub-trips for this destination
+    stat.trips.forEach(parentTrip => {
+      const subTrips = parentMap.get(parentTrip.id) || []
+      subTrips.forEach(subTrip => {
+        const subDest = subTrip.destination || subTrip.title
+        const subDays = getTripDays(subTrip)
+        
+        items.push({
+          label: subDest,
+          value: '1 trip',
+          count: 1,
+          details: `${subDays} day${subDays !== 1 ? 's' : ''}`,
+          percentage: maxCount > 0 ? (1 / maxCount) * 100 : 0,
+          color: '#60A5FA', // Lighter blue for sub-trips
+          isSubItem: true, // Mark as sub-item for indentation
+        })
+      })
+    })
+  })
+  
+  return items
+}
+
+/**
+ * Calculate trips per month average
+ */
+export function calculateTripsPerMonth(allData: Record<string, TravelDayData>): number {
+  const trips = getAllTrips(allData)
+  
+  if (trips.length === 0) return 0
+  
+  // Get unique months with trips
+  const monthSet = new Set<string>()
+  
+  trips.forEach(trip => {
+    const date = new Date(trip.startDate)
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    monthSet.add(monthKey)
+  })
+  
+  return monthSet.size > 0 ? trips.length / monthSet.size : 0
+}
+
+/**
+ * Count trips with attachments
+ */
+export function countTripsWithAttachments(allData: Record<string, TravelDayData>): number {
+  const trips = getAllTrips(allData)
+  
+  return trips.filter(trip => trip.files && trip.files.length > 0).length
+}

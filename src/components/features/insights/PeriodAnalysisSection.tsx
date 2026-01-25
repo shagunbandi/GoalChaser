@@ -83,11 +83,16 @@ export function PeriodAnalysisSection({
             </h3>
             <div className="space-y-3">
               {breakdown.map((item, index) => (
-                <div key={`${item.label}-${index}`} className="space-y-2">
+                <div 
+                  key={`${item.label}-${index}`} 
+                  className={`space-y-2 ${item.isSubItem ? 'ml-8' : ''}`}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {item.icon && <span>{item.icon}</span>}
-                      <span className="font-medium text-white/90">{item.label}</span>
+                      <span className={`font-medium ${item.isSubItem ? 'text-white/70 text-sm' : 'text-white/90'}`}>
+                        {item.label}
+                      </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-white/70">

@@ -1,7 +1,6 @@
 export { TravelHeader } from './TravelHeader'
 export { YearView } from './YearView'
 export { TravelMonthView } from './TravelMonthView'
-export { TravelCard } from './TravelCard'
 export { TravelForm } from './TravelForm'
 export { TravelManager } from './TravelManager'
 export { TravelWizardFlow } from './TravelWizardFlow'

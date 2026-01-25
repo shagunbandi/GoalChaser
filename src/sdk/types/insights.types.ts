@@ -122,6 +122,9 @@ export interface BreakdownItem {
   
   /** Color for visualization (hex format) */
   color?: string
+  
+  /** Mark as sub-item for indentation */
+  isSubItem?: boolean
 }
 
 /**

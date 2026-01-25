@@ -153,6 +153,8 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
         onUpdateTravel={handleUpdateTravel}
         onDeleteTravel={handleDeleteTravel}
         allTravels={allTravels}
+        userId={userId}
+        goalId={goalId}
       />
 
       {/* Content - shows inline loader when switching years */}

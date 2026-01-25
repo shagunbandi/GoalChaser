@@ -1,12 +1,24 @@
 import React from 'react'
-import type { Plugin, PluginAnalyticsChartData, PluginAISchema, AIWizardFlowProps } from '@/sdk'
-import { generateDateRange, formatDateLabel } from '@/sdk'
+import type { Plugin, PluginQuickStats, PluginPeriodInsights, PluginAISchema, AIWizardFlowProps } from '@/sdk'
+import { generateDateRange } from '@/sdk'
 import { TravelDataProvider } from './data-provider'
 import { TravelDetailProviderImpl } from './detail-provider'
 import TravelPage from './pages/TravelPage'
 import { TravelWizardFlow } from './components'
 import type { TravelPlan, TravelDayData } from './types'
 import { buildPluginUrl } from '@/lib/plugin-url-utils'
+import {
+  countTotalTrips,
+  countUniquePlaces,
+  calculateTotalDaysTraveled,
+  getMostVisitedDestination,
+  getTopVisitedDestinations,
+  countTripsInPeriod,
+  calculateDaysTraveledInPeriod,
+  calculateAverageTripDuration,
+  buildDestinationBreakdown,
+  calculateTripsPerMonth,
+} from './insights-utils'
 
 export const TravelPlugin: Plugin = {
   id: 'travel',
@@ -182,235 +194,108 @@ export const TravelPlugin: Plugin = {
     },
   },
 
-  // Analytics integration
-  analytics: {
-    getAnalyticsData: (startDate, endDate, data) => {
-      const charts: PluginAnalyticsChartData[] = []
-      const dates = generateDateRange(startDate, endDate)
-
-      // Extract unique travel plans from day-based data
-      const allPlans: TravelPlan[] = []
-      Object.values(data).forEach(dayData => {
-        const plans: TravelPlan[] = dayData?.travelPlans || []
-        if (Array.isArray(plans)) {
-          plans.forEach(plan => {
-            if (!allPlans.find(p => p.id === plan.id)) {
-              allPlans.push(plan)
-            }
-          })
-        }
-      })
-
-      // Count travel days in range
-      let travelDaysCount = 0
-      dates.forEach(date => {
-        const isTravel = allPlans.some(plan => 
-          date >= plan.startDate && date <= plan.endDate
-        )
-        if (isTravel) travelDaysCount++
-      })
-
-      // Calculate total days for all trips
-      const totalTripDays = allPlans.reduce((sum, plan) => {
-        const start = new Date(plan.startDate)
-        const end = new Date(plan.endDate)
-        return sum + Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-      }, 0)
-
-      // Metric cards
-      charts.push({
-        chartType: 'metric',
-        title: 'Total Trips',
-        metricData: {
-          label: 'Total Trips',
-          value: allPlans.length,
-          icon: '✈️',
-          color: '#F97316',
-          subtitle: 'In date range',
-        },
-      })
-
-      charts.push({
-        chartType: 'metric',
-        title: 'Travel Days',
-        metricData: {
-          label: 'Days Traveling',
-          value: travelDaysCount,
-          unit: 'days',
-          icon: '🗓️',
-          color: '#EA580C',
-          subtitle: `Out of ${dates.length} days`,
-        },
-      })
-
-      if (allPlans.length > 0) {
-        // Average trip duration
-        const avgTripDuration = totalTripDays / allPlans.length
-        charts.push({
-          chartType: 'metric',
-          title: 'Avg Trip Duration',
-          metricData: {
-            label: 'Avg Duration',
-            value: avgTripDuration.toFixed(1),
-            unit: 'days',
-            icon: '⏱️',
-            color: '#D97706',
-            subtitle: 'Per trip',
-          },
-        })
-
-        // Unique destinations
-        const uniqueDestinations = new Set(allPlans.map(p => p.destination || p.title))
-        charts.push({
-          chartType: 'metric',
-          title: 'Destinations',
-          metricData: {
-            label: 'Destinations',
-            value: uniqueDestinations.size,
-            icon: '🗺️',
-            color: '#F59E0B',
-            subtitle: 'Unique places',
-          },
-        })
-      }
-
-      if (allPlans.length === 0) {
-        return charts
-      }
-
-      // Calculate weekday vs weekend travel days
-      let weekdayTravelDays = 0
-      let weekendTravelDays = 0
-      const heatmapData: Record<string, number> = {}
+  // Insights integration (new system)
+  insights: {
+    getQuickStats: (allData) => {
+      // Calculate all-time metrics
+      const totalTrips = countTotalTrips(allData)
+      const uniquePlaces = countUniquePlaces(allData)
+      const totalDays = calculateTotalDaysTraveled(allData)
+      const topDestinations = getTopVisitedDestinations(allData)
+      const tripsPerMonth = calculateTripsPerMonth(allData)
       
-      dates.forEach(date => {
-        const isTravel = allPlans.some(plan => 
-          date >= plan.startDate && date <= plan.endDate
-        )
-        if (isTravel) {
-          heatmapData[date] = 1
-          const dayOfWeek = new Date(date).getDay()
-          if (dayOfWeek === 0 || dayOfWeek === 6) {
-            weekendTravelDays++
-          } else {
-            weekdayTravelDays++
-          }
-        }
-      })
-
-      // Weekday vs Weekend metrics
-      charts.push({
-        chartType: 'metric',
-        title: 'Weekday Travel',
-        metricData: {
-          label: 'Weekday Days',
-          value: weekdayTravelDays,
-          unit: 'days',
-          icon: '💼',
-          color: '#3B82F6',
-          subtitle: 'Mon-Fri travel',
-        },
-      })
-
-      charts.push({
-        chartType: 'metric',
-        title: 'Weekend Travel',
-        metricData: {
-          label: 'Weekend Days',
-          value: weekendTravelDays,
-          unit: 'days',
-          icon: '🏖️',
-          color: '#8B5CF6',
-          subtitle: 'Sat-Sun travel',
-        },
-      })
-
-      // Longest and shortest trip
-      const tripDurations = allPlans.map(plan => {
-        const start = new Date(plan.startDate)
-        const end = new Date(plan.endDate)
-        return {
-          name: plan.title || plan.destination || 'Trip',
-          days: Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-        }
-      })
-
-      if (tripDurations.length > 0) {
-        const longestTrip = tripDurations.reduce((max, t) => t.days > max.days ? t : max, tripDurations[0])
-        const shortestTrip = tripDurations.reduce((min, t) => t.days < min.days ? t : min, tripDurations[0])
-
-        charts.push({
-          chartType: 'metric',
-          title: 'Longest Trip',
-          metricData: {
-            label: 'Longest Trip',
-            value: longestTrip.days,
-            unit: 'days',
-            icon: '🏆',
-            color: '#10B981',
-            subtitle: longestTrip.name,
+      const rankEmojis = ['🥇', '🥈', '🥉']
+      const rankColors = ['#F59E0B', '#D97706', '#B45309']
+      
+      const stats: PluginQuickStats = {
+        metrics: [
+          {
+            label: 'Total Trips',
+            value: totalTrips,
+            subtitle: 'All-time',
+            icon: '🌍',
+            color: '#F97316',
           },
-        })
-
-        if (allPlans.length > 1) {
-          charts.push({
-            chartType: 'metric',
-            title: 'Shortest Trip',
-            metricData: {
-              label: 'Shortest Trip',
-              value: shortestTrip.days,
-              unit: 'days',
-              icon: '⚡',
-              color: '#F59E0B',
-              subtitle: shortestTrip.name,
-            },
-          })
-        }
-      }
-
-      // Bar chart: Travel by month
-      const monthlyTravel: Record<string, number> = {}
-      dates.forEach(date => {
-        const isTravel = allPlans.some(plan => 
-          date >= plan.startDate && date <= plan.endDate
-        )
-        if (isTravel) {
-          const monthKey = date.substring(0, 7) // YYYY-MM
-          const monthName = new Date(date).toLocaleDateString('en-US', { month: 'short' })
-          monthlyTravel[monthName] = (monthlyTravel[monthName] || 0) + 1
-        }
-      })
-
-      if (Object.keys(monthlyTravel).length > 1) {
-        charts.push({
-          chartType: 'bar',
-          title: 'Travel Days by Month',
-          size: 'medium',
-          data: {
-            labels: Object.keys(monthlyTravel),
-            datasets: [{
-              label: 'Days',
-              data: Object.values(monthlyTravel),
-              color: '#F97316',
-            }],
+          {
+            label: 'Unique Places',
+            value: uniquePlaces,
+            subtitle: 'Destinations visited',
+            icon: '📍',
+            color: '#EA580C',
           },
-        })
+          {
+            label: 'Days Traveled',
+            value: totalDays,
+            subtitle: 'Total days',
+            icon: '🗓️',
+            color: '#D97706',
+          },
+          // Top 3 visited destinations
+          ...topDestinations.map((dest, index) => ({
+            label: index === 0 ? 'Most Visited' : `${index + 1}${index === 1 ? 'nd' : 'rd'} Most Visited`,
+            value: dest.name,
+            subtitle: `${dest.visits} visit${dest.visits !== 1 ? 's' : ''} • ${dest.days} day${dest.days !== 1 ? 's' : ''}`,
+            icon: rankEmojis[index],
+            color: rankColors[index],
+          })),
+        ],
       }
-
-      // Heat map: Days traveled
-      charts.push({
-        chartType: 'heatmap',
-        title: 'Travel Activity',
-        size: 'small',
-        heatmapData,
-        dateRange: {
-          start: startDate,
-          end: endDate,
-        },
-      })
-
-      return charts
+      
+      return stats
     },
+    
+    getPeriodInsights: (startDate, endDate, data) => {
+      const dates = generateDateRange(startDate, endDate)
+      
+      // Calculate period metrics
+      const tripsInPeriod = countTripsInPeriod(data)
+      const daysTraveled = calculateDaysTraveledInPeriod(data)
+      const uniquePlaces = countUniquePlaces(data)
+      const avgDuration = calculateAverageTripDuration(data)
+      
+      const insights: PluginPeriodInsights = {
+        summary: [
+          {
+            label: 'Trips',
+            value: tripsInPeriod,
+            subtitle: 'In this period',
+            icon: '🌍',
+            color: '#F97316',
+          },
+          {
+            label: 'Days Traveled',
+            value: daysTraveled,
+            subtitle: `${((daysTraveled / dates.length) * 100).toFixed(0)}% of period`,
+            icon: '📅',
+            color: '#EA580C',
+          },
+          {
+            label: 'Unique Places',
+            value: uniquePlaces,
+            subtitle: 'Destinations',
+            icon: '📍',
+            color: '#D97706',
+          },
+          {
+            label: 'Avg Trip Duration',
+            value: avgDuration > 0 ? `${avgDuration} day${avgDuration !== 1 ? 's' : ''}` : 'N/A',
+            subtitle: 'Per trip',
+            icon: '⏱️',
+            color: '#F59E0B',
+          },
+        ],
+        breakdown: buildDestinationBreakdown(data),
+      }
+      
+      return insights
+    },
+    
+    defaultTimeRanges: [
+      { label: 'Last 30 days', days: 30, id: 'last-30' },
+      { label: 'Last 90 days', days: 90, id: 'last-90' },
+      { label: 'Last 6 months', days: 180, id: 'last-180' },
+      { label: 'Last year', days: 365, id: 'last-365' },
+    ],
   },
 
   // AI integration for natural language data extraction

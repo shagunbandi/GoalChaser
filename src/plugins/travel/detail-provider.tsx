@@ -153,6 +153,7 @@ function SubTripCard({
   allTravels,
   userId,
   goalId,
+  showDayProgress = true,
 }: {
   subTrip: TravelPlan
   currentDate: string
@@ -162,6 +163,7 @@ function SubTripCard({
   allTravels?: TravelPlan[]
   userId?: string
   goalId?: string
+  showDayProgress?: boolean
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const { totalDays, currentDay } = getTripStats(subTrip, currentDate)
@@ -202,7 +204,10 @@ function SubTripCard({
                 color: subColor,
               }}
             >
-              Day {currentDay}/{totalDays}
+              {showDayProgress 
+                ? `Day ${currentDay}/${totalDays}`
+                : `${totalDays} day${totalDays !== 1 ? 's' : ''}`
+              }
             </span>
           </div>
           {subTrip.destination && (
@@ -271,6 +276,7 @@ function TravelPlanCard({
   subTrips = [],
   userId,
   goalId,
+  showDayProgress = true,
 }: {
   plan: TravelPlan
   currentDate: string
@@ -280,6 +286,7 @@ function TravelPlanCard({
   subTrips?: TravelPlan[]
   userId?: string
   goalId?: string
+  showDayProgress?: boolean
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -375,7 +382,10 @@ function TravelPlanCard({
                   color: planColor,
                 }}
               >
-                Day {currentDay}/{totalDays}
+                {showDayProgress 
+                  ? `Day ${currentDay}/${totalDays}`
+                  : `${totalDays} day${totalDays !== 1 ? 's' : ''}`
+                }
               </span>
             </div>
             {plan.destination && (
@@ -528,6 +538,7 @@ function TravelPlanCard({
                 allTravels={allTravels}
                 userId={userId}
                 goalId={goalId}
+                showDayProgress={showDayProgress}
               />
             ))}
           </div>
@@ -717,3 +728,6 @@ export class TravelDetailProviderImpl
     )
   }
 }
+
+// Export components for reuse
+export { TravelPlanCard, SubTripCard }

@@ -4,7 +4,6 @@ import { useState } from 'react'
 import type { AIWizardFlowProps } from '@/sdk'
 import type { TravelDayData, TravelPlan } from '../types'
 import { TravelForm } from './TravelForm'
-import { TravelCard } from './TravelCard'
 
 interface TravelWizardFlowProps extends AIWizardFlowProps<TravelDayData, unknown> {}
 
@@ -296,10 +295,44 @@ export function TravelWizardFlow({
           </label>
           {travelPlans.map((plan, index) => (
             <div key={plan.id || index} className="group relative">
-              <TravelCard
-                travel={plan}
+              {/* Simple card for wizard - just shows the trip info */}
+              <div
                 onClick={() => handleEditPlan(plan, index)}
-              />
+                className="
+                  cursor-pointer
+                  p-4 rounded-xl
+                  border border-white/10 hover:border-white/20
+                  bg-white/[0.04] hover:bg-white/[0.06]
+                  transition-all duration-200
+                "
+                style={{
+                  background: `linear-gradient(135deg, ${plan.color || '#F97316'}15, ${plan.color || '#F97316'}05)`,
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0"
+                    style={{
+                      backgroundColor: `${plan.color || '#F97316'}40`,
+                    }}
+                  >
+                    ✈️
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-semibold text-white/90 truncate">
+                      {plan.title}
+                    </h4>
+                    {plan.destination && (
+                      <p className="text-xs text-white/50 mt-0.5 truncate flex items-center gap-1">
+                        <span>📍</span> {plan.destination}
+                      </p>
+                    )}
+                    <p className="text-xs text-white/40 mt-1">
+                      {new Date(plan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} → {new Date(plan.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+              </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation()
