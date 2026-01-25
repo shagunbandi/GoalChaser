@@ -16,6 +16,18 @@ export interface TravelPlan extends ActivityItem {
     lng: number
   }
   placeAddress?: string
+  // File attachments
+  files?: TravelFile[]
+}
+
+export interface TravelFile {
+  id: string
+  name: string
+  size: number
+  type: string
+  url: string
+  uploadedAt: string
+  storagePath: string
 }
 
 export interface TravelPlanInput {

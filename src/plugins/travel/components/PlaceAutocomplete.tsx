@@ -47,12 +47,14 @@ export function PlaceAutocomplete({
   const [isLoading, setIsLoading] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [hasUserTyped, setHasUserTyped] = useState(false) // Track if user has typed
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Fetch suggestions with debouncing
   useEffect(() => {
-    if (!value || value.trim().length < 2) {
+    // Only fetch if user has actually typed
+    if (!hasUserTyped || !value || value.trim().length < 2) {
       setSuggestions([])
       return
     }
@@ -87,7 +89,7 @@ export function PlaceAutocomplete({
         clearTimeout(debounceTimer.current)
       }
     }
-  }, [value])
+  }, [value, hasUserTyped])
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -105,6 +107,7 @@ export function PlaceAutocomplete({
   }, [])
 
   const handleSelectPlace = async (suggestion: PlaceSuggestion) => {
+    setHasUserTyped(false) // Reset typing flag
     onChange(suggestion.description)
     setShowSuggestions(false)
     setSuggestions([])
@@ -165,9 +168,17 @@ export function PlaceAutocomplete({
       <input
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          setHasUserTyped(true) // Mark that user has typed
+          onChange(e.target.value)
+        }}
         onKeyDown={handleKeyDown}
-        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+        onFocus={() => {
+          // Only show suggestions on focus if user has typed AND there are suggestions
+          if (hasUserTyped && suggestions.length > 0) {
+            setShowSuggestions(true)
+          }
+        }}
         placeholder={placeholder}
         disabled={disabled}
         className={className}

@@ -3,12 +3,15 @@
 import { useMemo } from 'react'
 import type { PluginPageProps } from '@/sdk'
 import { usePluginPage, LoadingState, NotFoundState, ContentLoader } from '@/sdk'
+import { useAuth } from '@/hooks/useAuth'
 import { TravelHeader, YearView, TravelMonthView } from '../components'
 import { enumerateDateRange } from '@/utils'
 import type { TravelPlan, TravelPlanInput, TravelDayData } from '../types'
 import { TravelPlugin } from '../plugin'
 
 export default function TravelPage({ params, year, month }: PluginPageProps) {
+  const { user } = useAuth()
+  const userId = user?.uid
   const {
     goal,
     goalId,
@@ -170,6 +173,7 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
           onDeleteTravel={handleDeleteTravel}
           onAddTravel={handleAddTravel}
           allTravels={allTravels}
+          userId={userId}
         />
       ) : (
         <YearView

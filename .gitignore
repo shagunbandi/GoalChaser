@@ -72,3 +72,9 @@ ui-debug.log
 
 # Firebase Emulator data (if persisted)
 .emulator-data/
+
+# Service Account Keys (NEVER commit these!)
+*-key.json
+service-account*.json
+secrets/
+gcs-key.json

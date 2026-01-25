@@ -6,6 +6,7 @@ import type { PluginDetailProvider } from '@/sdk'
 import { NotesField } from '@/sdk'
 import type { TravelDayData, TravelPlan, TravelPlanInput } from './types'
 import { TravelForm } from './components/TravelForm'
+import { FileUpload } from './components/FileUpload'
 
 interface TravelDetailContext {
   onEditTravel?: (travel: TravelPlan) => void | Promise<void>
@@ -13,6 +14,8 @@ interface TravelDetailContext {
   onAddTravel?: (travel: TravelPlanInput) => void | Promise<void>
   selectedDate?: string
   allTravels?: TravelPlan[]
+  userId?: string
+  goalId?: string
 }
 
 // Component for empty state with add travel option
@@ -141,6 +144,124 @@ function formatTravelDate(dateStr: string): string {
 }
 
 // Component for rendering a single travel plan with edit/delete
+function SubTripCard({
+  subTrip,
+  currentDate,
+  planColor,
+  onEdit,
+  onDelete,
+  allTravels,
+  userId,
+  goalId,
+}: {
+  subTrip: TravelPlan
+  currentDate: string
+  planColor: string
+  onEdit?: (travel: TravelPlan) => void
+  onDelete?: (travelId: string) => void
+  allTravels?: TravelPlan[]
+  userId?: string
+  goalId?: string
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const { totalDays, currentDay } = getTripStats(subTrip, currentDate)
+  const subColor = subTrip.color || planColor
+
+  if (isEditing && onEdit && allTravels) {
+    return (
+      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+        <TravelForm
+          initialData={subTrip}
+          onSubmit={async (data) => {
+            await onEdit({ ...subTrip, ...data })
+            setIsEditing(false)
+          }}
+          onCancel={() => setIsEditing(false)}
+          availableTravels={allTravels}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 hover:bg-white/[0.04] transition-all">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <div
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: subColor }}
+            />
+            <h5 className="text-sm font-semibold text-white/80 truncate">
+              {subTrip.title}
+            </h5>
+            <span
+              className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0"
+              style={{
+                backgroundColor: `${subColor}20`,
+                color: subColor,
+              }}
+            >
+              Day {currentDay}/{totalDays}
+            </span>
+          </div>
+          {subTrip.destination && (
+            <p className="text-xs text-white/40 flex items-center gap-1 mb-2">
+              <span>📍</span> {subTrip.destination}
+            </p>
+          )}
+          <div className="flex items-center gap-3 text-xs text-white/40">
+            <span>📅 {formatTravelDate(subTrip.startDate)} → {formatTravelDate(subTrip.endDate)}</span>
+          </div>
+        </div>
+        
+        {(onEdit || onDelete) && (
+          <div className="flex items-center gap-1 shrink-0">
+            {onEdit && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="p-1.5 rounded-lg text-white/30 hover:text-[#FF9500] hover:bg-[#FF9500]/10 transition-all text-xs"
+                title="Edit"
+              >
+                ✏️
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={() => onDelete(subTrip.id)}
+                className="p-1.5 rounded-lg text-white/30 hover:text-[#FF3B30] hover:bg-[#FF3B30]/10 transition-all text-xs"
+                title="Delete"
+              >
+                🗑️
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      
+      {/* File attachments for sub-trip */}
+      {userId && goalId && (
+        <div className="mt-2 pt-2 border-t border-white/5">
+          {subTrip.files && subTrip.files.length > 0 && (
+            <div className="text-[10px] text-white/40 mb-2">📎 Attachments</div>
+          )}
+          <FileUpload
+            travelId={subTrip.id}
+            userId={userId}
+            goalId={goalId}
+            files={subTrip.files || []}
+            onFilesChange={async (files) => {
+              if (onEdit) {
+                await onEdit({ ...subTrip, files })
+              }
+            }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TravelPlanCard({
   plan,
   currentDate,
@@ -148,6 +269,8 @@ function TravelPlanCard({
   onDelete,
   allTravels,
   subTrips = [],
+  userId,
+  goalId,
 }: {
   plan: TravelPlan
   currentDate: string
@@ -155,6 +278,8 @@ function TravelPlanCard({
   onDelete?: (travelId: string) => void
   allTravels?: TravelPlan[]
   subTrips?: TravelPlan[]
+  userId?: string
+  goalId?: string
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -339,6 +464,26 @@ function TravelPlanCard({
             </div>
           </div>
         )}
+        
+        {/* File Attachments */}
+        {userId && goalId && (
+          <div className="px-3 py-2">
+            {plan.files && plan.files.length > 0 && (
+              <div className="text-xs text-white/40 mb-2">📎 Attachments</div>
+            )}
+            <FileUpload
+              travelId={plan.id}
+              userId={userId}
+              goalId={goalId}
+              files={plan.files || []}
+              onFilesChange={async (files) => {
+                if (onEdit) {
+                  await onEdit({ ...plan, files })
+                }
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Delete confirmation */}
@@ -372,72 +517,19 @@ function TravelPlanCard({
             <div className="h-px flex-1 bg-white/5" />
           </div>
           <div className="space-y-3">
-            {subTrips.map((subTrip) => {
-              const { totalDays: subTotalDays, currentDay: subCurrentDay } = getTripStats(subTrip, currentDate)
-              const subProgress = (subCurrentDay / subTotalDays) * 100
-              const subColor = subTrip.color || planColor
-              
-              return (
-                <div
-                  key={subTrip.id}
-                  className="rounded-xl border border-white/5 bg-white/[0.02] p-3 hover:bg-white/[0.04] transition-all"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: subColor }}
-                        />
-                        <h5 className="text-sm font-semibold text-white/80 truncate">
-                          {subTrip.title}
-                        </h5>
-                        <span
-                          className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0"
-                          style={{
-                            backgroundColor: `${subColor}20`,
-                            color: subColor,
-                          }}
-                        >
-                          Day {subCurrentDay}/{subTotalDays}
-                        </span>
-                      </div>
-                      {subTrip.destination && (
-                        <p className="text-xs text-white/40 flex items-center gap-1 mb-2">
-                          <span>📍</span> {subTrip.destination}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-3 text-xs text-white/40">
-                        <span>📅 {formatTravelDate(subTrip.startDate)} → {formatTravelDate(subTrip.endDate)}</span>
-                      </div>
-                    </div>
-                    
-                    {(onEdit || onDelete) && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        {onEdit && (
-                          <button
-                            onClick={() => onEdit(subTrip)}
-                            className="p-1.5 rounded-lg text-white/30 hover:text-[#FF9500] hover:bg-[#FF9500]/10 transition-all text-xs"
-                            title="Edit"
-                          >
-                            ✏️
-                          </button>
-                        )}
-                        {onDelete && (
-                          <button
-                            onClick={() => onDelete(subTrip.id)}
-                            className="p-1.5 rounded-lg text-white/30 hover:text-[#FF3B30] hover:bg-[#FF3B30]/10 transition-all text-xs"
-                            title="Delete"
-                          >
-                            🗑️
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+            {subTrips.map((subTrip) => (
+              <SubTripCard
+                key={subTrip.id}
+                subTrip={subTrip}
+                currentDate={currentDate}
+                planColor={planColor}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                allTravels={allTravels}
+                userId={userId}
+                goalId={goalId}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -455,6 +547,8 @@ function TravelPlansView({
   onAddTravel,
   onSaveNotes,
   allTravels,
+  userId,
+  goalId,
 }: {
   plans: TravelPlan[]
   date: string
@@ -464,6 +558,8 @@ function TravelPlansView({
   onAddTravel?: (travel: TravelPlanInput) => void | Promise<void>
   onSaveNotes: (notes: string) => void | Promise<void>
   allTravels?: TravelPlan[]
+  userId?: string
+  goalId?: string
 }) {
   const [isAdding, setIsAdding] = useState(false)
 
@@ -568,6 +664,8 @@ function TravelPlansView({
             onDelete={onDeleteTravel}
             allTravels={allTravels}
             subTrips={subTripsByParent[plan.id] || []}
+            userId={userId}
+            goalId={goalId}
           />
         ))
       })()}
@@ -613,6 +711,8 @@ export class TravelDetailProviderImpl
         onAddTravel={context?.onAddTravel}
         onSaveNotes={handleSaveNotes}
         allTravels={context?.allTravels}
+        userId={context?.userId}
+        goalId={context?.goalId}
       />
     )
   }
