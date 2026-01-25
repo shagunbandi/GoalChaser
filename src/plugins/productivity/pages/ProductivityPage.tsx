@@ -4,6 +4,7 @@
 
 'use client'
 
+import { useState } from 'react'
 import type { PluginPageProps } from '@/sdk'
 import { usePluginPage, LoadingState, NotFoundState, ContentLoader } from '@/sdk'
 import {
@@ -43,6 +44,36 @@ export default function ProductivityPage({
   })
 
   const areaConfigs = pluginConfig?.areas || []
+
+  // Area filter state
+  const [selectedAreas, setSelectedAreas] = useState<Set<string>>(
+    new Set(areaConfigs.map(a => a.id))
+  )
+
+  // Update selected areas when area configs change
+  useState(() => {
+    setSelectedAreas(new Set(areaConfigs.map(a => a.id)))
+  })
+
+  const handleToggleArea = (areaId: string) => {
+    setSelectedAreas(prev => {
+      const next = new Set(prev)
+      if (next.has(areaId)) {
+        next.delete(areaId)
+      } else {
+        next.add(areaId)
+      }
+      return next
+    })
+  }
+
+  const handleSelectAllAreas = () => {
+    setSelectedAreas(new Set(areaConfigs.map(a => a.id)))
+  }
+
+  const handleClearAllAreas = () => {
+    setSelectedAreas(new Set())
+  }
 
   // Area management handlers
   const handleAddArea = (name: string) => {
@@ -168,6 +199,10 @@ export default function ProductivityPage({
         onUpdateAreaGoal={handleUpdateAreaGoal}
         onToggleTrackStreaks={handleToggleTrackStreaks}
         isTopicInUse={isAreaTopicInUse}
+        selectedAreas={selectedAreas}
+        onToggleArea={handleToggleArea}
+        onSelectAllAreas={handleSelectAllAreas}
+        onClearAllAreas={handleClearAllAreas}
       />
 
       {/* Content - shows inline loader when switching years */}
@@ -185,6 +220,7 @@ export default function ProductivityPage({
           areaConfigs={areaConfigs}
           onUpdateDay={updateDayData}
           onBackToYear={() => navigateToYear(currentYear)}
+          selectedAreas={selectedAreas}
           detailContext={{
             areaConfigs,
             onAddArea: handleAddArea,
@@ -214,6 +250,10 @@ export default function ProductivityPage({
           onToggleTrackStreaks={handleToggleTrackStreaks}
           isTopicInUse={isAreaTopicInUse}
           onMonthClick={navigateToMonth}
+          selectedAreas={selectedAreas}
+          onToggleArea={handleToggleArea}
+          onSelectAllAreas={handleSelectAllAreas}
+          onClearAllAreas={handleClearAllAreas}
         />
       )}
     </div>

@@ -48,11 +48,12 @@ export function DayRenderer({ config, isToday }: DayRendererProps) {
       className={`${getDayClasses()} ${todayClasses} ${
         multipleIndicators ? 'ring-1 ring-yellow-500/40' : ''
       }`}
-      style={
-        config.highlighted && config.highlightColor
+      style={{
+        ...(config.highlighted && config.highlightColor
           ? { backgroundColor: config.highlightColor }
-          : undefined
-      }
+          : {}),
+        ...config.style,
+      }}
       title={
         config.indicators.length > 0
           ? `${config.indicators.length} item(s)`

@@ -4,6 +4,7 @@
 
 'use client'
 
+import { useState } from 'react'
 import type { PluginPageProps } from '@/sdk'
 import { usePluginPage, LoadingState, NotFoundState, ContentLoader } from '@/sdk'
 import { StudyHeader, StudyView, StudyMonthView } from '../components'
@@ -40,6 +41,36 @@ export default function StudyPage({
 
   const subjectConfigs = pluginConfig?.subjects || []
   const maxHours = pluginConfig?.maxHours || 14
+
+  // Subject filter state
+  const [selectedSubjects, setSelectedSubjects] = useState<Set<string>>(
+    new Set(subjectConfigs.map(s => s.id))
+  )
+
+  // Update selected subjects when subject configs change
+  useState(() => {
+    setSelectedSubjects(new Set(subjectConfigs.map(s => s.id)))
+  })
+
+  const handleToggleSubject = (subjectId: string) => {
+    setSelectedSubjects(prev => {
+      const next = new Set(prev)
+      if (next.has(subjectId)) {
+        next.delete(subjectId)
+      } else {
+        next.add(subjectId)
+      }
+      return next
+    })
+  }
+
+  const handleSelectAllSubjects = () => {
+    setSelectedSubjects(new Set(subjectConfigs.map(s => s.id)))
+  }
+
+  const handleClearAllSubjects = () => {
+    setSelectedSubjects(new Set())
+  }
 
   const handleAddSubject = (name: string) => {
     const newSubject = {
@@ -170,6 +201,10 @@ export default function StudyPage({
         isTopicInUse={isTopicInUse}
         onUpdateSubjectGoal={handleUpdateSubjectGoal}
         onToggleTrackStreaks={handleToggleTrackStreaks}
+        selectedSubjects={selectedSubjects}
+        onToggleSubject={handleToggleSubject}
+        onSelectAllSubjects={handleSelectAllSubjects}
+        onClearAllSubjects={handleClearAllSubjects}
       />
 
       {/* Content - shows inline loader when switching years */}
@@ -196,6 +231,7 @@ export default function StudyPage({
           onUpdateSubject={handleUpdateSubject}
           onToggleHasTopics={handleToggleHasTopics}
           isTopicInUse={isTopicInUse}
+          selectedSubjects={selectedSubjects}
         />
       ) : (
         <StudyView
@@ -220,6 +256,10 @@ export default function StudyPage({
           isTopicInUse={isTopicInUse}
           onUpdateSubjectGoal={handleUpdateSubjectGoal}
           onToggleTrackStreaks={handleToggleTrackStreaks}
+          selectedSubjects={selectedSubjects}
+          onToggleSubject={handleToggleSubject}
+          onSelectAllSubjects={handleSelectAllSubjects}
+          onClearAllSubjects={handleClearAllSubjects}
         />
       )}
     </div>

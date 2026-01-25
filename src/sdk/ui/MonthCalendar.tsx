@@ -37,6 +37,8 @@ export interface DayCustomization {
   className?: string
   /** Whether this day is disabled */
   disabled?: boolean
+  /** Inline styles for day cell */
+  style?: React.CSSProperties
 }
 
 export interface MonthCalendarProps {
@@ -242,6 +244,12 @@ export function MonthCalendar({
           const bgClass = isCssColor ? '' : bgColor || 'bg-white/[0.15]'
           const bgStyle = isCssColor ? { backgroundColor: bgColor } : {}
 
+          // Merge custom styles
+          const mergedStyle = {
+            ...bgStyle,
+            ...customization?.style,
+          }
+
           return (
             <div
               key={day.iso}
@@ -259,7 +267,7 @@ export function MonthCalendar({
                 isInRange,
                 { ...customization, backgroundColor: bgClass },
               )}
-              style={bgStyle}
+              style={mergedStyle}
             >
               <span className="text-sm font-medium">{day.dayOfMonth}</span>
               {customization?.content}

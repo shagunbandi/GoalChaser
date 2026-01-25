@@ -7,6 +7,7 @@ import { GenericYearView } from '@/components/features/year-view/GenericYearView
 import { StatusSelector } from './StatusSelector'
 import { AreaEntries } from './AreaEntries'
 import { AreaManager } from './AreaManager'
+import { AreaFilter } from './AreaFilter'
 import { computeMonthInfo } from '@/utils'
 
 interface ProductivityYearViewProps {
@@ -30,6 +31,10 @@ interface ProductivityYearViewProps {
   onJumpToDay?: (iso: string) => void
   onMonthClick?: (year: number, month: number) => void
   initialSelectedDay?: string | null
+  selectedAreas: Set<string>
+  onToggleArea: (areaId: string) => void
+  onSelectAllAreas: () => void
+  onClearAllAreas: () => void
 }
 
 export function ProductivityYearView({
@@ -53,6 +58,10 @@ export function ProductivityYearView({
   onJumpToDay,
   onMonthClick,
   initialSelectedDay,
+  selectedAreas,
+  onToggleArea,
+  onSelectAllAreas,
+  onClearAllAreas,
 }: ProductivityYearViewProps) {
   const [showAreaManager, setShowAreaManager] = useState(false)
 
@@ -190,13 +199,26 @@ export function ProductivityYearView({
             </div>
           ),
           days: month.days.map((day) => {
-            const status = dayDetails[day.iso]?.status
+            const dayData = dayDetails[day.iso]
+            const status = dayData?.status
+            
+            // Check if day has any selected areas (plugin logic)
+            const hasSelectedArea = selectedAreas.size === areaConfigs.length || // All selected
+              dayData?.areas?.some((entry: any) => {
+                const areaConfig = areaConfigs.find(a => a.name === entry.area)
+                return areaConfig && selectedAreas.has(areaConfig.id)
+              })
+            
+            // Calculate opacity (plugin decides)
+            const opacity = hasSelectedArea ? 1.0 : 0.3
+            
             return {
               iso: day.iso,
               dayOfMonth: day.dayOfMonth,
               weekdayIndex: day.weekdayIndex,
               highlighted: status !== null && status !== undefined,
               highlightColor: getProductivityColor(status),
+              style: { opacity, transition: 'opacity 0.2s ease-in-out' },
               indicators: [],
             }
           }),
@@ -364,6 +386,15 @@ export function ProductivityYearView({
       <GenericYearView
         config={config}
         initialSelectedDay={initialSelectedDay}
+        filterComponent={
+          <AreaFilter
+            areas={areaConfigs}
+            selectedAreas={selectedAreas}
+            onToggleArea={onToggleArea}
+            onSelectAllAreas={onSelectAllAreas}
+            onClearAllAreas={onClearAllAreas}
+          />
+        }
       />
 
       {/* Area Manager Modal */}

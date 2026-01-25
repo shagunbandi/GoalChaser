@@ -22,6 +22,10 @@ interface ProductivityHeaderProps {
   onUpdateAreaGoal: (id: string, streakType: StreakType, targetFrequency?: number) => void
   onToggleTrackStreaks: (id: string) => void
   isTopicInUse: (areaId: string, topic: string) => boolean
+  selectedAreas: Set<string>
+  onToggleArea: (areaId: string) => void
+  onSelectAllAreas: () => void
+  onClearAllAreas: () => void
 }
 
 export function ProductivityHeader({
@@ -40,6 +44,10 @@ export function ProductivityHeader({
   onUpdateAreaGoal,
   onToggleTrackStreaks,
   isTopicInUse,
+  selectedAreas,
+  onToggleArea,
+  onSelectAllAreas,
+  onClearAllAreas,
 }: ProductivityHeaderProps) {
 
   const [showAreaManager, setShowAreaManager] = useState(false)

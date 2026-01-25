@@ -20,6 +20,7 @@ interface ProductivityMonthViewProps {
     updates: Partial<ProductivityDayData>,
   ) => Promise<void>
   onBackToYear: () => void
+  selectedAreas: Set<string>
   detailContext?: {
     areaConfigs: AreaConfig[]
     onAddArea: (name: string) => void
@@ -39,6 +40,7 @@ export function ProductivityMonthView({
   areaConfigs,
   onUpdateDay,
   onBackToYear,
+  selectedAreas,
   detailContext,
 }: ProductivityMonthViewProps) {
   // Build day customizations based on productivity status
@@ -60,8 +62,16 @@ export function ProductivityMonthView({
       return '#FF6B6B'
     }
 
+    // Check if day has selected areas
+    const hasSelectedArea = selectedAreas.size === areaConfigs.length ||
+      data.areas?.some(entry => {
+        const areaConfig = areaConfigs.find(a => a.name === entry.area)
+        return areaConfig && selectedAreas.has(areaConfig.id)
+      })
+
     return {
       backgroundColor: bgColor,
+      style: { opacity: hasSelectedArea ? 1.0 : 0.3, transition: 'opacity 0.2s ease-in-out' },
       indicators: hasAreas
         ? [
             {

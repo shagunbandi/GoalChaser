@@ -15,6 +15,7 @@ interface StudyMonthViewProps {
   initialSelectedDate: string | null
   subjectConfigs: any[]
   maxHours: number
+  selectedSubjects: Set<string>
   onUpdateDay: (iso: string, updates: Partial<StudyDayData>) => Promise<void>
   onBackToYear: () => void
   onAddSubject: (name: string) => void
@@ -37,6 +38,7 @@ export function StudyMonthView({
   initialSelectedDate,
   subjectConfigs,
   maxHours,
+  selectedSubjects,
   onUpdateDay,
   onBackToYear,
   onAddSubject,
@@ -63,6 +65,13 @@ export function StudyMonthView({
 
     if (totalHours === 0) return null
 
+    // Check if day has selected subjects
+    const hasSelectedSubject = selectedSubjects.size === subjectConfigs.length ||
+      data.subjects?.some((entry: any) => {
+        const subjectConfig = subjectConfigs.find(s => s.name === entry.subject)
+        return subjectConfig && selectedSubjects.has(subjectConfig.id)
+      })
+
     // Use VIBGYOR color based on progress (same as progress bar)
     const vibgyorColors = getVibgyorColors()
 
@@ -84,6 +93,7 @@ export function StudyMonthView({
 
     return {
       backgroundColor: `${color}CC`, // 80% opacity (CC in hex)
+      style: { opacity: hasSelectedSubject ? 1.0 : 0.3, transition: 'opacity 0.2s ease-in-out' },
       content: (
         <div className="hidden md:block text-[10px] text-white/90 mt-1 font-medium">
           {formatHours(totalHours)}

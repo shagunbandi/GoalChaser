@@ -26,6 +26,7 @@ export type DayConfig = {
   highlightColor?: string
   indicators: DayIndicator[]
   onClick?: () => void
+  style?: React.CSSProperties
 }
 
 // Month footer configuration

@@ -7,6 +7,7 @@ import { GenericYearView } from '@/components/features/year-view/GenericYearView
 import { StudySummary } from './StudySummary'
 import { SubjectEntries } from './SubjectEntries'
 import { SubjectManager } from './SubjectManager'
+import { SubjectFilter } from './SubjectFilter'
 import { computeMonthInfo } from '@/utils'
 
 interface StudyViewProps {
@@ -31,6 +32,10 @@ interface StudyViewProps {
   onJumpToDay?: (iso: string) => void
   onMonthClick?: (year: number, month: number) => void
   initialSelectedDay?: string | null
+  selectedSubjects: Set<string>
+  onToggleSubject: (subjectId: string) => void
+  onSelectAllSubjects: () => void
+  onClearAllSubjects: () => void
 }
 
 export function StudyView({
@@ -55,6 +60,10 @@ export function StudyView({
   onToggleTrackStreaks,
   onJumpToDay,
   initialSelectedDay,
+  selectedSubjects,
+  onToggleSubject,
+  onSelectAllSubjects,
+  onClearAllSubjects,
 }: StudyViewProps) {
   const [showSubjectManager, setShowSubjectManager] = useState(false)
   const yearPrefix = `${year}-`
@@ -166,12 +175,24 @@ export function StudyView({
           days: month.days.map((day) => {
             const details = dayDetails[day.iso]
             const hours = details ? getTotalHours(details) : 0
+            
+            // Check if day has any selected subjects (plugin logic)
+            const hasSelectedSubject = selectedSubjects.size === subjectConfigs.length || // All selected
+              details?.subjects?.some((entry: any) => {
+                const subjectConfig = subjectConfigs.find(s => s.name === entry.subject)
+                return subjectConfig && selectedSubjects.has(subjectConfig.id)
+              })
+            
+            // Calculate opacity (plugin decides)
+            const opacity = hasSelectedSubject ? 1.0 : 0.3
+            
             return {
               iso: day.iso,
               dayOfMonth: day.dayOfMonth,
               weekdayIndex: day.weekdayIndex,
               highlighted: hours > 0,
               highlightColor: getHoursColor(hours),
+              style: { opacity, transition: 'opacity 0.2s ease-in-out' },
               indicators: [],
             }
           }),
@@ -316,6 +337,15 @@ export function StudyView({
       <GenericYearView
         config={config}
         initialSelectedDay={initialSelectedDay}
+        filterComponent={
+          <SubjectFilter
+            subjects={subjectConfigs}
+            selectedSubjects={selectedSubjects}
+            onToggleSubject={onToggleSubject}
+            onSelectAllSubjects={onSelectAllSubjects}
+            onClearAllSubjects={onClearAllSubjects}
+          />
+        }
       />
       {showSubjectManager && (
         <SubjectManager

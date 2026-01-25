@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { Card } from '@/components/ui'
 import type { YearViewConfig } from '@/types/year-view-config'
 import { HeaderRenderer } from './renderers/HeaderRenderer'
@@ -12,11 +13,13 @@ import { MONTH_NAMES, WEEKDAY_LABELS } from '@/constants'
 interface GenericYearViewProps {
   config: YearViewConfig
   initialSelectedDay?: string | null
+  filterComponent?: ReactNode
 }
 
 export function GenericYearView({
   config,
   initialSelectedDay,
+  filterComponent,
 }: GenericYearViewProps) {
   const [selectedDay, setSelectedDay] = useState<string | null>(
     initialSelectedDay || null,
@@ -54,6 +57,13 @@ export function GenericYearView({
 
       {/* Month Grid */}
       <Card className="p-6">
+        {/* Filter Component */}
+        {filterComponent && (
+          <div className="mb-4">
+            {filterComponent}
+          </div>
+        )}
+        
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 md:auto-rows-fr">
           {config.months.map((monthConfig) => {
             const offset = monthConfig.days[0]?.weekdayIndex || 0
