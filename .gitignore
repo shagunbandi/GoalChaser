@@ -78,3 +78,7 @@ ui-debug.log
 service-account*.json
 secrets/
 gcs-key.json
+
+# Generated dummy data
+dummy-user-data.json
+*-backup.json

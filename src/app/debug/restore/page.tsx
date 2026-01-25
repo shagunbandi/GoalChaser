@@ -103,6 +103,8 @@ export default function RestorePage() {
     batch: any,
     batchCount: { count: number }
   ) => {
+    let currentBatch = batch
+
     for (const [docId, docData] of Object.entries(collectionData)) {
       if (typeof docData !== 'object' || !docData) continue
 
@@ -130,7 +132,7 @@ export default function RestorePage() {
         }
 
         // Add to batch
-        batch.set(docRef, {
+        currentBatch.set(docRef, {
           ...data,
           restoredAt: new Date().toISOString()
         })
@@ -139,9 +141,9 @@ export default function RestorePage() {
 
         // Commit batch if it's getting large (500 is Firestore limit)
         if (batchCount.count >= 450) {
-          await batch.commit()
+          await currentBatch.commit()
           addLog(`Committed batch of ${batchCount.count} documents`, 'info')
-          batch = writeBatch(db)
+          currentBatch = writeBatch(db)
           batchCount.count = 0
         }
 
@@ -150,12 +152,12 @@ export default function RestorePage() {
           if (typeof subCollectionData !== 'object') continue
           
           currentStats.subcollections++
-          await restoreCollection(
+          currentBatch = await restoreCollection(
             db,
             subCollectionData,
             [...docPath, subCollectionName],
             currentStats,
-            batch,
+            currentBatch,
             batchCount
           )
         }
@@ -165,7 +167,7 @@ export default function RestorePage() {
       }
     }
 
-    return batch
+    return currentBatch
   }
 
   /**

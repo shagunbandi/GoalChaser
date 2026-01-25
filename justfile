@@ -120,3 +120,21 @@ install-playwright:
 show-report:
     npx playwright show-report
 
+# ==================== Data Management ====================
+
+# Generate dummy user data for testing
+generate-dummy-data:
+    node scripts/generate-dummy-user.mjs
+
+# Setup test user in Firebase
+setup-test-user:
+    node scripts/setup-test-user.mjs
+
+# Clear agenda items
+clear-agenda:
+    node scripts/clear-agenda-items.mjs
+
+# Download database backup
+download-db:
+    node scripts/download-database.mjs
+
