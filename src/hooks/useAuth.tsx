@@ -56,18 +56,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    console.log('[useAuth] 🔧 Starting auth state setup')
     logger.info('Setting up auth state listener')
-    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (user) => {
-      if (user) {
-        logger.success(`User authenticated: ${user.email}`)
-      } else {
-        logger.info('No user authenticated')
-      }
-      setUser(user)
-      setIsLoading(false)
-    })
+    
+    try {
+      console.log('[useAuth] 🔥 Getting Firebase auth instance...')
+      const auth = getFirebaseAuth()
+      console.log('[useAuth] ✅ Got Firebase auth instance', auth ? 'initialized' : 'null')
+      
+      console.log('[useAuth] 👂 Setting up auth state listener...')
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        console.log('[useAuth] 🔔 Auth state changed:', user ? `User: ${user.email}` : 'No user')
+        if (user) {
+          logger.success(`User authenticated: ${user.email}`)
+        } else {
+          logger.info('No user authenticated')
+        }
+        setUser(user)
+        setIsLoading(false)
+        console.log('[useAuth] ✅ Updated state - isLoading: false, user:', user?.email || 'null')
+      })
+      
+      console.log('[useAuth] ✅ Auth state listener setup complete')
 
-    return () => unsubscribe()
+      return () => {
+        console.log('[useAuth] 🧹 Cleaning up auth state listener')
+        unsubscribe()
+      }
+    } catch (error) {
+      console.error('[useAuth] ❌ Error setting up auth:', error)
+      setIsLoading(false)
+    }
   }, [])
 
   const clearError = () => setError(null)

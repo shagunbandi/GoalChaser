@@ -29,7 +29,11 @@ interface BackupData {
 }
 
 export default function RestorePage() {
+  console.log('[RestorePage] 🎯 Component rendering')
+  
   const { user, isLoading: authLoading } = useAuth()
+  console.log('[RestorePage] 👤 Auth state:', { user: user?.email || 'null', authLoading })
+  
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -57,10 +61,17 @@ export default function RestorePage() {
    * Handle file selection
    */
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[RestorePage] 📁 File select triggered')
     const file = event.target.files?.[0]
-    if (!file) return
+    if (!file) {
+      console.log('[RestorePage] ⚠️ No file selected')
+      return
+    }
+
+    console.log('[RestorePage] 📄 File selected:', file.name, file.size, 'bytes')
 
     if (!file.name.endsWith('.json')) {
+      console.log('[RestorePage] ❌ Invalid file type:', file.name)
       addLog('Please select a JSON file', 'error')
       return
     }
@@ -69,14 +80,18 @@ export default function RestorePage() {
     addLog(`Selected file: ${file.name}`, 'info')
 
     // Read and parse the file
+    console.log('[RestorePage] 📖 Starting to read file...')
     const reader = new FileReader()
     reader.onload = (e) => {
+      console.log('[RestorePage] ✅ File read complete, parsing JSON...')
       try {
         const json = JSON.parse(e.target?.result as string)
+        console.log('[RestorePage] ✅ JSON parsed successfully, keys:', Object.keys(json))
         setBackupData(json)
         
         // Show metadata if available
         if (json._metadata) {
+          console.log('[RestorePage] 📋 Metadata found:', json._metadata)
           addLog(`Backup from: ${json._metadata.exportedAt}`, 'info')
           if (json._metadata.userEmail) {
             addLog(`Original user: ${json._metadata.userEmail}`, 'info')
@@ -85,9 +100,14 @@ export default function RestorePage() {
         
         addLog('Backup file loaded successfully', 'success')
       } catch (error: any) {
+        console.error('[RestorePage] ❌ Failed to parse JSON:', error)
         addLog(`Failed to parse JSON: ${error.message}`, 'error')
         setSelectedFile(null)
       }
+    }
+    reader.onerror = (error) => {
+      console.error('[RestorePage] ❌ File reader error:', error)
+      addLog('Failed to read file', 'error')
     }
     reader.readAsText(file)
   }
@@ -103,6 +123,9 @@ export default function RestorePage() {
     batch: any,
     batchCount: { count: number }
   ) => {
+    console.log('[RestorePage] 📦 Restoring collection at path:', path.join('/'))
+    console.log('[RestorePage] 📊 Number of documents in collection:', Object.keys(collectionData).length)
+    
     let currentBatch = batch
 
     for (const [docId, docData] of Object.entries(collectionData)) {
@@ -110,6 +133,8 @@ export default function RestorePage() {
 
       const data = (docData as any)._data || {}
       const subcollections = (docData as any)._subcollections || {}
+      
+      console.log('[RestorePage] 📄 Processing document:', docId, 'at', path.join('/'))
 
       try {
         // Build document reference
@@ -174,20 +199,27 @@ export default function RestorePage() {
    * Restore the database
    */
   const runRestore = async () => {
+    console.log('[RestorePage] 🚀 Restore button clicked')
+    
     if (!user) {
+      console.log('[RestorePage] ❌ No user found')
       addLog('Please sign in first', 'error')
       return
     }
 
     if (!backupData) {
+      console.log('[RestorePage] ❌ No backup data found')
       addLog('Please select a backup file first', 'error')
       return
     }
 
+    console.log('[RestorePage] ⚠️ Showing confirmation dialog...')
     if (!window.confirm('⚠️ WARNING: This will overwrite existing data. Are you sure you want to restore?')) {
+      console.log('[RestorePage] 🚫 User cancelled restore')
       return
     }
 
+    console.log('[RestorePage] ✅ User confirmed, starting restore...')
     setIsRunning(true)
     setProgress([])
     setStats({
@@ -198,26 +230,41 @@ export default function RestorePage() {
     })
 
     addLog('🚀 Starting database restoration...')
+    console.log('[RestorePage] 📊 Backup data structure:', Object.keys(backupData))
 
     try {
+      console.log('[RestorePage] 🔥 Getting Firebase app...')
       const app = getFirebaseApp()
       if (!app) {
+        console.error('[RestorePage] ❌ Firebase app is null')
         addLog('Firebase not initialized', 'error')
         return
       }
+      console.log('[RestorePage] ✅ Firebase app initialized')
 
+      console.log('[RestorePage] 📊 Getting Firestore instance...')
       const db = getFirestore(app)
+      console.log('[RestorePage] ✅ Got Firestore instance')
       addLog('Connected to Firestore', 'success')
 
       const startTime = Date.now()
       const currentStats = { ...stats }
 
       // Get data from backup (support both formats)
+      console.log('[RestorePage] 📋 Extracting data from backup...')
       const dataToRestore = backupData.data || backupData
       const goalsData = dataToRestore.goals
       const settingsData = dataToRestore.settings
+      
+      console.log('[RestorePage] 📊 Data to restore:', {
+        hasGoals: !!goalsData,
+        hasSettings: !!settingsData,
+        goalsCount: goalsData ? Object.keys(goalsData).length : 0,
+        settingsCount: settingsData ? Object.keys(settingsData).length : 0
+      })
 
       if (!goalsData && !settingsData) {
+        console.error('[RestorePage] ❌ No data found in backup')
         addLog('No data found in backup file', 'error')
         return
       }
@@ -287,14 +334,18 @@ export default function RestorePage() {
   }
 
   if (authLoading) {
+    console.log('[RestorePage] ⏳ Showing loading state - authLoading is true')
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#1a1a2e] to-[#16213e] flex items-center justify-center">
         <div className="text-white">Loading...</div>
       </div>
     )
   }
+  
+  console.log('[RestorePage] ✅ Auth loading complete, rendering main content')
 
   if (!user) {
+    console.log('[RestorePage] 🚫 No user, showing auth required screen')
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#1a1a2e] to-[#16213e] flex items-center justify-center">
         <div className="text-white text-center">
@@ -310,6 +361,8 @@ export default function RestorePage() {
       </div>
     )
   }
+  
+  console.log('[RestorePage] ✅ User authenticated, showing restore interface')
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#1a1a2e] to-[#16213e] p-8">

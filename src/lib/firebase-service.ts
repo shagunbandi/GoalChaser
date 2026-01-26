@@ -48,10 +48,18 @@ function shouldUseEmulator(): boolean {
  * Gets Firebase configuration based on environment
  */
 function getFirebaseConfig() {
+  console.log('[Firebase] 🔧 Getting Firebase config...')
   const useEmulator = shouldUseEmulator()
+  console.log('[Firebase] 🎯 Use emulator:', useEmulator)
+  console.log('[Firebase] 🌍 Environment variables:', {
+    NEXT_PUBLIC_USE_FIREBASE_EMULATOR: process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR,
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    NODE_ENV: process.env.NODE_ENV
+  })
   
   if (useEmulator) {
     // Emulator configuration - safe fake values
+    console.log('[Firebase] 🧪 Using emulator configuration')
     return {
       apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'fake-api-key-for-emulator',
       authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'localhost',
@@ -63,6 +71,7 @@ function getFirebaseConfig() {
   }
   
   // Production configuration from environment variables
+  console.log('[Firebase] 🏭 Using production configuration')
   return {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -77,15 +86,23 @@ function getFirebaseConfig() {
  * Initializes Firebase App (singleton)
  */
 function initializeFirebaseApp(): FirebaseApp {
+  console.log('[Firebase] 🚀 initializeFirebaseApp called, app exists:', !!app)
+  
   if (!app) {
+    console.log('[Firebase] 📋 Getting config...')
     const config = getFirebaseConfig()
+    console.log('[Firebase] ✅ Got config, projectId:', config.projectId)
     
     if (!config.projectId) {
+      console.error('[Firebase] ❌ No projectId found in config')
       throw new Error('Firebase configuration missing: projectId is required')
     }
     
+    console.log('[Firebase] 🔍 Checking existing apps, count:', getApps().length)
     app = getApps().length === 0 ? initializeApp(config) : getApps()[0]
     console.log('🔥 Firebase App initialized')
+  } else {
+    console.log('[Firebase] ✅ Using existing Firebase app')
   }
   
   return app
@@ -95,15 +112,22 @@ function initializeFirebaseApp(): FirebaseApp {
  * Gets Firebase Auth instance with automatic emulator connection
  */
 export function getFirebaseAuth(): Auth {
+  console.log('[Firebase] 🔐 getFirebaseAuth called, auth exists:', !!auth)
+  
   if (!auth) {
+    console.log('[Firebase] 🚀 Initializing Firebase app for auth...')
     const app = initializeFirebaseApp()
+    console.log('[Firebase] ✅ Got Firebase app, getting auth...')
     auth = getAuth(app)
+    console.log('[Firebase] ✅ Got auth instance')
     
     // Connect to emulator if needed
     if (shouldUseEmulator() && !isAuthEmulatorConnected) {
+      console.log('[Firebase] 🧪 Connecting to auth emulator...')
       try {
         const host = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST || 'localhost:9099'
         const [hostname, port] = host.split(':')
+        console.log('[Firebase] 🔌 Connecting to auth emulator:', hostname, port)
         
         connectAuthEmulator(auth, `http://${hostname}:${port}`, { disableWarnings: true })
         isAuthEmulatorConnected = true
@@ -113,9 +137,12 @@ export function getFirebaseAuth(): Auth {
           console.error('❌ Error connecting to Auth Emulator:', error)
           throw error
         }
+        console.log('[Firebase] ⚠️ Auth emulator already connected')
         isAuthEmulatorConnected = true
       }
     }
+  } else {
+    console.log('[Firebase] ✅ Using existing auth instance')
   }
   
   return auth
