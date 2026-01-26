@@ -288,6 +288,7 @@ function ExecutiveGoalPlanCard({
   userId,
   goalId,
   showDayProgress = true,
+  hideTaskSection = false,
 }: {
   plan: ExecutiveGoalPlan
   currentDate: string
@@ -299,6 +300,7 @@ function ExecutiveGoalPlanCard({
   userId?: string
   goalId?: string
   showDayProgress?: boolean
+  hideTaskSection?: boolean
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -504,89 +506,91 @@ function ExecutiveGoalPlanCard({
       </div>
 
       {/* Tasks section */}
-      <div className="border-t border-white/10 bg-white/[0.01] p-4">
-        {tasks.length > 0 && (
-          <>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-semibold text-white/50 uppercase tracking-wide">Tasks</span>
-              <span className="text-xs text-white/30">{tasks.length}</span>
-              <div className="h-px flex-1 bg-white/5" />
-            </div>
-            <div className="space-y-3 mb-3">
-              {tasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  currentDate={currentDate}
-                  planColor={planColor}
-                  onEdit={onEdit || (() => {})}
-                  onDelete={onDelete || (() => {})}
-                  userId={userId}
-                  goalId={goalId}
-                />
-              ))}
-            </div>
-          </>
-        )}
+      {!hideTaskSection && (
+        <div className="border-t border-white/10 bg-white/[0.01] p-4">
+          {tasks.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-semibold text-white/50 uppercase tracking-wide">Tasks</span>
+                <span className="text-xs text-white/30">{tasks.length}</span>
+                <div className="h-px flex-1 bg-white/5" />
+              </div>
+              <div className="space-y-3 mb-3">
+                {tasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    currentDate={currentDate}
+                    planColor={planColor}
+                    onEdit={onEdit || (() => {})}
+                    onDelete={onDelete || (() => {})}
+                    userId={userId}
+                    goalId={goalId}
+                  />
+                ))}
+              </div>
+            </>
+          )}
 
-        {/* Add task button - always visible, below tasks */}
-        {!isAddingTask && userId && goalId && (
-          <button
-            onClick={() => setIsAddingTask(true)}
-            className="
-              w-full px-4 py-2.5 rounded-xl
-              bg-gradient-to-r from-[#8B5CF6]/20 to-[#7C3AED]/20
-              hover:from-[#8B5CF6]/30 hover:to-[#7C3AED]/30
-              border border-[#8B5CF6]/30 hover:border-[#8B5CF6]/50
-              text-white/80 hover:text-white
-              font-medium text-sm
-              transition-all duration-200
-              flex items-center justify-center gap-2
-            "
-          >
-            Add Task
-          </button>
-        )}
-
-        {/* Add task form */}
-        {isAddingTask && (
-          <div className="mt-3">
-            <h4 className="text-sm font-medium text-white/70 mb-3">
+          {/* Add task button - always visible, below tasks */}
+          {!isAddingTask && userId && goalId && (
+            <button
+              onClick={() => setIsAddingTask(true)}
+              className="
+                w-full px-4 py-2.5 rounded-xl
+                bg-gradient-to-r from-[#8B5CF6]/20 to-[#7C3AED]/20
+                hover:from-[#8B5CF6]/30 hover:to-[#7C3AED]/30
+                border border-[#8B5CF6]/30 hover:border-[#8B5CF6]/50
+                text-white/80 hover:text-white
+                font-medium text-sm
+                transition-all duration-200
+                flex items-center justify-center gap-2
+              "
+            >
               Add Task
-            </h4>
-            <ExecutiveGoalForm
-              initialData={{
-                color: plan.color,
-                parentExecutiveGoalId: plan.id,
-              }}
-              onSubmit={async (data) => {
-                if (onAddTask) {
-                  // Create a new task
-                  const newTask: ExecutiveGoalPlan = {
-                    id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    title: data.title,
-                    description: data.description,
-                    startDate: data.startDate,
-                    endDate: data.endDate,
-                    color: data.color,
-                    parentExecutiveGoalId: plan.id,
-                    completed: false,
+            </button>
+          )}
+
+          {/* Add task form */}
+          {isAddingTask && (
+            <div className="mt-3">
+              <h4 className="text-sm font-medium text-white/70 mb-3">
+                Add Task
+              </h4>
+              <ExecutiveGoalForm
+                initialData={{
+                  color: plan.color,
+                  parentExecutiveGoalId: plan.id,
+                }}
+                onSubmit={async (data) => {
+                  if (onAddTask) {
+                    // Create a new task
+                    const newTask: ExecutiveGoalPlan = {
+                      id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                      title: data.title,
+                      description: data.description,
+                      startDate: data.startDate,
+                      endDate: data.endDate,
+                      color: data.color,
+                      parentExecutiveGoalId: plan.id,
+                      completed: false,
+                    }
+                    await onAddTask(newTask)
                   }
-                  await onAddTask(newTask)
-                }
-                setIsAddingTask(false)
-              }}
-              onCancel={() => setIsAddingTask(false)}
-              availableExecutiveGoals={allExecutiveGoals}
-              hideParentGoalSelector={true}
-              hideNotesField={true}
-              hideDateFields={true}
-              singleDayDate={currentDate}
-              isTask={true}
-            />
-          </div>
-        )}
-      </div>
+                  setIsAddingTask(false)
+                }}
+                onCancel={() => setIsAddingTask(false)}
+                availableExecutiveGoals={allExecutiveGoals}
+                hideParentGoalSelector={true}
+                hideNotesField={true}
+                hideDateFields={true}
+                singleDayDate={currentDate}
+                isTask={true}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Delete confirmation */}
       {showDeleteConfirm && onDelete && (

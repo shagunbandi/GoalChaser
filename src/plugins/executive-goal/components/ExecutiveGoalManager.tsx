@@ -164,9 +164,6 @@ export function ExecutiveGoalManager({
             {executiveGoalPlans
               .filter(goal => !goal.parentExecutiveGoalId) // Only show parent goals
               .map((goal) => {
-                // Find tasks for this parent
-                const tasks = executiveGoalPlans.filter(g => g.parentExecutiveGoalId === goal.id)
-                
                 // Use today's date for the manage view since it's not date-specific
                 const today = new Date().toISOString().split('T')[0]
                 
@@ -177,12 +174,12 @@ export function ExecutiveGoalManager({
                     currentDate={today}
                     onEdit={onUpdateExecutiveGoal}
                     onDelete={onDeleteExecutiveGoal}
-                    onAddTask={onAddExecutiveGoal}
                     allExecutiveGoals={allExecutiveGoals || executiveGoalPlans}
-                    tasks={tasks}
+                    tasks={[]}
                     userId={userId}
                     goalId={goalId}
                     showDayProgress={false}
+                    hideTaskSection={true}
                   />
                 )
               })}
