@@ -16,6 +16,7 @@ import { useGoals } from '@/hooks/useGoals'
 import { useAddonsConfig } from '@/hooks/useAddonsConfig'
 import { Navbar } from '@/components/ui'
 import { GroupedTabBar, AddonsManagerModal } from '@/components/features'
+import { EditGoalModal } from '@/components/features/home/EditGoalModal'
 
 interface GoalLayoutProps {
   children: React.ReactNode
@@ -29,11 +30,12 @@ export default function GoalLayout({ children }: GoalLayoutProps) {
   const pluginSegments = (params.plugin as string[]) || []
 
   const { user, isLoading: authLoading } = useAuth()
-  const { getGoal, isLoading: goalsLoading } = useGoals()
+  const { getGoal, updateGoal, isLoading: goalsLoading } = useGoals()
   const goal = getGoal(goalId)
 
   const { enabledAddons, saveAddons } = useAddonsConfig(user?.uid, goalId)
   const [showAddonsManager, setShowAddonsManager] = useState(false)
+  const [showEditGoal, setShowEditGoal] = useState(false)
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -110,6 +112,7 @@ export default function GoalLayout({ children }: GoalLayoutProps) {
         goalId={goalId}
         goalName={goal.name}
         goalDescription={goal.description}
+        onEditGoal={() => setShowEditGoal(true)}
       >
         <GroupedTabBar
           goalId={goalId}
@@ -134,6 +137,16 @@ export default function GoalLayout({ children }: GoalLayoutProps) {
         goalId={goalId}
         enabledAddons={enabledAddons}
         onSave={saveAddons}
+      />
+
+      {/* Edit Goal Modal */}
+      <EditGoalModal
+        goal={goal}
+        open={showEditGoal}
+        onClose={() => setShowEditGoal(false)}
+        onSave={async (updates) => {
+          await updateGoal(goalId, updates)
+        }}
       />
     </div>
   )

@@ -21,6 +21,7 @@ import {
   getFinanceBackgroundColor,
   getTravelBackgroundColor,
   getPeriodBackgroundColor,
+  getExecutiveGoalCustomization,
 } from '@/utils/plugin-colors'
 import {
   loadCalendarFilters,
@@ -188,6 +189,7 @@ export default function CalendarPage({
 
       // Get background from selected plugin
       let bgColor: string | undefined = undefined
+      let borderStyle: React.CSSProperties | undefined = undefined
 
       if (backgroundSource === 'productivity') {
         const status = pluginData?.['productivity']?.[day.iso]?.status || null
@@ -204,11 +206,19 @@ export default function CalendarPage({
       } else if (backgroundSource === 'period') {
         const periodData = pluginData?.['period']?.[day.iso] as any
         bgColor = getPeriodBackgroundColor(periodData)
+      } else if (backgroundSource === 'executiveGoal') {
+        const executiveGoalData = pluginData?.['executiveGoal']?.[day.iso] as any
+        const customization = getExecutiveGoalCustomization(executiveGoalData)
+        if (customization) {
+          bgColor = customization.backgroundColor
+          borderStyle = customization.style
+        }
       }
       // else: backgroundSource is null, no background
 
       customizations[day.iso] = {
         backgroundColor: bgColor,
+        style: borderStyle,
         indicators: activeIndicators,
       }
     })

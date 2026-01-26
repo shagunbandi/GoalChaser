@@ -7,7 +7,12 @@ import type { StudyDayData } from '@/plugins/study/types'
 import type { FinanceTransactionData } from '@/plugins/finance/types'
 import type { TravelDayData } from '@/plugins/travel/types'
 import type { PeriodDayData } from '@/plugins/period/types'
+import type { ExecutiveGoalDayData } from '@/plugins/executive-goal/types'
 import { getVibgyorColors } from './score-utils'
+import { 
+  getCompletionBackgroundColor,
+  createMultiGoalBorderStyle
+} from '@/plugins/executive-goal/calendar-utils'
 
 /**
  * Calculate background color for Study plugin based on tracked hours
@@ -93,4 +98,39 @@ export function getPeriodBackgroundColor(
   }
 
   return undefined
+}
+
+/**
+ * Calculate customization for Executive Goal plugin
+ * Returns background color for task completion and border for goals
+ */
+export function getExecutiveGoalCustomization(
+  data: ExecutiveGoalDayData | null,
+): { backgroundColor?: string; style?: React.CSSProperties } | undefined {
+  if (!data || !data.executiveGoalPlans || data.executiveGoalPlans.length === 0) {
+    return undefined
+  }
+
+  const plans = data.executiveGoalPlans
+
+  // Separate goals (no parent) and tasks (have parent)
+  const goals = plans.filter(plan => !plan.parentExecutiveGoalId)
+  const tasks = plans.filter(plan => plan.parentExecutiveGoalId)
+
+  if (goals.length === 0) {
+    return undefined
+  }
+
+  // Calculate task completion
+  const completedTasks = tasks.filter(task => task.completed === true).length
+  const totalTasks = tasks.length
+  const completionPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+
+  // Get goal colors for border
+  const goalColors = goals.map(g => g.color || '#8B5CF6')
+
+  return {
+    backgroundColor: totalTasks > 0 ? getCompletionBackgroundColor(completionPercent) : undefined,
+    style: createMultiGoalBorderStyle(goalColors),
+  }
 }

@@ -7,6 +7,7 @@ import ProductivityPlugin from '@/plugins/productivity/plugin'
 import FinancePlugin from '@/plugins/finance/plugin'
 import TravelPlugin from '@/plugins/travel/plugin'
 import PeriodPlugin from '@/plugins/period/plugin'
+import ExecutiveGoalPlugin from '@/plugins/executive-goal/plugin'
 
 /**
  * Plugin Manifest
@@ -30,4 +31,5 @@ export const AVAILABLE_PLUGINS: PluginManifestEntry[] = [
   { plugin: FinancePlugin, enabled: true },
   { plugin: TravelPlugin, enabled: true },
   { plugin: PeriodPlugin, enabled: true },
+  { plugin: ExecutiveGoalPlugin, enabled: true },
 ]

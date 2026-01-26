@@ -139,11 +139,20 @@ interface CreateGoalOptions {
   enabledPlugins?: string[]
 }
 
+interface UpdateGoalOptions {
+  name?: string
+  description?: string
+  color?: string
+  startDate?: string
+  endDate?: string
+}
+
 interface UseGoalsReturn {
   goals: Goal[]
   isLoading: boolean
   error: string | null
   createGoal: (options: CreateGoalOptions) => Promise<Goal>
+  updateGoal: (id: string, updates: UpdateGoalOptions) => Promise<void>
   deleteGoal: (id: string) => Promise<void>
   getGoal: (id: string) => Goal | undefined
 }
@@ -210,6 +219,35 @@ export function useGoals(): UseGoalsReturn {
     },
   })
 
+  // Update goal mutation
+  const updateGoalMutation = useMutation({
+    mutationFn: async ({ goalId, updates }: { goalId: string; updates: UpdateGoalOptions }) => {
+      const existingGoal = goals.find((g) => g.id === goalId)
+      if (!existingGoal) throw new Error('Goal not found')
+      
+      const updatedGoal: Goal = {
+        ...existingGoal,
+        ...updates,
+      }
+      
+      if (userId) {
+        await saveGoalToFirebase(userId, updatedGoal)
+      }
+      
+      return updatedGoal
+    },
+    onSuccess: (updatedGoal) => {
+      // Optimistically update cache
+      queryClient.setQueryData(goalsKeys.list(userId), (old: Goal[] | undefined) => {
+        const updated = (old || []).map((g) => g.id === updatedGoal.id ? updatedGoal : g)
+        // Also update localStorage
+        const userStorageKey = `${STORAGE_KEY}_${userId}`
+        saveToStorage(userStorageKey, updated)
+        return updated
+      })
+    },
+  })
+
   // Delete goal mutation
   const deleteGoalMutation = useMutation({
     mutationFn: async (goalId: string) => {
@@ -237,6 +275,13 @@ export function useGoals(): UseGoalsReturn {
     [createGoalMutation]
   )
 
+  const updateGoal = useCallback(
+    async (id: string, updates: UpdateGoalOptions): Promise<void> => {
+      await updateGoalMutation.mutateAsync({ goalId: id, updates })
+    },
+    [updateGoalMutation]
+  )
+
   const deleteGoal = useCallback(
     async (id: string): Promise<void> => {
       await deleteGoalMutation.mutateAsync(id)
@@ -256,6 +301,7 @@ export function useGoals(): UseGoalsReturn {
     isLoading: authLoading || (queryLoading && goals.length === 0),
     error: queryError ? 'Failed to load goals' : null,
     createGoal,
+    updateGoal,
     deleteGoal,
     getGoal,
   }
