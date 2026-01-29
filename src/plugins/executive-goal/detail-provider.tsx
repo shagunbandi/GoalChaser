@@ -7,6 +7,8 @@ import { NotesField } from '@/sdk'
 import type { ExecutiveGoalDayData, ExecutiveGoalPlan, ExecutiveGoalPlanInput } from './types'
 import { ExecutiveGoalForm } from './components/ExecutiveGoalForm'
 import { AddExecutiveGoalChat } from './components/AddExecutiveGoalChat'
+import { GenerateTasksModal } from './components/GenerateTasksModal'
+import type { SuggestedTask } from './components/GenerateTasksModal'
 import { FileUpload } from './components/FileUpload'
 
 interface ExecutiveGoalDetailContext {
@@ -17,6 +19,7 @@ interface ExecutiveGoalDetailContext {
   allExecutiveGoals?: ExecutiveGoalPlan[]
   userId?: string
   goalId?: string
+  loadAllPlansForGoal?: () => Promise<ExecutiveGoalPlan[]>
 }
 
 // Component for empty state with add executiveGoal option
@@ -282,6 +285,7 @@ function ExecutiveGoalPlanCard({
   goalId,
   showDayProgress = true,
   hideTaskSection = false,
+  loadAllPlansForGoal,
 }: {
   plan: ExecutiveGoalPlan
   currentDate: string
@@ -294,10 +298,20 @@ function ExecutiveGoalPlanCard({
   goalId?: string
   showDayProgress?: boolean
   hideTaskSection?: boolean
+  loadAllPlansForGoal?: () => Promise<ExecutiveGoalPlan[]>
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isAddingTask, setIsAddingTask] = useState(false)
+  const [generateModalOpen, setGenerateModalOpen] = useState(false)
+  const [suggestedTasks, setSuggestedTasks] = useState<SuggestedTask[]>([])
+  const [generateLoading, setGenerateLoading] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
+  const [lastGenerateUsage, setLastGenerateUsage] = useState<{
+    totalTokens: number
+    estimatedCostUsd: number
+  } | null>(null)
+  const [lastPromptsUsed, setLastPromptsUsed] = useState<{ system: string; user: string } | null>(null)
 
   const { totalDays, currentDay, status } = getTripStats(plan, currentDate)
   const progress = (currentDay / totalDays) * 100
@@ -325,6 +339,105 @@ function ExecutiveGoalPlanCard({
       })
     }
     setIsEditing(false)
+  }
+
+  const runGenerateTasks = async () => {
+    if (!loadAllPlansForGoal || !onAddTask || !userId || !goalId) return
+    setGenerateModalOpen(true)
+    setGenerateLoading(true)
+    setGenerateError(null)
+    try {
+      const allPlans = await loadAllPlansForGoal()
+      const goal = allPlans.find((p) => p.id === plan.id) || plan
+      const completedForGoal = allPlans.filter(
+        (p) =>
+          p.parentExecutiveGoalId === plan.id &&
+          p.completed === true &&
+          p.endDate <= currentDate
+      )
+      const completedTasks = completedForGoal.map((t) => ({
+        title: t.title,
+        endDate: t.endDate,
+        completionNote: t.completionNote,
+      }))
+      const existingTasksForDay = tasks
+        .filter((t) => t.startDate <= currentDate && t.endDate >= currentDate)
+        .map((t) => t.title)
+
+      const res = await fetch('/api/ai/generate-executive-tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planText: goal.plan || '',
+          progressSoFar: goal.progressSoFar || [],
+          completedTasks,
+          date: currentDate,
+          existingTasksForDay,
+          goalStartDate: goal.startDate,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setGenerateError(data.error || `Request failed: ${res.status}`)
+        setSuggestedTasks([])
+        return
+      }
+      if ((data.newSummary || data.totalUsage) && onEdit) {
+        const updates: Partial<ExecutiveGoalPlan> = { ...goal }
+        if (data.newSummary) {
+          updates.progressSoFar = [...(goal.progressSoFar || []), data.newSummary]
+        }
+        if (data.totalUsage) {
+          const prev = goal.aiUsage
+          const totalUsage = data.totalUsage as {
+            promptTokens: number
+            completionTokens: number
+            totalTokens: number
+            estimatedCostUsd: number
+          }
+          updates.aiUsage = {
+            totalPromptTokens: (prev?.totalPromptTokens ?? 0) + totalUsage.promptTokens,
+            totalCompletionTokens: (prev?.totalCompletionTokens ?? 0) + totalUsage.completionTokens,
+            totalTokens: (prev?.totalTokens ?? 0) + totalUsage.totalTokens,
+            estimatedCostUsd: (prev?.estimatedCostUsd ?? 0) + totalUsage.estimatedCostUsd,
+            lastUpdated: new Date().toISOString(),
+          }
+        }
+        await onEdit(updates as ExecutiveGoalPlan)
+      }
+      setSuggestedTasks(data.tasks || [])
+      setLastGenerateUsage(
+        data.totalUsage
+          ? {
+              totalTokens: data.totalUsage.totalTokens,
+              estimatedCostUsd: data.totalUsage.estimatedCostUsd,
+            }
+          : null
+      )
+      setLastPromptsUsed(data.promptsUsed ?? null)
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Something went wrong')
+      setSuggestedTasks([])
+    } finally {
+      setGenerateLoading(false)
+    }
+  }
+
+  const handleAddSuggestedTasks = async (toAdd: SuggestedTask[]) => {
+    if (!onAddTask) return
+    for (let i = 0; i < toAdd.length; i++) {
+      const t = toAdd[i]
+      const task: ExecutiveGoalPlan = {
+        id: `task_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 9)}`,
+        title: t.title,
+        startDate: currentDate,
+        endDate: currentDate,
+        parentExecutiveGoalId: plan.id,
+        color: plan.color,
+        completed: false,
+      }
+      await onAddTask(task)
+    }
   }
 
   if (isEditing) {
@@ -393,6 +506,12 @@ function ExecutiveGoalPlanCard({
             {plan.plan && (
               <p className="text-sm text-white/50 mt-0.5 truncate">
                 {plan.plan}
+              </p>
+            )}
+            {!plan.parentExecutiveGoalId && plan.aiUsage && (
+              <p className="text-[10px] text-white/40 mt-1">
+                AI: {plan.aiUsage.totalTokens.toLocaleString()} tokens, ~$
+                {plan.aiUsage.estimatedCostUsd.toFixed(4)} USD
               </p>
             )}
           </div>
@@ -525,6 +644,26 @@ function ExecutiveGoalPlanCard({
             </>
           )}
 
+          {/* Generate tasks for today - only for goals (no parent) */}
+          {!plan.parentExecutiveGoalId &&
+            !isAddingTask &&
+            userId &&
+            goalId &&
+            loadAllPlansForGoal &&
+            onAddTask && (
+              <button
+                onClick={runGenerateTasks}
+                className="
+                  w-full px-4 py-2.5 rounded-xl
+                  bg-white/10 hover:bg-white/15 border border-white/10
+                  text-white/80 hover:text-white font-medium text-sm
+                  transition-all duration-200 flex items-center justify-center gap-2 mb-2
+                "
+              >
+                Generate tasks for {currentDate === new Date().toISOString().split('T')[0] ? 'today' : 'this day'}
+              </button>
+            )}
+
           {/* Add task button - always visible, below tasks */}
           {!isAddingTask && userId && goalId && (
             <button
@@ -607,6 +746,24 @@ function ExecutiveGoalPlanCard({
           </div>
         </div>
       )}
+
+      {/* Generate tasks modal */}
+      <GenerateTasksModal
+        open={generateModalOpen}
+        onClose={() => {
+          setGenerateModalOpen(false)
+          setGenerateError(null)
+        }}
+        goal={plan}
+        date={currentDate}
+        suggestedTasks={suggestedTasks}
+        isLoading={generateLoading}
+        error={generateError}
+        onAddSelected={handleAddSuggestedTasks}
+        onRegenerate={runGenerateTasks}
+        lastUsage={lastGenerateUsage}
+        promptsUsed={lastPromptsUsed}
+      />
     </div>
   )
 }
@@ -623,6 +780,7 @@ function ExecutiveGoalPlansView({
   allExecutiveGoals,
   userId,
   goalId,
+  loadAllPlansForGoal,
 }: {
   plans: ExecutiveGoalPlan[]
   date: string
@@ -634,6 +792,7 @@ function ExecutiveGoalPlansView({
   allExecutiveGoals?: ExecutiveGoalPlan[]
   userId?: string
   goalId?: string
+  loadAllPlansForGoal?: () => Promise<ExecutiveGoalPlan[]>
 }) {
   const [isAdding, setIsAdding] = useState(false)
 
@@ -722,6 +881,7 @@ function ExecutiveGoalPlansView({
             tasks={tasksByParent[plan.id] || []}
             userId={userId}
             goalId={goalId}
+            loadAllPlansForGoal={loadAllPlansForGoal}
           />
         ))
       })()}
@@ -769,6 +929,7 @@ export class ExecutiveGoalDetailProviderImpl
         allExecutiveGoals={context?.allExecutiveGoals}
         userId={context?.userId}
         goalId={context?.goalId}
+        loadAllPlansForGoal={context?.loadAllPlansForGoal}
       />
     )
   }

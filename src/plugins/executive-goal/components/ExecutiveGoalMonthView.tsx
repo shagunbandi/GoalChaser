@@ -21,6 +21,7 @@ interface ExecutiveGoalMonthViewProps {
   onAddExecutiveGoal?: (goal: ExecutiveGoalPlanInput) => void | Promise<void>
   allExecutiveGoals?: ExecutiveGoalPlan[]
   userId?: string
+  loadAllPlansForGoal?: () => Promise<ExecutiveGoalPlan[]>
 }
 
 export function ExecutiveGoalMonthView({
@@ -38,6 +39,7 @@ export function ExecutiveGoalMonthView({
   onAddExecutiveGoal,
   allExecutiveGoals,
   userId,
+  loadAllPlansForGoal,
 }: ExecutiveGoalMonthViewProps) {
   // Build day customizations based on executive goal plans
   // Show borders for goals, background for task completion, and dots for tasks
@@ -67,6 +69,7 @@ export function ExecutiveGoalMonthView({
         allExecutiveGoals,
         userId,
         goalId,
+        loadAllPlansForGoal,
       }}
     />
   )

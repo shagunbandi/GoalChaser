@@ -1,6 +1,14 @@
 // Executive Goal Plugin Types
 import type { PluginDayData, ActivityItem } from '@/sdk'
 
+/** One 20-day-period summary for progressSoFar */
+export interface ProgressSoFarEntry {
+  periodLabel: string
+  periodStart: string
+  periodEnd: string
+  summary: string
+}
+
 export interface ExecutiveGoalPlan extends ActivityItem {
   title: string
   startDate: string
@@ -14,6 +22,16 @@ export interface ExecutiveGoalPlan extends ActivityItem {
   // Task-specific fields
   completed?: boolean
   completionNote?: string
+  // Rolling 20-day-period summaries (only on parent goals)
+  progressSoFar?: ProgressSoFarEntry[]
+  // Cumulative AI token usage and estimated cost (only on parent goals)
+  aiUsage?: {
+    totalPromptTokens: number
+    totalCompletionTokens: number
+    totalTokens: number
+    estimatedCostUsd: number
+    lastUpdated: string
+  }
 }
 
 export interface ExecutiveGoalFile {

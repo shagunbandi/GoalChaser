@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { ExecutiveGoalHeader, YearView, ExecutiveGoalMonthView } from '../components'
 import type { ExecutiveGoalPlan, ExecutiveGoalPlanInput, ExecutiveGoalDayData } from '../types'
 import { ExecutiveGoalPlugin } from '../plugin'
-import { saveExecutiveGoalPlan, deleteExecutiveGoalPlan } from '../api'
+import { saveExecutiveGoalPlan, deleteExecutiveGoalPlan, loadExecutiveGoalPlans } from '../api'
 
 export default function ExecutiveGoalPage({ params, year, month }: PluginPageProps) {
   const { user } = useAuth()
@@ -76,6 +76,8 @@ export default function ExecutiveGoalPage({ params, year, month }: PluginPagePro
     if (ok) await reload()
   }
 
+  const loadAllPlansForGoal = () => loadExecutiveGoalPlans(userId, goalId)
+
   // Only show full-page loading on TRUE initial load (no goal AND no cached data)
   if (!goal && isLoading && !hasData) return <LoadingState />
   if (!goal && !isLoading) return <NotFoundState />
@@ -115,6 +117,7 @@ export default function ExecutiveGoalPage({ params, year, month }: PluginPagePro
           onAddExecutiveGoal={handleAddExecutiveGoal}
           allExecutiveGoals={allExecutiveGoals}
           userId={userId}
+          loadAllPlansForGoal={loadAllPlansForGoal}
         />
       ) : (
         <YearView
