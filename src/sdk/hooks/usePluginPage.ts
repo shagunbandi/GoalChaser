@@ -32,6 +32,7 @@ interface UsePluginPageResult<TDayData = any, TConfig = any> {
   // Data operations
   updateDayData: (iso: string, updates: Partial<TDayData>) => Promise<void>
   updateConfig: (config: Partial<TConfig>) => Promise<void>
+  reload: () => Promise<void>
   
   // Navigation helpers
   navigateToPrevYear: () => void
@@ -94,6 +95,7 @@ export function usePluginPage<TDayData = any, TConfig = any>({
     pluginConfigs,
     handleUpdateData,
     updateConfig: updateConfigBase,
+    reload,
   } = useGoalData(goalId, year)
 
   // Extract plugin-specific data
@@ -176,6 +178,7 @@ export function usePluginPage<TDayData = any, TConfig = any>({
     initialSelectedDay,
     updateDayData,
     updateConfig,
+    reload,
     navigateToPrevYear,
     navigateToNextYear,
     navigateToYear,

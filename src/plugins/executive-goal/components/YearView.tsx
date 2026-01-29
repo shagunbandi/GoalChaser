@@ -26,6 +26,7 @@ interface YearViewProps {
   onNextYear: () => void
   onAddExecutiveGoal: (executiveGoal: ExecutiveGoalPlanInput) => void | Promise<void>
   onUpdateDay: (iso: string, updates: any) => Promise<void>
+  onDeleteExecutiveGoal?: (executiveGoalId: string) => void | Promise<void>
   onJumpToDay?: (iso: string) => void
   onMonthClick?: (year: number, month: number) => void
   initialSelectedDay?: string | null
@@ -40,6 +41,7 @@ export function YearView({
   onNextYear,
   onAddExecutiveGoal,
   onUpdateDay,
+  onDeleteExecutiveGoal,
   onJumpToDay,
   onMonthClick,
   initialSelectedDay,
@@ -218,31 +220,22 @@ export function YearView({
     setPrefilledDates(null)
   }
 
-  const removeExecutiveGoalForDay = async (iso: string, executiveGoalId: string) => {
+  const removeExecutiveGoalForDay = async (_iso: string, executiveGoalId: string) => {
+    if (!onDeleteExecutiveGoal) return
     setIsUpdating(true)
     try {
-      const existing = dayDetails[iso]?.executiveGoalPlans || []
-      const filtered = existing.filter((t: any) => t.id !== executiveGoalId)
-      await onUpdateDay(iso, { executiveGoalPlans: filtered })
+      await onDeleteExecutiveGoal(executiveGoalId)
+      setSelectedDay(null)
     } finally {
       setIsUpdating(false)
     }
   }
 
   const removeExecutiveGoalForTrip = async (executiveGoalId: string) => {
+    if (!onDeleteExecutiveGoal) return
     setIsUpdating(true)
     try {
-      const updates = Object.entries(dayDetails)
-        .filter(([, details]) =>
-          (details.executiveGoalPlans || []).some((t: any) => t.id === executiveGoalId),
-        )
-        .map(([iso, details]) => {
-          const filtered = (details.executiveGoalPlans || []).filter(
-            (t: any) => t.id !== executiveGoalId,
-          )
-          return onUpdateDay(iso, { executiveGoalPlans: filtered })
-        })
-      await Promise.all(updates)
+      await onDeleteExecutiveGoal(executiveGoalId)
       setSelectedDay(null)
     } finally {
       setIsUpdating(false)

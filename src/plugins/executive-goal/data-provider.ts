@@ -1,12 +1,23 @@
 import type { PluginDataProvider, PluginContext, PluginDayData } from '@/sdk'
 import { removeUndefinedFields } from '@/sdk'
+import { generateDateRange } from '@/sdk'
 import type { ExecutiveGoalDayData, ExecutiveGoalPlan } from './types'
-import { saveExecutiveGoalPlan, deleteExecutiveGoalPlan } from './api'
+import {
+  loadExecutiveGoalPlans,
+  saveExecutiveGoalPlan,
+  deleteExecutiveGoalPlan,
+} from './api'
 
 /**
  * Executive Goal Data Provider
- * Uses day-based storage for compatibility with YearView
- * Each day stores references to executive goal plans that include that date
+ *
+ * DB structure:
+ * - Executive goals at main level: users/{userId}/goals/{goalId}/addons/executiveGoal/plans/{planId}
+ * - Each plan is either a goal (no parentExecutiveGoalId) or a task (parentExecutiveGoalId set).
+ * - Tasks are attached to a day via startDate/endDate (same day for single-day tasks).
+ *
+ * Calendar day data is derived from plans: for each date we include plans that overlap that date.
+ * Optional per-day notes are stored in days/{date} and merged when present.
  */
 export class ExecutiveGoalDataProvider implements PluginDataProvider<ExecutiveGoalDayData> {
   async loadDayData(
@@ -14,18 +25,24 @@ export class ExecutiveGoalDataProvider implements PluginDataProvider<ExecutiveGo
     date: string
   ): Promise<ExecutiveGoalDayData | null> {
     try {
-      const docRef = context.firestore.doc(`days/${date}`)
-      const docSnap = await context.firestore.getDoc(docRef)
-      
-      if (docSnap.exists()) {
-        const data = docSnap.data()
-        return {
-          executiveGoalPlans: data.executiveGoalPlans || [],
-          notes: data.notes || '',
-        }
+      const plans = await loadExecutiveGoalPlans(
+        context.userId,
+        context.goalId,
+        date,
+        date
+      )
+      const dayData: ExecutiveGoalDayData = {
+        executiveGoalPlans: plans,
+        notes: '',
       }
-      
-      return null
+      // Merge notes from days collection if present
+      const dayRef = context.firestore.doc(`days/${date}`)
+      const daySnap = await context.firestore.getDoc(dayRef)
+      if (daySnap.exists()) {
+        const d = daySnap.data()
+        if (d?.notes) dayData.notes = d.notes
+      }
+      return dayData
     } catch (error) {
       context.logger.error('Failed to load executive goal day data', error)
       return null
@@ -38,23 +55,43 @@ export class ExecutiveGoalDataProvider implements PluginDataProvider<ExecutiveGo
     endDate: string
   ): Promise<Record<string, ExecutiveGoalDayData>> {
     try {
-      const daysRef = context.firestore.collection('days')
-      const q = context.firestore.query(
-        daysRef,
-        context.firestore.where('__name__', '>=', startDate),
-        context.firestore.where('__name__', '<=', endDate)
+      const plans = await loadExecutiveGoalPlans(
+        context.userId,
+        context.goalId,
+        startDate,
+        endDate
       )
-
-      const snapshot = await context.firestore.getDocs(q)
+      const dates = generateDateRange(startDate, endDate)
       const result: Record<string, ExecutiveGoalDayData> = {}
 
-      snapshot.forEach((docSnap: any) => {
-        const data = docSnap.data()
-        result[docSnap.id] = {
-          executiveGoalPlans: data.executiveGoalPlans || [],
-          notes: data.notes || '',
+      for (const date of dates) {
+        const plansForDay = plans.filter(
+          (p) => date >= p.startDate && date <= p.endDate
+        )
+        result[date] = {
+          executiveGoalPlans: plansForDay,
+          notes: '',
         }
-      })
+      }
+
+      // Optionally merge notes from days collection for this range
+      try {
+        const daysRef = context.firestore.collection('days')
+        const q = context.firestore.query(
+          daysRef,
+          context.firestore.where('__name__', '>=', startDate),
+          context.firestore.where('__name__', '<=', endDate)
+        )
+        const snapshot = await context.firestore.getDocs(q)
+        snapshot.forEach((docSnap: { id: string; data: () => { notes?: string } }) => {
+          const data = docSnap.data()
+          if (result[docSnap.id] && data?.notes) {
+            result[docSnap.id].notes = data.notes
+          }
+        })
+      } catch {
+        // Non-fatal: notes are optional
+      }
 
       return result
     } catch (error) {
@@ -69,15 +106,27 @@ export class ExecutiveGoalDataProvider implements PluginDataProvider<ExecutiveGo
     data: PluginDayData
   ): Promise<boolean> {
     try {
-      const docRef = context.firestore.doc(`days/${date}`)
-      
-      // Remove undefined values before saving to Firestore
-      const cleanedData = removeUndefinedFields({
-        ...data,
-        updatedAt: new Date().toISOString(),
-      })
-      
-      await context.firestore.setDoc(docRef, cleanedData, { merge: true })
+      const dayData = data as Partial<ExecutiveGoalDayData>
+
+      // Persist each plan to the plans collection (single source of truth)
+      if (dayData.executiveGoalPlans?.length) {
+        for (const plan of dayData.executiveGoalPlans) {
+          if (plan?.id) {
+            await saveExecutiveGoalPlan(context.userId, context.goalId, plan as ExecutiveGoalPlan)
+          }
+        }
+      }
+
+      // Persist notes to days/{date}
+      if (dayData.notes !== undefined) {
+        const docRef = context.firestore.doc(`days/${date}`)
+        const cleaned = removeUndefinedFields({
+          notes: dayData.notes,
+          updatedAt: new Date().toISOString(),
+        })
+        await context.firestore.setDoc(docRef, cleaned, { merge: true })
+      }
+
       return true
     } catch (error) {
       context.logger.error('Failed to save executive goal day data', error)

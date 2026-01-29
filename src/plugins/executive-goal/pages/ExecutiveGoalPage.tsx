@@ -5,13 +5,13 @@ import type { PluginPageProps } from '@/sdk'
 import { usePluginPage, LoadingState, NotFoundState, ContentLoader } from '@/sdk'
 import { useAuth } from '@/hooks/useAuth'
 import { ExecutiveGoalHeader, YearView, ExecutiveGoalMonthView } from '../components'
-import { enumerateDateRange } from '@/utils'
 import type { ExecutiveGoalPlan, ExecutiveGoalPlanInput, ExecutiveGoalDayData } from '../types'
 import { ExecutiveGoalPlugin } from '../plugin'
+import { saveExecutiveGoalPlan, deleteExecutiveGoalPlan } from '../api'
 
 export default function ExecutiveGoalPage({ params, year, month }: PluginPageProps) {
   const { user } = useAuth()
-  const userId = user?.uid
+  const userId = user?.uid ?? ''
   const {
     goal,
     goalId,
@@ -20,6 +20,7 @@ export default function ExecutiveGoalPage({ params, year, month }: PluginPagePro
     pluginDayData,
     initialSelectedDay,
     updateDayData,
+    reload,
     navigateToPrevYear,
     navigateToNextYear,
     navigateToYear,
@@ -47,15 +48,10 @@ export default function ExecutiveGoalPage({ params, year, month }: PluginPagePro
   }, [pluginDayData])
 
   const handleAddExecutiveGoal = async (executiveGoal: ExecutiveGoalPlanInput) => {
-    const dates = enumerateDateRange(
-      executiveGoal.startDate as string,
-      executiveGoal.endDate as string,
-    )
-
     const trimmedNote = executiveGoal.note?.trim()
     const trimmedDescription = executiveGoal.description?.trim()
 
-    const executiveGoalWithId: ExecutiveGoalPlan = {
+    const plan: ExecutiveGoalPlan = {
       id: `executiveGoal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       title: executiveGoal.title,
       startDate: executiveGoal.startDate,
@@ -66,72 +62,18 @@ export default function ExecutiveGoalPage({ params, year, month }: PluginPagePro
       ...(executiveGoal.parentExecutiveGoalId && { parentExecutiveGoalId: executiveGoal.parentExecutiveGoalId }),
     }
 
-    for (const date of dates) {
-      const existing = (pluginDayData[date]?.executiveGoalPlans as ExecutiveGoalPlan[]) || []
-      await updateDayData(date, {
-        executiveGoalPlans: [...existing, executiveGoalWithId],
-      })
-    }
+    const ok = await saveExecutiveGoalPlan(userId, goalId, plan)
+    if (ok) await reload()
   }
 
   const handleUpdateExecutiveGoal = async (updatedExecutiveGoal: ExecutiveGoalPlan) => {
-    // Find the old executiveGoal to get its date range
-    let oldExecutiveGoal: ExecutiveGoalPlan | null = null
-    for (const data of Object.values(pluginDayData)) {
-      const found = data?.executiveGoalPlans?.find((p) => p.id === updatedExecutiveGoal.id)
-      if (found) {
-        oldExecutiveGoal = found
-        break
-      }
-    }
-
-    if (!oldExecutiveGoal) return
-
-    // Remove from old dates
-    const oldDates = enumerateDateRange(oldExecutiveGoal.startDate, oldExecutiveGoal.endDate)
-    for (const date of oldDates) {
-      const existing = (pluginDayData[date]?.executiveGoalPlans as ExecutiveGoalPlan[]) || []
-      await updateDayData(date, {
-        executiveGoalPlans: existing.filter((p) => p.id !== updatedExecutiveGoal.id),
-      })
-    }
-
-    // Add to new dates
-    const newDates = enumerateDateRange(
-      updatedExecutiveGoal.startDate,
-      updatedExecutiveGoal.endDate,
-    )
-    for (const date of newDates) {
-      const existing = (pluginDayData[date]?.executiveGoalPlans as ExecutiveGoalPlan[]) || []
-      // Filter out any existing with same ID (in case dates overlap)
-      const filtered = existing.filter((p) => p.id !== updatedExecutiveGoal.id)
-      await updateDayData(date, {
-        executiveGoalPlans: [...filtered, updatedExecutiveGoal],
-      })
-    }
+    const ok = await saveExecutiveGoalPlan(userId, goalId, updatedExecutiveGoal)
+    if (ok) await reload()
   }
 
   const handleDeleteExecutiveGoal = async (executiveGoalId: string) => {
-    // Find the executiveGoal to get its date range
-    let executiveGoal: ExecutiveGoalPlan | null = null
-    for (const data of Object.values(pluginDayData)) {
-      const found = data?.executiveGoalPlans?.find((p) => p.id === executiveGoalId)
-      if (found) {
-        executiveGoal = found
-        break
-      }
-    }
-
-    if (!executiveGoal) return
-
-    // Remove from all dates in the range
-    const dates = enumerateDateRange(executiveGoal.startDate, executiveGoal.endDate)
-    for (const date of dates) {
-      const existing = (pluginDayData[date]?.executiveGoalPlans as ExecutiveGoalPlan[]) || []
-      await updateDayData(date, {
-        executiveGoalPlans: existing.filter((p) => p.id !== executiveGoalId),
-      })
-    }
+    const ok = await deleteExecutiveGoalPlan(userId, goalId, executiveGoalId)
+    if (ok) await reload()
   }
 
   // Only show full-page loading on TRUE initial load (no goal AND no cached data)
@@ -183,6 +125,7 @@ export default function ExecutiveGoalPage({ params, year, month }: PluginPagePro
           onNextYear={navigateToNextYear}
           onAddExecutiveGoal={handleAddExecutiveGoal}
           onUpdateDay={updateDayData}
+          onDeleteExecutiveGoal={handleDeleteExecutiveGoal}
           onJumpToDay={jumpToMonth}
           onMonthClick={navigateToMonth}
           initialSelectedDay={initialSelectedDay}
