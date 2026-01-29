@@ -6,6 +6,7 @@ import type { PluginDetailProvider } from '@/sdk'
 import { NotesField } from '@/sdk'
 import type { ExecutiveGoalDayData, ExecutiveGoalPlan, ExecutiveGoalPlanInput } from './types'
 import { ExecutiveGoalForm } from './components/ExecutiveGoalForm'
+import { AddExecutiveGoalChat } from './components/AddExecutiveGoalChat'
 import { FileUpload } from './components/FileUpload'
 
 interface ExecutiveGoalDetailContext {
@@ -34,13 +35,6 @@ function EmptyExecutiveGoalState({
 }) {
   const [isAdding, setIsAdding] = useState(false)
 
-  const handleSubmit = async (data: ExecutiveGoalPlanInput) => {
-    if (onAddExecutiveGoal) {
-      await onAddExecutiveGoal(data)
-    }
-    setIsAdding(false)
-  }
-
   if (isAdding) {
     return (
       <div className="space-y-4">
@@ -55,15 +49,14 @@ function EmptyExecutiveGoalState({
           resetKey={date}
         />
         <div className="py-4">
-          <h4 className="text-sm font-medium text-white/70 mb-3">Add ExecutiveGoal</h4>
-          <ExecutiveGoalForm
-            initialData={{
-              startDate: date,
-              endDate: date,
+          <h4 className="text-sm font-medium text-white/70 mb-3">Add Executive Goal</h4>
+          <AddExecutiveGoalChat
+            onSubmit={async (goal) => {
+              if (onAddExecutiveGoal) await onAddExecutiveGoal(goal)
+              setIsAdding(false)
             }}
-            onSubmit={handleSubmit}
             onCancel={() => setIsAdding(false)}
-            availableExecutiveGoals={allExecutiveGoals}
+            prefilledStartDate={date}
           />
         </div>
       </div>
@@ -644,13 +637,6 @@ function ExecutiveGoalPlansView({
 }) {
   const [isAdding, setIsAdding] = useState(false)
 
-  const handleSubmit = async (data: ExecutiveGoalPlanInput) => {
-    if (onAddExecutiveGoal) {
-      await onAddExecutiveGoal(data)
-    }
-    setIsAdding(false)
-  }
-
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -693,20 +679,19 @@ function ExecutiveGoalPlansView({
         resetKey={date}
       />
 
-      {/* Add ExecutiveGoal Form */}
+      {/* Add Executive Goal - Nitya AI Chat */}
       {isAdding && (
-        <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/5 p-4">
+        <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/5 p-4 min-h-[320px]">
           <h4 className="text-sm font-medium text-white/70 mb-3 flex items-center gap-2">
-            <span>🎯</span> Add New ExecutiveGoal
+            <span>🎯</span> Add New Executive Goal
           </h4>
-          <ExecutiveGoalForm
-            initialData={{
-              startDate: date,
-              endDate: date,
+          <AddExecutiveGoalChat
+            onSubmit={async (goal) => {
+              if (onAddExecutiveGoal) await onAddExecutiveGoal(goal)
+              setIsAdding(false)
             }}
-            onSubmit={handleSubmit}
             onCancel={() => setIsAdding(false)}
-            availableExecutiveGoals={allExecutiveGoals}
+            prefilledStartDate={date}
           />
         </div>
       )}

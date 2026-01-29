@@ -7,6 +7,7 @@ import type { YearViewConfig } from '@/types/year-view-config'
 import { Modal } from '@/components/ui'
 import { GenericYearView } from '@/components/features/year-view/GenericYearView'
 import { ExecutiveGoalForm } from './ExecutiveGoalForm'
+import { AddExecutiveGoalChat } from './AddExecutiveGoalChat'
 import {
   computeMonthInfo,
   enumerateDateRange,
@@ -450,25 +451,34 @@ export function YearView({
 
       <Modal
         open={showExecutiveGoalModal}
-        title={editingExecutiveGoal ? 'Edit executiveGoal' : 'Add executiveGoal'}
+        title={editingExecutiveGoal ? 'Edit executive goal' : 'Add executive goal'}
         onClose={handleCloseExecutiveGoalModal}
       >
-        <ExecutiveGoalForm
-          initialData={
-            editingExecutiveGoal
-              ? editingExecutiveGoal
-              : prefilledDates
-              ? {
-                  startDate: prefilledDates.startDate,
-                  endDate: prefilledDates.endDate,
-                }
-              : undefined
-          }
-          onSubmit={handleSaveExecutiveGoal}
-          onCancel={handleCloseExecutiveGoalModal}
-          isSubmitting={isSavingExecutiveGoal}
-          availableExecutiveGoals={allExecutiveGoals}
-        />
+        {editingExecutiveGoal ? (
+          <ExecutiveGoalForm
+            initialData={editingExecutiveGoal}
+            onSubmit={handleSaveExecutiveGoal}
+            onCancel={handleCloseExecutiveGoalModal}
+            isSubmitting={isSavingExecutiveGoal}
+            availableExecutiveGoals={allExecutiveGoals}
+          />
+        ) : (
+          <AddExecutiveGoalChat
+            onSubmit={async (goal) => {
+              await handleSaveExecutiveGoal({
+                title: goal.title,
+                description: goal.description ?? '',
+                startDate: goal.startDate,
+                endDate: goal.endDate,
+                color: goal.color ?? '#8B5CF6',
+                note: goal.note ?? '',
+                parentExecutiveGoalId: goal.parentExecutiveGoalId,
+              })
+            }}
+            onCancel={handleCloseExecutiveGoalModal}
+            prefilledStartDate={prefilledDates?.startDate}
+          />
+        )}
       </Modal>
     </>
   )

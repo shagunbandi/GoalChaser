@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Drawer } from '@/sdk'
 import { ExecutiveGoalForm } from './ExecutiveGoalForm'
+import { AddExecutiveGoalChat } from './AddExecutiveGoalChat'
 import { ExecutiveGoalPlanCard } from '../detail-provider'
 import type { ExecutiveGoalPlan, ExecutiveGoalPlanInput, ExecutiveGoalDayData } from '../types'
 import { formatShortDate } from '@/utils'
@@ -122,14 +123,24 @@ export function ExecutiveGoalManager({
         </div>
       )}
 
-      {/* Add Executive Goal Form */}
+      {/* Add Executive Goal - Nitya AI Chat */}
       {showAddForm && (
-        <div className="p-6 sm:p-8 border-b border-white/5">
+        <div className="p-6 sm:p-8 border-b border-white/5 min-h-[360px]">
           <h3 className="text-lg font-semibold text-white mb-4">Add New Goal</h3>
-          <ExecutiveGoalForm
-            onSubmit={handleAddExecutiveGoal}
+          <AddExecutiveGoalChat
+            onSubmit={async (goal) => {
+              await onAddExecutiveGoal({
+                title: goal.title,
+                description: goal.description,
+                startDate: goal.startDate,
+                endDate: goal.endDate,
+                color: goal.color,
+                note: goal.note,
+                parentExecutiveGoalId: goal.parentExecutiveGoalId,
+              })
+              setShowAddForm(false)
+            }}
             onCancel={() => setShowAddForm(false)}
-            availableExecutiveGoals={allExecutiveGoals || executiveGoalPlans}
           />
         </div>
       )}
