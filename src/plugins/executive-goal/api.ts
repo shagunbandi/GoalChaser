@@ -83,7 +83,8 @@ export async function saveExecutiveGoalPlan(
 }
 
 /**
- * Delete an executive goal plan
+ * Delete an executive goal plan. If the plan is a parent goal, also deletes all its tasks
+ * (plans with parentExecutiveGoalId equal to this plan's id).
  */
 export async function deleteExecutiveGoalPlan(
   userId: string,
@@ -94,6 +95,21 @@ export async function deleteExecutiveGoalPlan(
 
   try {
     const db = getFirebaseDb()
+    const plansRef = collection(db, 'users', userId, 'goals', goalId, 'addons', 'executiveGoal', 'plans')
+
+    const snapshot = await getDocs(plansRef)
+    const taskIdsToDelete: string[] = []
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data()
+      if (data?.parentExecutiveGoalId === planId) {
+        taskIdsToDelete.push(docSnap.id)
+      }
+    })
+
+    for (const id of taskIdsToDelete) {
+      const ref = doc(db, 'users', userId, 'goals', goalId, 'addons', 'executiveGoal', 'plans', id)
+      await deleteDoc(ref)
+    }
 
     const planRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'executiveGoal', 'plans', planId)
     await deleteDoc(planRef)
