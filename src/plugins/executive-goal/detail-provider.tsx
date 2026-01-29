@@ -202,9 +202,9 @@ function TaskCard({
               {task.title}
             </h4>
           </div>
-          {task.description && (
+          {task.plan && (
             <p className="text-xs text-white/50 mb-2">
-              {task.description}
+              {task.plan}
             </p>
           )}
           
@@ -305,7 +305,7 @@ function ExecutiveGoalPlanCard({
 
   const handleEdit = async (data: {
     title: string
-    description: string
+    plan: string
     startDate: string
     endDate: string
     color: string
@@ -316,7 +316,7 @@ function ExecutiveGoalPlanCard({
       await onEdit({
         ...plan,
         title: data.title,
-        description: data.description,
+        plan: data.plan,
         startDate: data.startDate,
         endDate: data.endDate,
         color: data.color,
@@ -390,9 +390,9 @@ function ExecutiveGoalPlanCard({
                 }
               </span>
             </div>
-            {plan.description && (
+            {plan.plan && (
               <p className="text-sm text-white/50 mt-0.5 truncate">
-                {plan.description}
+                {plan.plan}
               </p>
             )}
           </div>
@@ -561,7 +561,7 @@ function ExecutiveGoalPlanCard({
                     const newTask: ExecutiveGoalPlan = {
                       id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                       title: data.title,
-                      description: data.description,
+                      plan: data.plan,
                       startDate: data.startDate,
                       endDate: data.endDate,
                       color: data.color,

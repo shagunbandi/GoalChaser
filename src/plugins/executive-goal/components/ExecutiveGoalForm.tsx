@@ -5,7 +5,7 @@ interface ExecutiveGoalFormProps {
   initialData?: Partial<ExecutiveGoalPlan>
   onSubmit: (data: {
     title: string
-    description: string
+    plan: string
     startDate: string
     endDate: string
     color: string
@@ -48,7 +48,7 @@ export function ExecutiveGoalForm({
   isTask = false,
 }: ExecutiveGoalFormProps) {
   const [title, setTitle] = useState(initialData?.title || '')
-  const [description, setDescription] = useState(initialData?.description || '')
+  const [plan, setPlan] = useState(initialData?.plan || '')
   const [startDate, setStartDate] = useState(
     initialData?.startDate || getTodayDate(),
   )
@@ -64,7 +64,7 @@ export function ExecutiveGoalForm({
   useEffect(() => {
     if (initialData) {
       setTitle(initialData.title || '')
-      setDescription(initialData.description || '')
+      setPlan(initialData.plan || '')
       setStartDate(initialData.startDate || getTodayDate())
       setEndDate(initialData.endDate || getOneWeekLater())
       setColor(initialData.color || '#8B5CF6')
@@ -104,7 +104,7 @@ export function ExecutiveGoalForm({
     setError(null)
     await onSubmit({
       title: title.trim(),
-      description: description.trim(),
+      plan: plan.trim(),
       startDate: finalStartDate,
       endDate: finalEndDate,
       color,
@@ -137,12 +137,12 @@ export function ExecutiveGoalForm({
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs text-white/60">Description</label>
+        <label className="text-xs text-white/60">Plan</label>
         <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          value={plan}
+          onChange={(e) => setPlan(e.target.value)}
           rows={3}
-          placeholder="Brief description of the goal and its objectives..."
+          placeholder="Phase plan or key objectives for the goal..."
           className="
             w-full rounded-xl border border-white/10 bg-white/5
             px-3 py-2 text-sm text-white placeholder-white/40

@@ -5,7 +5,7 @@ export interface ExecutiveGoalPlan extends ActivityItem {
   title: string
   startDate: string
   endDate: string
-  description?: string
+  plan?: string
   note?: string
   color?: string
   parentExecutiveGoalId?: string
@@ -30,7 +30,7 @@ export interface ExecutiveGoalPlanInput {
   title: string
   startDate: string
   endDate: string
-  description?: string
+  plan?: string
   note?: string
   color?: string
   parentExecutiveGoalId?: string

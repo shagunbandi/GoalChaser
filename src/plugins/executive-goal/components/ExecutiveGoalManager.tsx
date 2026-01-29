@@ -51,7 +51,7 @@ export function ExecutiveGoalManager({
 
   const handleAddExecutiveGoal = async (data: {
     title: string
-    description: string
+    plan: string
     startDate: string
     endDate: string
     color: string
@@ -60,7 +60,7 @@ export function ExecutiveGoalManager({
   }) => {
     await onAddExecutiveGoal({
       title: data.title,
-      description: data.description,
+      plan: data.plan,
       startDate: data.startDate,
       endDate: data.endDate,
       color: data.color,
@@ -72,7 +72,7 @@ export function ExecutiveGoalManager({
 
   const handleUpdateExecutiveGoal = async (data: {
     title: string
-    description: string
+    plan: string
     startDate: string
     endDate: string
     color: string
@@ -83,7 +83,7 @@ export function ExecutiveGoalManager({
     await onUpdateExecutiveGoal({
       ...editingExecutiveGoal,
       title: data.title,
-      description: data.description,
+      plan: data.plan,
       startDate: data.startDate,
       endDate: data.endDate,
       color: data.color,
@@ -131,7 +131,7 @@ export function ExecutiveGoalManager({
             onSubmit={async (goal) => {
               await onAddExecutiveGoal({
                 title: goal.title,
-                description: goal.description,
+                plan: goal.plan,
                 startDate: goal.startDate,
                 endDate: goal.endDate,
                 color: goal.color,

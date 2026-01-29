@@ -74,7 +74,7 @@ export function ExecutiveGoalWizardFlow({
   // Handle saving an edited plan
   const handleSavePlan = (data: {
     title: string
-    description: string
+    plan: string
     startDate: string
     endDate: string
     color: string
@@ -107,7 +107,7 @@ export function ExecutiveGoalWizardFlow({
     setEditingPlan({
       id: '',
       title: '',
-      description: '',
+      plan: '',
       startDate: '',
       endDate: '',
       color: '#8B5CF6',
@@ -189,9 +189,9 @@ export function ExecutiveGoalWizardFlow({
                       <div className={`font-medium ${isSelected ? 'text-[#8B5CF6]' : 'text-white/70'}`}>
                         {plan.title || 'Untitled Goal'}
                       </div>
-                      {plan.description && (
+                      {plan.plan && (
                         <div className="text-sm text-white/50 mt-0.5">
-                          {plan.description}
+                          {plan.plan}
                         </div>
                       )}
                       <div className="text-xs text-white/40 mt-1">
@@ -322,9 +322,9 @@ export function ExecutiveGoalWizardFlow({
                     <h4 className="text-sm font-semibold text-white/90 truncate">
                       {plan.title}
                     </h4>
-                    {plan.description && (
+                    {plan.plan && (
                       <p className="text-xs text-white/50 mt-0.5 truncate">
-                        {plan.description}
+                        {plan.plan}
                       </p>
                     )}
                     <p className="text-xs text-white/40 mt-1">

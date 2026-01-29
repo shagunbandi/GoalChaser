@@ -38,7 +38,7 @@ export function AddExecutiveGoalChat({
   const [error, setError] = useState<string | null>(null)
   const [doneGoal, setDoneGoal] = useState<{
     title: string
-    description: string
+    plan: string
     endDate: string
   } | null>(null)
   const [isCreating, setIsCreating] = useState(false)
@@ -86,7 +86,7 @@ export function AddExecutiveGoalChat({
       if (data.done && data.goal) {
         setDoneGoal({
           title: data.goal.title,
-          description: data.goal.description ?? '',
+          plan: data.goal.plan ?? '',
           endDate: data.goal.endDate,
         })
       }
@@ -104,7 +104,7 @@ export function AddExecutiveGoalChat({
     try {
       await onSubmit({
         title: doneGoal.title,
-        description: doneGoal.description || undefined,
+        plan: doneGoal.plan || undefined,
         startDate,
         endDate: doneGoal.endDate,
         color: DEFAULT_COLOR,
@@ -173,8 +173,8 @@ export function AddExecutiveGoalChat({
                 <span className="text-white/50">Start:</span>{' '}
                 {startDate === todayISO ? 'Today' : startDate}
               </p>
-              {doneGoal.description && (
-                <p className="text-white/60 mt-2 line-clamp-3">{doneGoal.description}</p>
+              {doneGoal.plan && (
+                <p className="text-white/60 mt-2 line-clamp-3">{doneGoal.plan}</p>
               )}
             </div>
             <div className="flex gap-2 pt-2">

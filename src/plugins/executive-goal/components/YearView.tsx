@@ -113,7 +113,7 @@ export function YearView({
 
   const handleSaveExecutiveGoal = async (formData: {
     title: string
-    description: string
+    plan: string
     startDate: string
     endDate: string
     color: string
@@ -131,7 +131,7 @@ export function YearView({
         const updatedExecutiveGoal: ExecutiveGoalPlan = {
           ...editingExecutiveGoal,
           title: formData.title,
-          description: formData.description || undefined,
+          plan: formData.plan || undefined,
           startDate: normalizedStart,
           endDate: normalizedEnd,
           note: formData.note || undefined,
@@ -170,7 +170,7 @@ export function YearView({
         // Create new executiveGoal
         await onAddExecutiveGoal({
           title: formData.title,
-          description: formData.description || undefined,
+          plan: formData.plan || undefined,
           startDate: normalizedStart,
           endDate: normalizedEnd,
           note: formData.note || undefined,
@@ -303,7 +303,7 @@ export function YearView({
             id: executiveGoal.id,
             type: 'travel' as const,
             title: executiveGoal.title,
-            subtitle: `${executiveGoal.description ? `${executiveGoal.description} • ` : ''}${formatShortDate(
+            subtitle: `${executiveGoal.plan ? `${executiveGoal.plan} • ` : ''}${formatShortDate(
               executiveGoal.startDate,
             )} → ${formatShortDate(executiveGoal.endDate)}`,
             color: executiveGoal.color,
@@ -347,8 +347,8 @@ export function YearView({
                         </span>
                       </div>
                       <div className="mt-1 text-xs text-white/60">
-                        {executiveGoal.description && (
-                          <span>{executiveGoal.description} • </span>
+                        {executiveGoal.plan && (
+                          <span>{executiveGoal.plan} • </span>
                         )}
                         {formatShortDate(executiveGoal.startDate)} →{' '}
                         {formatShortDate(executiveGoal.endDate)}
@@ -467,7 +467,7 @@ export function YearView({
             onSubmit={async (goal) => {
               await handleSaveExecutiveGoal({
                 title: goal.title,
-                description: goal.description ?? '',
+                plan: goal.plan ?? '',
                 startDate: goal.startDate,
                 endDate: goal.endDate,
                 color: goal.color ?? '#8B5CF6',

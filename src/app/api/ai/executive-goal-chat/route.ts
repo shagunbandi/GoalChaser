@@ -16,7 +16,7 @@ interface ExecutiveGoalChatResponse {
   done?: boolean
   goal?: {
     title: string
-    description: string
+    plan: string
     endDate: string
   }
 }
@@ -37,16 +37,16 @@ function buildSystemPrompt(todayISO: string): string {
 
 Your job is to interview the user to understand what they want to build or achieve. Ask follow-up questions to clarify until you have:
 1. A clear, concise title for the goal
-2. A description that includes a phase plan (e.g. Phase 1: ..., Phase 2: ...) for how to achieve the goal
+2. A plan (description with phases, e.g. Phase 1: ..., Phase 2: ...) for how to achieve the goal
 3. An end date: ask if they have a deadline; if not, suggest a reasonable one based on scope (use ${todayISO} as reference)
 
-Keep responses warm and concise. When you have enough information to finalize the goal, write a final message that summarizes the goal and the phased plan in the description. Then output a single JSON block on its own line with no other text before or after it:
-{"done":true,"goal":{"title":"...","description":"...","endDate":"YYYY-MM-DD"}}
+Keep responses warm and concise. When you have enough information to finalize the goal, write a final message that summarizes the goal and the phased plan. Then output a single JSON block on its own line with no other text before or after it:
+{"done":true,"goal":{"title":"...","plan":"...","endDate":"YYYY-MM-DD"}}
 
 Rules:
-- Only output the JSON block when the interview is complete and you have title, description (with phase plan), and endDate.
+- Only output the JSON block when the interview is complete and you have title, plan (with phase plan), and endDate.
 - endDate must be in YYYY-MM-DD format.
-- description should include the phase plan (e.g. "Phase 1: Discovery. Phase 2: Build. Phase 3: Launch.").
+- plan should include the phase plan (e.g. "Phase 1: Discovery. Phase 2: Build. Phase 3: Launch.").
 - If the user has not given enough detail, keep asking; do not output the JSON yet.`
 }
 
@@ -58,13 +58,13 @@ function parseGoalFromResponse(content: string): ExecutiveGoalChatResponse['goal
     if (raw.startsWith('```')) {
       raw = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
     }
-    const parsed = JSON.parse(raw) as { done?: boolean; goal?: { title?: string; description?: string; endDate?: string } }
+    const parsed = JSON.parse(raw) as { done?: boolean; goal?: { title?: string; plan?: string; endDate?: string } }
     if (!parsed.done || !parsed.goal?.title || !parsed.goal?.endDate) return null
-    const desc = parsed.goal.description ?? ''
+    const planText = parsed.goal.plan ?? ''
     if (!/^\d{4}-\d{2}-\d{2}$/.test(parsed.goal.endDate)) return null
     return {
       title: String(parsed.goal.title).trim(),
-      description: desc.trim() || parsed.goal.title,
+      plan: planText.trim() || parsed.goal.title,
       endDate: parsed.goal.endDate,
     }
   } catch {

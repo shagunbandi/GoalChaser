@@ -130,10 +130,10 @@ export const ExecutiveGoalPlugin: Plugin = {
           color: '#8B5CF6',
         })
       }
-      if (plan.description) {
+      if (plan.plan) {
         stats.push({
           label: 'Description',
-          value: plan.description,
+          value: plan.plan,
           icon: '📋',
           color: '#7C3AED',
         })
@@ -299,10 +299,10 @@ export const ExecutiveGoalPlugin: Plugin = {
                   aiHint: 'A name or title for the goal (e.g., "Q1 Strategic Planning", "Product Launch")',
                 },
                 {
-                  key: 'description',
+                  key: 'plan',
                   type: 'string',
-                  label: 'Description',
-                  aiHint: 'Brief description of what the goal entails, its objectives, or key activities',
+                  label: 'Plan',
+                  aiHint: 'Phase plan or key objectives for the goal',
                 },
                 {
                   key: 'startDate',
@@ -332,7 +332,7 @@ export const ExecutiveGoalPlugin: Plugin = {
             output: {
               executiveGoalPlans: [{
                 title: 'Q1 Strategic Planning',
-                description: 'Review financial targets and set OKRs',
+                plan: 'Review financial targets and set OKRs',
               }],
             },
           },
@@ -341,7 +341,7 @@ export const ExecutiveGoalPlugin: Plugin = {
             output: {
               executiveGoalPlans: [{
                 title: 'Product Launch',
-                description: 'Launching new mobile app version 2.0',
+                plan: 'Launching new mobile app version 2.0',
               }],
             },
           },
@@ -368,7 +368,7 @@ export const ExecutiveGoalPlugin: Plugin = {
             return {
               id,
               title: String(item.title || 'Goal'),
-              description: item.description ? String(item.description) : undefined,
+              plan: item.plan ? String(item.plan) : undefined,
               startDate: item.startDate ? String(item.startDate) : new Date().toISOString().split('T')[0],
               endDate: item.endDate ? String(item.endDate) : (item.startDate ? String(item.startDate) : new Date().toISOString().split('T')[0]),
               note: item.note ? String(item.note) : undefined,

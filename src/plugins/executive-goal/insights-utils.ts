@@ -249,7 +249,7 @@ export function buildDestinationBreakdown(
       label: plan.title,
       value: `${days} day${days !== 1 ? 's' : ''}`,
       count: days,
-      details: plan.description || '',
+      details: plan.plan || '',
       percentage: maxDays > 0 ? (days / maxDays) * 100 : 0,
       color: '#8B5CF6',
     })
@@ -262,7 +262,7 @@ export function buildDestinationBreakdown(
         label: subPlan.title,
         value: `${subDays} day${subDays !== 1 ? 's' : ''}`,
         count: subDays,
-        details: subPlan.description || '',
+        details: subPlan.plan || '',
         percentage: maxDays > 0 ? (subDays / maxDays) * 100 : 0,
         color: '#A78BFA', // Lighter purple for tasks
         isSubItem: true, // Mark as sub-item for indentation

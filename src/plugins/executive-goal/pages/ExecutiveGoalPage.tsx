@@ -49,7 +49,7 @@ export default function ExecutiveGoalPage({ params, year, month }: PluginPagePro
 
   const handleAddExecutiveGoal = async (executiveGoal: ExecutiveGoalPlanInput) => {
     const trimmedNote = executiveGoal.note?.trim()
-    const trimmedDescription = executiveGoal.description?.trim()
+    const trimmedPlan = executiveGoal.plan?.trim()
 
     const plan: ExecutiveGoalPlan = {
       id: `executiveGoal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -57,7 +57,7 @@ export default function ExecutiveGoalPage({ params, year, month }: PluginPagePro
       startDate: executiveGoal.startDate,
       endDate: executiveGoal.endDate,
       ...(trimmedNote && { note: trimmedNote }),
-      ...(trimmedDescription && { description: trimmedDescription }),
+      ...(trimmedPlan && { plan: trimmedPlan }),
       ...(executiveGoal.color && { color: executiveGoal.color }),
       ...(executiveGoal.parentExecutiveGoalId && { parentExecutiveGoalId: executiveGoal.parentExecutiveGoalId }),
     }
