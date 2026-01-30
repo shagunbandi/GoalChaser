@@ -250,7 +250,7 @@ export function useGoalDataQuery({
   )
 
   const reload = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: goalDataKeys.all })
+    return queryClient.invalidateQueries({ queryKey: goalDataKeys.all })
   }, [queryClient])
 
   // ============================================================================
