@@ -107,27 +107,15 @@ export function getPeriodBackgroundColor(
 export function getExecutiveGoalCustomization(
   data: ExecutiveGoalDayData | null,
 ): { backgroundColor?: string; style?: React.CSSProperties } | undefined {
-  if (!data || !data.executiveGoalPlans || data.executiveGoalPlans.length === 0) {
+  if (!data?.tasks || data.tasks.length === 0) {
     return undefined
   }
 
-  const plans = data.executiveGoalPlans
-
-  // Separate goals (no parent) and tasks (have parent)
-  const goals = plans.filter(plan => !plan.parentExecutiveGoalId)
-  const tasks = plans.filter(plan => plan.parentExecutiveGoalId)
-
-  if (goals.length === 0) {
-    return undefined
-  }
-
-  // Calculate task completion
-  const completedTasks = tasks.filter(task => task.completed === true).length
+  const tasks = data.tasks
+  const completedTasks = tasks.filter((t) => t.completed).length
   const totalTasks = tasks.length
   const completionPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
-
-  // Get goal colors for border
-  const goalColors = goals.map(g => g.color || '#8B5CF6')
+  const goalColors = [...new Set(tasks.map((t) => t.color || '#8B5CF6'))]
 
   return {
     backgroundColor: totalTasks > 0 ? getCompletionBackgroundColor(completionPercent) : undefined,

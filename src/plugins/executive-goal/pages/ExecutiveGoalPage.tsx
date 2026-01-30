@@ -1,13 +1,17 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { PluginPageProps } from '@/sdk'
 import { usePluginPage, LoadingState, NotFoundState, ContentLoader } from '@/sdk'
 import { useAuth } from '@/hooks/useAuth'
 import { ExecutiveGoalHeader, YearView, ExecutiveGoalMonthView } from '../components'
-import type { ExecutiveGoalPlan, ExecutiveGoalPlanInput, ExecutiveGoalDayData } from '../types'
+import type { ExecutiveGoal, ExecutiveGoalInput, ExecutiveGoalDayData } from '../types'
 import { ExecutiveGoalPlugin } from '../plugin'
-import { saveExecutiveGoalPlan, deleteExecutiveGoalPlan, loadExecutiveGoalPlans } from '../api'
+import {
+  loadExecutiveGoals,
+  saveExecutiveGoal,
+  deleteExecutiveGoal,
+} from '../api'
 
 export default function ExecutiveGoalPage({ params, year, month }: PluginPageProps) {
   const { user } = useAuth()
@@ -34,71 +38,62 @@ export default function ExecutiveGoalPage({ params, year, month }: PluginPagePro
     year,
   })
 
-  // Extract all unique executiveGoals for parent selection
-  const allExecutiveGoals = useMemo(() => {
-    const planMap = new Map<string, ExecutiveGoalPlan>()
-    Object.values(pluginDayData).forEach((data) => {
-      data?.executiveGoalPlans?.forEach((plan) => {
-        if (!planMap.has(plan.id)) {
-          planMap.set(plan.id, plan)
-        }
-      })
-    })
-    return Array.from(planMap.values())
-  }, [pluginDayData])
+  const [allExecutiveGoals, setAllExecutiveGoals] = useState<ExecutiveGoal[]>([])
 
-  const handleAddExecutiveGoal = async (executiveGoal: ExecutiveGoalPlanInput) => {
-    const trimmedNote = executiveGoal.note?.trim()
-    const trimmedPlan = executiveGoal.plan?.trim()
+  const loadGoals = useCallback(async () => {
+    if (!userId || !goalId) return
+    const goals = await loadExecutiveGoals(userId, goalId)
+    setAllExecutiveGoals(goals)
+  }, [userId, goalId])
 
-    const plan: ExecutiveGoalPlan = {
-      id: `executiveGoal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      title: executiveGoal.title,
-      startDate: executiveGoal.startDate,
-      endDate: executiveGoal.endDate,
-      ...(trimmedNote && { note: trimmedNote }),
-      ...(trimmedPlan && { plan: trimmedPlan }),
-      ...(executiveGoal.color && { color: executiveGoal.color }),
-      ...(executiveGoal.parentExecutiveGoalId && { parentExecutiveGoalId: executiveGoal.parentExecutiveGoalId }),
+  useEffect(() => {
+    loadGoals()
+  }, [loadGoals])
+
+  const handleAddExecutiveGoal = async (input: ExecutiveGoalInput) => {
+    const goal: ExecutiveGoal = {
+      id: `executiveGoal_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      title: input.title,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      ...(input.note?.trim() && { note: input.note.trim() }),
+      ...(input.plan?.trim() && { plan: input.plan.trim() }),
+      ...(input.color && { color: input.color }),
     }
-
-    const ok = await saveExecutiveGoalPlan(userId, goalId, plan)
-    if (ok) await reload()
+    const ok = await saveExecutiveGoal(userId, goalId, goal)
+    if (ok) await loadGoals()
   }
 
-  const handleUpdateExecutiveGoal = async (updatedExecutiveGoal: ExecutiveGoalPlan) => {
-    const ok = await saveExecutiveGoalPlan(userId, goalId, updatedExecutiveGoal)
-    if (ok) await reload()
+  const handleUpdateExecutiveGoal = async (updated: ExecutiveGoal) => {
+    const ok = await saveExecutiveGoal(userId, goalId, updated)
+    if (ok) await loadGoals()
   }
 
   const handleDeleteExecutiveGoal = async (executiveGoalId: string) => {
-    const ok = await deleteExecutiveGoalPlan(userId, goalId, executiveGoalId)
-    if (ok) await reload()
+    const ok = await deleteExecutiveGoal(userId, goalId, executiveGoalId)
+    if (ok) await loadGoals()
   }
 
-  const loadAllPlansForGoal = () => loadExecutiveGoalPlans(userId, goalId)
+  const loadAllPlansForGoal = () => loadExecutiveGoals(userId, goalId)
 
-  // Only show full-page loading on TRUE initial load (no goal AND no cached data)
   if (!goal && isLoading && !hasData) return <LoadingState />
   if (!goal && !isLoading) return <NotFoundState />
 
   return (
     <div className="space-y-6">
-      {/* Header - ALWAYS rendered, never unmounted */}
       <ExecutiveGoalHeader
         year={currentYear}
         dayData={pluginDayData}
+        allExecutiveGoals={allExecutiveGoals}
         onPrevYear={navigateToPrevYear}
         onNextYear={navigateToNextYear}
         onAddExecutiveGoal={handleAddExecutiveGoal}
         onUpdateExecutiveGoal={handleUpdateExecutiveGoal}
         onDeleteExecutiveGoal={handleDeleteExecutiveGoal}
-        allExecutiveGoals={allExecutiveGoals}
         userId={userId}
         goalId={goalId}
       />
 
-      {/* Content - shows inline loader when switching years */}
       {isLoading && !hasData ? (
         <ContentLoader color="#8B5CF6" />
       ) : month ? (
@@ -127,6 +122,7 @@ export default function ExecutiveGoalPage({ params, year, month }: PluginPagePro
           onPrevYear={navigateToPrevYear}
           onNextYear={navigateToNextYear}
           onAddExecutiveGoal={handleAddExecutiveGoal}
+          onUpdateExecutiveGoal={handleUpdateExecutiveGoal}
           onUpdateDay={updateDayData}
           onDeleteExecutiveGoal={handleDeleteExecutiveGoal}
           onJumpToDay={jumpToMonth}

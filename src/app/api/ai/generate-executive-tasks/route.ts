@@ -179,7 +179,11 @@ export async function POST(request: NextRequest) {
 
 Prefer suggesting Phase 1 tasks until progress shows Phase 1 is substantially complete; only then suggest Phase 2. Phase 1 (or any phase) may take longer than originally planned—e.g. 30, 40, 60 or more days—so keep suggesting Phase 1 tasks for as long as they are still the logical next steps based on what's been done. Move to Phase 2 only when the progress summaries and completed tasks indicate Phase 1 is done or nearly done, not based on calendar days. If the user struggled somewhere (see completion notes), suggest follow-up or adjustment within the same phase first.
 
-Given the goal's plan, progress so far (summaries + last 20 days of completed tasks with completion notes), and the date, suggest 3-5 tasks for that date. If there are existing tasks for the day, suggest additional ones (no duplicates). Label each task with "Phase 1", "Phase 2", etc. to match the plan. Respond ONLY with a JSON object: { "tasks": [ { "title": "...", "phase": "Phase 1" or "Phase 2" etc. } ] }.`
+Given the goal's plan, progress so far (summaries + last 20 days of completed tasks with completion notes), and the date, suggest 3-5 tasks for that date. If there are existing tasks for the day, suggest additional ones (no duplicates). Label each task with "Phase 1", "Phase 2", etc. to match the plan.
+
+For each task, include a short "howToAchieve" (1-2 sentences) that gives the user clear direction on how to accomplish it—e.g. concrete steps, where to look, or what to do first. This helps the user know how to get started.
+
+Respond ONLY with a JSON object: { "tasks": [ { "title": "...", "phase": "Phase 1" or "Phase 2" etc., "howToAchieve": "1-2 sentences on how to achieve this task" } ] }.`
 
     const userPrompt = `Goal plan:
 ${planText}
@@ -193,7 +197,7 @@ ${last20Text}
 Date to suggest tasks for: ${date}
 Existing tasks for that day: ${existingText}
 
-Return JSON: { "tasks": [ { "title": "...", "phase": "Phase 1" or "Phase 2" etc. } ] }`
+Return JSON: { "tasks": [ { "title": "...", "phase": "Phase 1" or "Phase 2" etc., "howToAchieve": "1-2 sentences on how to achieve this task" } ] }`
 
     const openai = getOpenAI()
     const completion = await openai.chat.completions.create({
@@ -203,18 +207,24 @@ Return JSON: { "tasks": [ { "title": "...", "phase": "Phase 1" or "Phase 2" etc.
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.5,
-      max_tokens: 600,
+      max_tokens: 1000,
       response_format: { type: 'json_object' },
     })
 
     const raw = completion.choices[0]?.message?.content?.trim() ?? '{}'
-    let tasks: { title: string; phase?: string }[] = []
+    let tasks: { title: string; phase?: string; howToAchieve?: string }[] = []
     try {
-      const parsed = JSON.parse(raw) as { tasks?: { title?: string; phase?: string }[] }
+      const parsed = JSON.parse(raw) as {
+        tasks?: { title?: string; phase?: string; howToAchieve?: string }[]
+      }
       if (Array.isArray(parsed.tasks)) {
         tasks = parsed.tasks
           .filter((t) => t && typeof t.title === 'string' && t.title.trim())
-          .map((t) => ({ title: String(t.title).trim(), phase: t.phase }))
+          .map((t) => ({
+            title: String(t.title).trim(),
+            phase: t.phase,
+            howToAchieve: typeof t.howToAchieve === 'string' ? t.howToAchieve.trim() : undefined,
+          }))
       }
     } catch {
       console.error('[generate-executive-tasks] Parse failed:', raw)
@@ -235,7 +245,7 @@ Return JSON: { "tasks": [ { "title": "...", "phase": "Phase 1" or "Phase 2" etc.
 
     const response: {
       newSummary: ProgressSoFarEntry | null
-      tasks: { title: string; phase?: string }[]
+      tasks: { title: string; phase?: string; howToAchieve?: string }[]
       usage: { promptTokens: number; completionTokens: number; totalTokens: number; estimatedCostUsd: number }
       totalUsage: { promptTokens: number; completionTokens: number; totalTokens: number; estimatedCostUsd: number }
       summarizeUsage?: { promptTokens: number; completionTokens: number; totalTokens: number; estimatedCostUsd: number }

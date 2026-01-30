@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { AIWizardFlowProps } from '@/sdk'
-import type { ExecutiveGoalDayData, ExecutiveGoalPlan } from '../types'
+import type { ExecutiveGoalDayData, ExecutiveGoal, ExecutiveGoalInput } from '../types'
 import { ExecutiveGoalForm } from './ExecutiveGoalForm'
 
 interface ExecutiveGoalWizardFlowProps extends AIWizardFlowProps<ExecutiveGoalDayData, unknown> {}
@@ -20,21 +20,15 @@ export function ExecutiveGoalWizardFlow({
   onComplete,
   onSkip,
 }: ExecutiveGoalWizardFlowProps) {
-  const extractedPlans = extractedData.executiveGoalPlans ?? []
-  
-  // Track which plans are selected
+  const extractedGoals = (extractedData as { _extractedGoals?: ExecutiveGoal[] })._extractedGoals ?? []
   const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(
-    () => new Set(extractedPlans.map(p => p.id))
+    () => new Set(extractedGoals.map((p) => p.id))
   )
-
-  // Current step
   const [currentStep, setCurrentStep] = useState<WizardStep>(
-    extractedPlans.length > 0 ? 'confirm-plans' : 'edit-plans'
+    extractedGoals.length > 0 ? 'confirm-plans' : 'edit-plans'
   )
-
-  // Confirmed executive goal plans for editing
-  const [executiveGoalPlans, setExecutiveGoalPlans] = useState<ExecutiveGoalPlan[]>([])
-  const [editingPlan, setEditingPlan] = useState<ExecutiveGoalPlan | null>(null)
+  const [executiveGoalPlans, setExecutiveGoalPlans] = useState<ExecutiveGoal[]>([])
+  const [editingPlan, setEditingPlan] = useState<ExecutiveGoal | null>(null)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [isAddingNew, setIsAddingNew] = useState(false)
 
@@ -51,9 +45,8 @@ export function ExecutiveGoalWizardFlow({
     })
   }
 
-  // Confirm selected plans and move to edit step
   const handleConfirmPlans = () => {
-    const confirmedPlans = extractedPlans.filter(p => selectedPlanIds.has(p.id))
+    const confirmedPlans = extractedGoals.filter((p) => selectedPlanIds.has(p.id))
     setExecutiveGoalPlans(confirmedPlans)
     setCurrentStep('edit-plans')
   }
@@ -64,31 +57,27 @@ export function ExecutiveGoalWizardFlow({
     setCurrentStep('edit-plans')
   }
 
-  // Handle editing a plan
-  const handleEditPlan = (plan: ExecutiveGoalPlan, index: number) => {
+  const handleEditPlan = (plan: ExecutiveGoal, index: number) => {
     setEditingPlan(plan)
     setEditingIndex(index)
     setIsAddingNew(false)
   }
 
-  // Handle saving an edited plan
-  const handleSavePlan = (data: {
-    title: string
-    plan: string
-    startDate: string
-    endDate: string
-    color: string
-    note: string
-  }) => {
+  const handleSavePlan = (data: ExecutiveGoalInput) => {
     if (editingIndex !== null) {
       const newPlans = executiveGoalPlans.map((plan, i) =>
         i === editingIndex ? { ...plan, ...data } : plan
       )
       setExecutiveGoalPlans(newPlans)
     } else if (isAddingNew) {
-      const newPlan: ExecutiveGoalPlan = {
+      const newPlan: ExecutiveGoal = {
         id: `goal-${Date.now()}`,
-        ...data,
+        title: data.title,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        plan: data.plan,
+        note: data.note,
+        color: data.color,
       }
       setExecutiveGoalPlans([...executiveGoalPlans, newPlan])
     }
@@ -102,14 +91,13 @@ export function ExecutiveGoalWizardFlow({
     setExecutiveGoalPlans(executiveGoalPlans.filter((_, i) => i !== index))
   }
 
-  // Handle adding new
   const handleAddNew = () => {
     setEditingPlan({
       id: '',
       title: '',
       plan: '',
-      startDate: '',
-      endDate: '',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
       color: '#8B5CF6',
       note: '',
     })
@@ -117,25 +105,8 @@ export function ExecutiveGoalWizardFlow({
     setIsAddingNew(true)
   }
 
-  // Handle save all
   const handleSave = () => {
-    // Merge with existing plans, avoiding duplicates
-    const existingPlans = existingDayData?.executiveGoalPlans ?? []
-    const mergedPlans = [...existingPlans]
-
-    for (const newPlan of executiveGoalPlans) {
-      const isDuplicate = existingPlans.some(
-        existing =>
-          existing.title === newPlan.title &&
-          existing.destination === newPlan.destination &&
-          existing.startDate === newPlan.startDate
-      )
-      if (!isDuplicate) {
-        mergedPlans.push(newPlan)
-      }
-    }
-
-    onComplete({ executiveGoalPlans: mergedPlans })
+    onComplete({})
   }
 
   // Check if there's any data
@@ -161,13 +132,13 @@ export function ExecutiveGoalWizardFlow({
             <div>
               <h3 className="font-semibold text-white">Executive Goals Detected</h3>
               <p className="text-sm text-white/60">
-                AI found {extractedPlans.length} goal{extractedPlans.length !== 1 ? 's' : ''}
+                AI found {extractedGoals.length} goal{extractedGoals.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
 
           <div className="space-y-2">
-            {extractedPlans.map(plan => {
+            {extractedGoals.map(plan => {
               const isSelected = selectedPlanIds.has(plan.id)
               const duration = calculateDuration(plan.startDate, plan.endDate)
               

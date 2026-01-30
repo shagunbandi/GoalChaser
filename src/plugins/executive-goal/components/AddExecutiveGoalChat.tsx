@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import type { ExecutiveGoalPlanInput } from '../types'
+import type { ExecutiveGoalInput } from '../types'
 
 const DEFAULT_COLOR = '#8B5CF6'
 const WELCOME_MESSAGE =
@@ -13,7 +13,7 @@ interface ChatMessage {
 }
 
 interface AddExecutiveGoalChatProps {
-  onSubmit: (goal: ExecutiveGoalPlanInput) => void | Promise<void>
+  onSubmit: (goal: ExecutiveGoalInput) => void | Promise<void>
   onCancel: () => void
   prefilledStartDate?: string
 }

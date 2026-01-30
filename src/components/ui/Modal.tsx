@@ -1,3 +1,7 @@
+'use client'
+
+import { createPortal } from 'react-dom'
+
 interface ModalProps {
   open: boolean
   title?: string
@@ -9,24 +13,24 @@ interface ModalProps {
 export function Modal({ open, title, onClose, children, footer }: ModalProps) {
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+  const content = (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
       <div
         className="
-          relative z-10 w-full max-w-3xl
+          relative z-10 w-full max-w-3xl max-h-[90vh]
           rounded-2xl border border-white/10
           bg-[#0b0b12]/95 backdrop-blur-xl
           shadow-[0_20px_60px_rgba(0,0,0,0.45)]
-          overflow-hidden
+          overflow-hidden flex flex-col
         "
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 shrink-0">
           <div className="text-lg font-semibold text-white/90">{title}</div>
           <button
             onClick={onClose}
@@ -39,13 +43,19 @@ export function Modal({ open, title, onClose, children, footer }: ModalProps) {
             ✕
           </button>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto px-6 py-4">{children}</div>
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">{children}</div>
         {footer && (
-          <div className="px-6 py-4 border-t border-white/5 bg-white/2">
+          <div className="px-6 py-4 border-t border-white/5 bg-white/2 shrink-0">
             {footer}
           </div>
         )}
       </div>
     </div>
   )
+
+  if (typeof document !== 'undefined' && document.body) {
+    return createPortal(content, document.body)
+  }
+
+  return content
 }
