@@ -184,6 +184,33 @@ export async function loadExecutiveDay(
   }
 }
 
+/** Load all day docs (notes) in a date range with a single query. Use this instead of calling loadExecutiveDay per date. */
+export async function loadExecutiveDaysRange(
+  userId: string,
+  goalId: string,
+  startDate: string,
+  endDate: string
+): Promise<Record<string, { notes?: string }>> {
+  try {
+    const db = getFirebaseDb()
+    const daysRef = collection(db, ...daysPath(userId, goalId))
+    const q = query(
+      daysRef,
+      where('__name__', '>=', startDate),
+      where('__name__', '<=', endDate)
+    )
+    const snapshot = await getDocs(q)
+    const result: Record<string, { notes?: string }> = {}
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data() as { notes?: string }
+      result[docSnap.id] = { notes: data?.notes ?? '' }
+    })
+    return result
+  } catch {
+    return {}
+  }
+}
+
 /** Save day notes to days/{date}. */
 export async function saveExecutiveDayNotes(
   userId: string,

@@ -4,7 +4,7 @@ import type { ExecutiveGoalDayData, ExecutiveGoalTask } from './types'
 import {
   loadExecutiveTasks,
   saveExecutiveTask,
-  loadExecutiveDay,
+  loadExecutiveDaysRange,
   saveExecutiveDayNotes,
 } from './api'
 
@@ -42,26 +42,30 @@ export class ExecutiveGoalDataProvider implements PluginDataProvider<ExecutiveGo
     endDate: string
   ): Promise<Record<string, ExecutiveGoalDayData>> {
     try {
-      const tasks = await loadExecutiveTasks(
-        context.userId,
-        context.goalId,
-        startDate,
-        endDate
-      )
+      const [tasks, daysMap] = await Promise.all([
+        loadExecutiveTasks(
+          context.userId,
+          context.goalId,
+          startDate,
+          endDate
+        ),
+        loadExecutiveDaysRange(
+          context.userId,
+          context.goalId,
+          startDate,
+          endDate
+        ),
+      ])
       const dates = generateDateRange(startDate, endDate)
       const result: Record<string, ExecutiveGoalDayData> = {}
 
       for (const date of dates) {
         const tasksForDay = tasks.filter((t) => t.endDate === date)
+        const dayDoc = daysMap[date]
         result[date] = {
           tasks: tasksForDay,
-          notes: '',
+          notes: dayDoc?.notes ?? '',
         }
-      }
-
-      for (const date of dates) {
-        const dayDoc = await loadExecutiveDay(context.userId, context.goalId, date)
-        if (result[date] && dayDoc?.notes) result[date].notes = dayDoc.notes
       }
 
       return result

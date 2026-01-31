@@ -8,7 +8,7 @@
 import type { CalendarDayData } from './types'
 import { getFirebaseDb, isFirebaseAvailable } from '@/lib/api/firebase-client'
 import { logger } from '@/lib/logger'
-import { collection, doc, getDocs, setDoc, query, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, setDoc, query, where } from 'firebase/firestore'
 
 /**
  * Load calendar data for a date range
@@ -76,17 +76,13 @@ export async function saveCalendarDay(
     }
 
     const docRef = doc(db, 'users', userId, 'goals', goalId, 'addons', 'calendar', 'days', date)
-    
-    // Get existing data first
-    const existingDoc = await getDocs(collection(db, 'users', userId, 'goals', goalId, 'addons', 'calendar', 'days'))
+
+    const existingSnap = await getDoc(docRef)
     let existingData: CalendarDayData = { date, notes: '' }
-    
-    existingDoc.forEach(d => {
-      if (d.id === date) {
-        const docData = d.data()
-        existingData = { date, notes: docData.notes || docData.note || '' }
-      }
-    })
+    if (existingSnap.exists()) {
+      const docData = existingSnap.data()
+      existingData = { date, notes: docData.notes || docData.note || '' }
+    }
 
     const updatedData: CalendarDayData = {
       date,
