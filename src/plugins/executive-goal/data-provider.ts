@@ -4,6 +4,7 @@ import type { ExecutiveGoalDayData, ExecutiveGoalTask } from './types'
 import {
   loadExecutiveTasks,
   saveExecutiveTask,
+  loadExecutiveDay,
   loadExecutiveDaysRange,
   saveExecutiveDayNotes,
 } from './api'
