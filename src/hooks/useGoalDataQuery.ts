@@ -201,6 +201,71 @@ export function useGoalDataQuery({
     },
   })
 
+  // Batch update plugin day data (one mutation, one cache update, N writes)
+  const updatePluginDataBatchMutation = useMutation({
+    mutationFn: async ({
+      pluginId,
+      updates,
+    }: {
+      pluginId: string
+      updates: Array<{ date: string; updates: Record<string, unknown> }>
+    }) => {
+      if (pluginId === 'calendar') {
+        for (const { date, updates: u } of updates) {
+          await saveCalendarDay(userId, goalId, date, u)
+        }
+      } else {
+        const plugin = registry.getPlugin(pluginId)
+        if (plugin?.dataProvider) {
+          const context = createPluginContext({ userId, goalId, pluginId })
+          if (plugin.dataProvider.saveDayDataBatch) {
+            await plugin.dataProvider.saveDayDataBatch(
+              context,
+              updates.map(({ date, updates: u }) => ({ date, data: u })),
+            )
+          } else {
+            for (const { date, updates: u } of updates) {
+              await plugin.dataProvider.saveDayData(context, date, u)
+            }
+          }
+        }
+      }
+      return { pluginId, updates }
+    },
+    onMutate: async ({ pluginId, updates: updatesList }) => {
+      await queryClient.cancelQueries({
+        queryKey: goalDataKeys.pluginData(userId, goalId, startDate, endDate),
+      })
+      const previousData = queryClient.getQueryData<GoalDataResult>(
+        goalDataKeys.pluginData(userId, goalId, startDate, endDate),
+      )
+      queryClient.setQueryData<GoalDataResult>(
+        goalDataKeys.pluginData(userId, goalId, startDate, endDate),
+        (old) => {
+          if (!old) return old
+          let next = { ...old, pluginData: { ...old.pluginData } }
+          next.pluginData[pluginId] = { ...next.pluginData[pluginId] }
+          for (const { date, updates: u } of updatesList) {
+            next.pluginData[pluginId][date] = {
+              ...(next.pluginData[pluginId]?.[date] || {}),
+              ...u,
+            }
+          }
+          return next
+        },
+      )
+      return { previousData }
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(
+          goalDataKeys.pluginData(userId, goalId, startDate, endDate),
+          context.previousData,
+        )
+      }
+    },
+  })
+
   // Update plugin config
   const updatePluginConfigMutation = useMutation({
     mutationFn: async ({
@@ -243,6 +308,15 @@ export function useGoalDataQuery({
     [updatePluginDataMutation]
   )
 
+  const updatePluginDataBatch = useCallback(
+    (
+      pluginId: string,
+      updates: Array<{ date: string; updates: Record<string, unknown> }>,
+    ) =>
+      updatePluginDataBatchMutation.mutateAsync({ pluginId, updates }),
+    [updatePluginDataBatchMutation]
+  )
+
   const updatePluginConfig = useCallback(
     (pluginId: string, config: any) =>
       updatePluginConfigMutation.mutateAsync({ pluginId, config }),
@@ -274,6 +348,7 @@ export function useGoalDataQuery({
 
     // Mutations
     updatePluginData,
+    updatePluginDataBatch,
     updatePluginConfig,
 
     // Reload

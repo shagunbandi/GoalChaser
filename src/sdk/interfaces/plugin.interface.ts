@@ -189,6 +189,9 @@ export interface PluginFirestore {
   /** Get a scoped document reference */
   doc: (path: string) => any // Firestore DocumentReference
 
+  /** Create a write batch (commit many writes in one round-trip) */
+  writeBatch?: () => any // Firestore WriteBatch
+
   /** Query helper */
   query: (collectionRef: any, ...queryConstraints: any[]) => any
 
@@ -243,6 +246,15 @@ export interface PluginDataProvider<TDayData = any, TConfig = any> {
    * @param data Data to save
    */
   saveDayData(context: PluginContext, date: string, data: Partial<TDayData>): Promise<boolean>
+
+  /**
+   * Save many days in one batch (optional). Use for multi-day updates to avoid N round-trips.
+   * If not implemented, core will fall back to calling saveDayData in a loop.
+   */
+  saveDayDataBatch?(
+    context: PluginContext,
+    updates: Array<{ date: string; data: Partial<TDayData> }>,
+  ): Promise<void>
 
   /**
    * Load plugin configuration (optional)

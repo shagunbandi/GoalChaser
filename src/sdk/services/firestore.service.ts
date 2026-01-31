@@ -9,6 +9,7 @@ import {
   getDoc,
   setDoc,
   deleteDoc,
+  writeBatch,
 } from 'firebase/firestore'
 import type { PluginFirestore } from '../interfaces/plugin.interface'
 
@@ -46,6 +47,9 @@ export function createPluginFirestore(
     doc: (path: string) => {
       return doc(db, scopePath(path))
     },
+
+    /** Create a write batch (all ops commit in one round-trip). Use for multi-day updates. */
+    writeBatch: () => writeBatch(db),
 
     query,
     where,

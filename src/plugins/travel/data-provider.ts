@@ -85,6 +85,37 @@ export class TravelDataProvider implements PluginDataProvider<TravelDayData> {
     }
   }
 
+  /** Save many days in one Firestore batch (one round-trip instead of N). */
+  async saveDayDataBatch(
+    context: PluginContext,
+    updates: Array<{ date: string; data: Partial<TravelDayData> }>
+  ): Promise<void> {
+    if (updates.length === 0) return
+    if (!context.firestore.writeBatch) {
+      // Fallback: sequential saveDayData
+      for (const { date, data } of updates) {
+        await this.saveDayData(context, date, data as PluginDayData)
+      }
+      return
+    }
+    try {
+      const batch = context.firestore.writeBatch()
+      const updatedAt = new Date().toISOString()
+      for (const { date, data } of updates) {
+        const docRef = context.firestore.doc(`days/${date}`)
+        const cleanedData = removeUndefinedFields({
+          ...data,
+          updatedAt,
+        })
+        batch.set(docRef, cleanedData, { merge: true })
+      }
+      await batch.commit()
+    } catch (error) {
+      context.logger.error('Failed to save travel day data batch', error)
+      throw error
+    }
+  }
+
   /**
    * Save a travel plan (custom method, not from interface)
    */

@@ -31,6 +31,10 @@ interface UsePluginPageResult<TDayData = any, TConfig = any> {
   
   // Data operations
   updateDayData: (iso: string, updates: Partial<TDayData>) => Promise<void>
+  /** Batch update many days in one mutation (fewer network round-trips). */
+  updateDayDataBatch: (
+    updates: Array<{ date: string; updates: Partial<TDayData> }>,
+  ) => Promise<void>
   updateConfig: (config: Partial<TConfig>) => Promise<void>
   reload: () => Promise<void>
   
@@ -94,6 +98,7 @@ export function usePluginPage<TDayData = any, TConfig = any>({
     pluginData,
     pluginConfigs,
     handleUpdateData,
+    handleUpdateDataBatch,
     updateConfig: updateConfigBase,
     reload,
   } = useGoalData(goalId, year)
@@ -105,6 +110,12 @@ export function usePluginPage<TDayData = any, TConfig = any>({
   // Wrapper for day data updates
   const updateDayData = async (iso: string, updates: Partial<TDayData>) => {
     await handleUpdateData(pluginId, iso, updates)
+  }
+
+  const updateDayDataBatch = async (
+    updates: Array<{ date: string; updates: Partial<TDayData> }>,
+  ) => {
+    await handleUpdateDataBatch(pluginId, updates)
   }
 
   // Wrapper for config updates
@@ -177,6 +188,7 @@ export function usePluginPage<TDayData = any, TConfig = any>({
     router,
     initialSelectedDay,
     updateDayData,
+    updateDayDataBatch,
     updateConfig,
     reload,
     navigateToPrevYear,

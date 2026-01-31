@@ -20,6 +20,7 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
     pluginDayData,
     initialSelectedDay,
     updateDayData,
+    updateDayDataBatch,
     navigateToPrevYear,
     navigateToNextYear,
     navigateToYear,
@@ -69,12 +70,14 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
       ...(travel.placeAddress && { placeAddress: travel.placeAddress }),
     }
 
-    for (const date of dates) {
+    const batch = dates.map((date) => {
       const existing = (pluginDayData[date]?.travelPlans as TravelPlan[]) || []
-      await updateDayData(date, {
-        travelPlans: [...existing, travelWithId],
-      })
-    }
+      return {
+        date,
+        updates: { travelPlans: [...existing, travelWithId] } as Partial<TravelDayData>,
+      }
+    })
+    await updateDayDataBatch(batch)
   }
 
   const handleUpdateTravel = async (updatedTravel: TravelPlan) => {
@@ -90,32 +93,29 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
 
     if (!oldTravel) return
 
-    // Remove from old dates
     const oldDates = enumerateDateRange(oldTravel.startDate, oldTravel.endDate)
-    for (const date of oldDates) {
-      const existing = (pluginDayData[date]?.travelPlans as TravelPlan[]) || []
-      await updateDayData(date, {
-        travelPlans: existing.filter((p) => p.id !== updatedTravel.id),
-      })
-    }
-
-    // Add to new dates
     const newDates = enumerateDateRange(
       updatedTravel.startDate,
       updatedTravel.endDate,
     )
-    for (const date of newDates) {
+    const allDates = Array.from(
+      new Set([...oldDates, ...newDates]),
+    )
+
+    const batch = allDates.map((date) => {
       const existing = (pluginDayData[date]?.travelPlans as TravelPlan[]) || []
-      // Filter out any existing with same ID (in case dates overlap)
       const filtered = existing.filter((p) => p.id !== updatedTravel.id)
-      await updateDayData(date, {
-        travelPlans: [...filtered, updatedTravel],
-      })
-    }
+      const isInNewRange = newDates.includes(date)
+      const travelPlans = isInNewRange ? [...filtered, updatedTravel] : filtered
+      return {
+        date,
+        updates: { travelPlans } as Partial<TravelDayData>,
+      }
+    })
+    await updateDayDataBatch(batch)
   }
 
   const handleDeleteTravel = async (travelId: string) => {
-    // Find the travel to get its date range
     let travel: TravelPlan | null = null
     for (const data of Object.values(pluginDayData)) {
       const found = data?.travelPlans?.find((p) => p.id === travelId)
@@ -127,14 +127,17 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
 
     if (!travel) return
 
-    // Remove from all dates in the range
     const dates = enumerateDateRange(travel.startDate, travel.endDate)
-    for (const date of dates) {
+    const batch = dates.map((date) => {
       const existing = (pluginDayData[date]?.travelPlans as TravelPlan[]) || []
-      await updateDayData(date, {
-        travelPlans: existing.filter((p) => p.id !== travelId),
-      })
-    }
+      return {
+        date,
+        updates: {
+          travelPlans: existing.filter((p) => p.id !== travelId),
+        } as Partial<TravelDayData>,
+      }
+    })
+    await updateDayDataBatch(batch)
   }
 
   // Only show full-page loading on TRUE initial load (no goal AND no cached data)
@@ -186,6 +189,7 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
           onNextYear={navigateToNextYear}
           onAddTravel={handleAddTravel}
           onUpdateDay={updateDayData}
+          onUpdateDaysBatch={updateDayDataBatch}
           onJumpToDay={jumpToMonth}
           onMonthClick={navigateToMonth}
           initialSelectedDay={initialSelectedDay}

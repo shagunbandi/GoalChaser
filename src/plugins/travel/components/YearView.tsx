@@ -22,6 +22,10 @@ interface YearViewProps {
   onNextYear: () => void
   onAddTravel: (travel: TravelPlanInput) => void | Promise<void>
   onUpdateDay: (iso: string, updates: any) => Promise<void>
+  /** Batch update many days in one call (preferred when editing a multi-day travel). */
+  onUpdateDaysBatch?: (
+    updates: Array<{ date: string; updates: any }>,
+  ) => Promise<void>
   onJumpToDay?: (iso: string) => void
   onMonthClick?: (year: number, month: number) => void
   initialSelectedDay?: string | null
@@ -36,6 +40,7 @@ export function YearView({
   onNextYear,
   onAddTravel,
   onUpdateDay,
+  onUpdateDaysBatch,
   onJumpToDay,
   onMonthClick,
   initialSelectedDay,
@@ -141,26 +146,25 @@ export function YearView({
           editingTravel.endDate,
         )
         const newDates = dates
+        const allDates = Array.from(new Set([...oldDates, ...newDates]))
 
-        const updates: Promise<void>[] = []
-
-        // Remove from old dates
-        oldDates.forEach((iso) => {
-          const existing = dayDetails[iso]?.travelPlans || []
-          const filtered = existing.filter((t: any) => t.id !== editingTravel.id)
-          updates.push(onUpdateDay(iso, { travelPlans: filtered }))
-        })
-
-        // Add to new dates
-        newDates.forEach((iso) => {
+        const batch = allDates.map((iso) => {
           const existing = dayDetails[iso]?.travelPlans || []
           const filtered = existing.filter((t: any) => t.id !== updatedTravel.id)
-          updates.push(
-            onUpdateDay(iso, { travelPlans: [...filtered, updatedTravel] }),
-          )
+          const isInNewRange = newDates.includes(iso)
+          const travelPlans = isInNewRange
+            ? [...filtered, updatedTravel]
+            : filtered
+          return { date: iso, updates: { travelPlans } }
         })
 
-        await Promise.all(updates)
+        if (onUpdateDaysBatch) {
+          await onUpdateDaysBatch(batch)
+        } else {
+          await Promise.all(
+            batch.map(({ date, updates: u }) => onUpdateDay(date, u)),
+          )
+        }
 
         setSelectedDay(updatedTravel.startDate)
       } else {
@@ -235,7 +239,7 @@ export function YearView({
   const removeTravelForTrip = async (travelId: string) => {
     setIsUpdating(true)
     try {
-      const updates = Object.entries(dayDetails)
+      const batch = Object.entries(dayDetails)
         .filter(([, details]) =>
           (details.travelPlans || []).some((t: any) => t.id === travelId),
         )
@@ -243,9 +247,15 @@ export function YearView({
           const filtered = (details.travelPlans || []).filter(
             (t: any) => t.id !== travelId,
           )
-          return onUpdateDay(iso, { travelPlans: filtered })
+          return { date: iso, updates: { travelPlans: filtered } }
         })
-      await Promise.all(updates)
+      if (onUpdateDaysBatch && batch.length > 0) {
+        await onUpdateDaysBatch(batch)
+      } else if (batch.length > 0) {
+        await Promise.all(
+          batch.map(({ date, updates: u }) => onUpdateDay(date, u)),
+        )
+      }
       setSelectedDay(null)
     } finally {
       setIsUpdating(false)
