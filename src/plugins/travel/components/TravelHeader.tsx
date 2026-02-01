@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { HeaderRenderer } from '@/components/features/year-view/renderers/HeaderRenderer'
 import { TravelManager } from './TravelManager'
-import type { TravelDayData, TravelPlan, TravelPlanInput } from '../types'
+import type { TravelDayData, TravelPlan, TravelPlanInput, TravelConfig } from '../types'
 import { isWeekend } from '@/utils'
 
 interface TravelHeaderProps {
@@ -17,6 +17,8 @@ interface TravelHeaderProps {
   allTravels?: TravelPlan[]
   userId?: string
   goalId?: string
+  pluginConfig?: TravelConfig | null
+  onUpdateConfig?: (config: Partial<TravelConfig>) => void | Promise<void>
 }
 
 export function TravelHeader({
@@ -30,6 +32,8 @@ export function TravelHeader({
   allTravels,
   userId,
   goalId,
+  pluginConfig,
+  onUpdateConfig,
 }: TravelHeaderProps) {
   const [showTravelManager, setShowTravelManager] = useState(false)
 
@@ -88,6 +92,8 @@ export function TravelHeader({
           allTravels={allTravels}
           userId={userId}
           goalId={goalId}
+          pluginConfig={pluginConfig}
+          onUpdateConfig={onUpdateConfig}
         />
       )}
     </>

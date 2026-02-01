@@ -62,6 +62,7 @@ export type {
   InsightChart,
   BreakdownItem,
   TimeRangeOption,
+  InsightsCustomViewProps,
 } from './types'
 
 export { DEFAULT_TIME_RANGES } from './types'

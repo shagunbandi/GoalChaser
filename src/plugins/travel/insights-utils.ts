@@ -340,3 +340,200 @@ export function countTripsWithAttachments(allData: Record<string, TravelDayData>
   
   return trips.filter(trip => trip.files && trip.files.length > 0).length
 }
+
+/**
+ * Marker shape for SDK InsightsMap (data-driven)
+ */
+export interface TravelMapMarker {
+  lat: number
+  lng: number
+  label: string
+  id: string
+}
+
+/**
+ * Get markers for the insights map. If travelId is set, returns only that parent trip
+ * and its sub-trips (with placeCoordinates). Otherwise returns all plans with coordinates.
+ */
+export function getTravelMapMarkers(
+  pluginData: Record<string, TravelDayData>,
+  options: { travelId?: string } = {}
+): TravelMapMarker[] {
+  const tripMap = new Map<string, TravelPlan>()
+  const parentMap = new Map<string, TravelPlan[]>()
+
+  Object.values(pluginData).forEach((dayData) => {
+    if (dayData?.travelPlans) {
+      dayData.travelPlans.forEach((trip) => {
+        if (!tripMap.has(trip.id)) {
+          tripMap.set(trip.id, trip)
+        }
+        if (trip.parentTravelId) {
+          if (!parentMap.has(trip.parentTravelId)) {
+            parentMap.set(trip.parentTravelId, [])
+          }
+          parentMap.get(trip.parentTravelId)!.push(trip)
+        }
+      })
+    }
+  })
+
+  let plansToConsider: TravelPlan[]
+  if (options.travelId) {
+    const parent = tripMap.get(options.travelId)
+    if (!parent) return []
+    const subTrips = parentMap.get(options.travelId) || []
+    // Dedupe by id (same plan can appear on multiple days)
+    const byId = new Map<string, TravelPlan>()
+    byId.set(parent.id, parent)
+    subTrips.forEach((t) => byId.set(t.id, t))
+    plansToConsider = Array.from(byId.values())
+  } else {
+    plansToConsider = Array.from(tripMap.values())
+  }
+
+  const markers: TravelMapMarker[] = []
+  for (const plan of plansToConsider) {
+    if (!plan.placeCoordinates) continue
+    markers.push({
+      lat: plan.placeCoordinates.lat,
+      lng: plan.placeCoordinates.lng,
+      label: plan.destination || plan.title || 'Trip',
+      id: plan.id,
+    })
+  }
+  return markers
+}
+
+/**
+ * Polyline shape for SDK InsightsMap (sequence of points)
+ */
+export type TravelMapPolyline = Array<{ lat: number; lng: number }>
+
+/** Base location (e.g. home) or parent trip location for inserting between travels when there's a gap */
+export interface TravelMapBaseLocation {
+  placeCoordinates?: { lat: number; lng: number }
+}
+
+/** Days between endDate and startDate (e.g. end 12th, start 13th => 1). Insert base only when > 1 (2+ days between). */
+function gapDaysBetween(endDate: string, startDate: string): number {
+  const end = new Date(endDate).getTime()
+  const start = new Date(startDate).getTime()
+  return (start - end) / (24 * 60 * 60 * 1000)
+}
+
+/** Get the trip (parent) id for a plan: parent plan = self, sub-trip = parentTravelId */
+function getTripId(plan: TravelPlan): string {
+  return plan.parentTravelId ?? plan.id
+}
+
+/**
+ * Get polylines for the insights map. Line goes: base → locations in date order
+ * (inserting "base between gaps" when 2+ days gap) → base.
+ *
+ * - includeBaseLocation: if true, start/end at global base and insert base between different trips; if false, just trip locations (sub-trips always shown).
+ * - Within a trip: always insert main trip location between sub-trips when 2+ days gap (regardless of includeBaseLocation).
+ *
+ * Example (includeBaseLocation true, base=Amsterdam, main=Indore):
+ *   Amsterdam → Indore → Nagpur → Jagdalpur → Indore → Bangalore → Amsterdam
+ * Example (includeBaseLocation false): Indore → Nagpur → Jagdalpur → Indore → Bangalore
+ */
+export function getTravelMapPolylines(
+  pluginData: Record<string, TravelDayData>,
+  options: {
+    travelId?: string
+    baseLocation?: TravelMapBaseLocation
+    /** If false, no start/end at base and no base between different trips; sub-trips and main-location-between-gaps still apply. */
+    includeBaseLocation?: boolean
+  } = {},
+): TravelMapPolyline[] {
+  const tripMap = new Map<string, TravelPlan>()
+  const parentMap = new Map<string, TravelPlan[]>()
+
+  Object.values(pluginData).forEach((dayData) => {
+    if (dayData?.travelPlans) {
+      dayData.travelPlans.forEach((trip) => {
+        if (!tripMap.has(trip.id)) {
+          tripMap.set(trip.id, trip)
+        }
+        if (trip.parentTravelId) {
+          if (!parentMap.has(trip.parentTravelId)) {
+            parentMap.set(trip.parentTravelId, [])
+          }
+          parentMap.get(trip.parentTravelId)!.push(trip)
+        }
+      })
+    }
+  })
+
+  let plansToConsider: TravelPlan[]
+  let singleTripParent: TravelPlan | null = null
+  if (options.travelId) {
+    const parent = tripMap.get(options.travelId)
+    if (!parent) return []
+    const subTrips = parentMap.get(options.travelId) || []
+    const byId = new Map<string, TravelPlan>()
+    byId.set(parent.id, parent)
+    subTrips.forEach((t) => byId.set(t.id, t))
+    plansToConsider = Array.from(byId.values())
+    singleTripParent = parent
+  } else {
+    plansToConsider = Array.from(tripMap.values())
+  }
+
+  const withCoords = plansToConsider
+    .filter((p) => p.placeCoordinates)
+    .sort(
+      (a, b) =>
+        new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+    )
+
+  if (withCoords.length === 0) return []
+
+  const line: TravelMapPolyline = []
+  const includeBase = options.includeBaseLocation !== false
+  const startEndBase = includeBase ? options.baseLocation?.placeCoordinates : undefined
+
+  // Start at base (e.g. Amsterdam) when includeBaseLocation is on
+  if (startEndBase) {
+    line.push({ lat: startEndBase.lat, lng: startEndBase.lng })
+  }
+
+  for (let i = 0; i < withCoords.length; i++) {
+    const plan = withCoords[i]
+    const point = {
+      lat: plan.placeCoordinates!.lat,
+      lng: plan.placeCoordinates!.lng,
+    }
+    // Between consecutive locations: if 2+ days gap, insert the right "base between" (within trip = main location; between trips = global base only when includeBaseLocation)
+    if (i > 0 && gapDaysBetween(withCoords[i - 1].endDate, plan.startDate) > 1) {
+      let gapBaseCoords: { lat: number; lng: number } | undefined
+      if (singleTripParent?.placeCoordinates) {
+        // One trip: always insert main trip location (e.g. Indore) — sub-trips always shown with main between gaps
+        gapBaseCoords = singleTripParent.placeCoordinates
+      } else {
+        // All travels: same trip → insert that trip's main location; different trip → global base only if includeBaseLocation
+        const prevPlan = withCoords[i - 1]
+        const prevTripId = getTripId(prevPlan)
+        const currTripId = getTripId(plan)
+        if (prevTripId === currTripId) {
+          const tripParent = tripMap.get(prevTripId)
+          gapBaseCoords = tripParent?.placeCoordinates
+        } else if (includeBase) {
+          gapBaseCoords = options.baseLocation?.placeCoordinates
+        }
+      }
+      if (gapBaseCoords) {
+        line.push({ lat: gapBaseCoords.lat, lng: gapBaseCoords.lng })
+      }
+    }
+    line.push(point)
+  }
+
+  // End at base (e.g. Amsterdam) when includeBaseLocation is on
+  if (startEndBase) {
+    line.push({ lat: startEndBase.lat, lng: startEndBase.lng })
+  }
+
+  return [line]
+}

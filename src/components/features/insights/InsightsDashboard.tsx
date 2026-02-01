@@ -257,6 +257,19 @@ export function InsightsDashboard({ goalId }: InsightsDashboardProps) {
             color={currentPlugin.metadata.icon ? undefined : '#007AFF'}
           />
         )}
+
+        {/* Plugin custom view (e.g. map + dates table for travel) */}
+        {(() => {
+          const CustomView = currentPlugin.insights?.customView
+          if (!CustomView) return null
+          return (
+            <CustomView
+              goalId={goalId}
+              pluginData={allPluginData}
+              pluginConfig={pluginConfig}
+            />
+          )
+        })()}
       </div>
     </div>
   )

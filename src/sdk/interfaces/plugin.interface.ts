@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { PluginAIIntegration } from '../types/ai.types'
-import type { PluginQuickStats, PluginPeriodInsights, TimeRangeOption } from '../types/insights.types'
+import type { PluginQuickStats, PluginPeriodInsights, TimeRangeOption, InsightsCustomViewProps } from '../types/insights.types'
 
 /**
  * Core plugin interface that all plugins must implement
@@ -93,6 +93,12 @@ export interface Plugin<TDayData = any, TConfig = any> {
      * If not provided, uses global defaults
      */
     defaultTimeRanges?: TimeRangeOption[]
+
+    /**
+     * Optional custom view component (e.g. map + dates table for travel)
+     * Rendered in Insights tab when this plugin is active
+     */
+    customView?: React.ComponentType<InsightsCustomViewProps<TDayData, TConfig>>
   }
 
   /** Optional: AI integration for natural language data extraction */

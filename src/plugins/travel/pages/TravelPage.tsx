@@ -6,7 +6,7 @@ import { usePluginPage, LoadingState, NotFoundState, ContentLoader } from '@/sdk
 import { useAuth } from '@/hooks/useAuth'
 import { TravelHeader, YearView, TravelMonthView } from '../components'
 import { enumerateDateRange } from '@/utils'
-import type { TravelPlan, TravelPlanInput, TravelDayData } from '../types'
+import type { TravelPlan, TravelPlanInput, TravelDayData, TravelConfig } from '../types'
 import { TravelPlugin } from '../plugin'
 
 export default function TravelPage({ params, year, month }: PluginPageProps) {
@@ -18,9 +18,11 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
     isLoading,
     todayISO,
     pluginDayData,
+    pluginConfig,
     initialSelectedDay,
     updateDayData,
     updateDayDataBatch,
+    updateConfig,
     navigateToPrevYear,
     navigateToNextYear,
     navigateToYear,
@@ -28,7 +30,7 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
     jumpToMonth,
     hasData,
     year: currentYear,
-  } = usePluginPage<TravelDayData>({
+  } = usePluginPage<TravelDayData, TravelConfig>({
     pluginId: 'travel',
     params,
     year,
@@ -158,6 +160,8 @@ export default function TravelPage({ params, year, month }: PluginPageProps) {
         allTravels={allTravels}
         userId={userId}
         goalId={goalId}
+        pluginConfig={pluginConfig}
+        onUpdateConfig={updateConfig}
       />
 
       {/* Content - shows inline loader when switching years */}

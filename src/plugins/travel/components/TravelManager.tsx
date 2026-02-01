@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Drawer } from '@/sdk'
 import { TravelForm } from './TravelForm'
+import { PlaceAutocomplete } from './PlaceAutocomplete'
 import { TravelPlanCard } from '../detail-provider'
-import type { TravelPlan, TravelPlanInput, TravelDayData } from '../types'
-import { formatShortDate } from '@/utils'
+import type { TravelPlan, TravelPlanInput, TravelDayData, TravelConfig } from '../types'
 
 interface TravelManagerProps {
   isOpen: boolean
@@ -17,6 +17,8 @@ interface TravelManagerProps {
   allTravels?: TravelPlan[]
   userId?: string
   goalId?: string
+  pluginConfig?: TravelConfig | null
+  onUpdateConfig?: (config: Partial<TravelConfig>) => void | Promise<void>
 }
 
 export function TravelManager({
@@ -29,9 +31,18 @@ export function TravelManager({
   allTravels,
   userId,
   goalId,
+  pluginConfig,
+  onUpdateConfig,
 }: TravelManagerProps) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingTravel, setEditingTravel] = useState<TravelPlan | null>(null)
+  const [baseLocationInput, setBaseLocationInput] = useState(
+    () => pluginConfig?.baseLocation?.placeAddress ?? '',
+  )
+  useEffect(() => {
+    const addr = pluginConfig?.baseLocation?.placeAddress ?? ''
+    setBaseLocationInput(addr)
+  }, [pluginConfig?.baseLocation?.placeAddress])
 
   // Extract unique travel plans from day data
   const travelPlans = (() => {
@@ -113,6 +124,32 @@ export function TravelManager({
       icon="✈️"
       iconGradient="from-[#007AFF] to-[#5856D6]"
     >
+      {/* Base location (used between travels when there is a 1+ day gap) */}
+      {onUpdateConfig && (
+        <div className="p-6 sm:p-8 border-b border-white/5">
+          <h3 className="text-sm font-semibold text-white/90 mb-1">Base location</h3>
+          <p className="text-xs text-white/50 mb-3">
+            Between two travels, if there are 1 or more days gap, you&apos;re at base. On the map the line will go: travel → base → next travel. For a trip with sub-travels, the main trip location is used as base between sub-trips.
+          </p>
+          <PlaceAutocomplete
+            value={baseLocationInput}
+            onChange={setBaseLocationInput}
+            onPlaceSelect={(place) => {
+              setBaseLocationInput(place.address)
+              onUpdateConfig({
+                baseLocation: {
+                  placeId: place.placeId,
+                  placeCoordinates: place.coordinates,
+                  placeAddress: place.address,
+                },
+              })
+            }}
+            placeholder="e.g. Home, your city"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+          />
+        </div>
+      )}
+
       {/* Add New Travel Button */}
       {!showAddForm && !editingTravel && (
         <div className="p-6 sm:p-8 border-b border-white/5">
