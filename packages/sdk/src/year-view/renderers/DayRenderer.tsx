@@ -1,0 +1,73 @@
+'use client'
+
+import type { DayConfig } from '../../types/year-view-config'
+
+interface DayRendererProps {
+  config: DayConfig
+  isToday: boolean
+}
+
+export function DayRenderer({ config, isToday }: DayRendererProps) {
+  const getIndicatorColor = (color?: string) => {
+    return color || 'rgba(255,255,255,0.6)'
+  }
+
+  const getDayClasses = () => {
+    const baseClasses =
+      'h-8 rounded-lg text-[11px] font-medium border relative flex flex-col items-center justify-center gap-0.5 py-1 transition-all duration-150'
+
+    if (config.highlighted || config.indicators.length > 0) {
+      return `${baseClasses} border-white/15 bg-white/8 text-white shadow-[0_0_8px_rgba(255,255,255,0.1)]`
+    }
+
+    return `${baseClasses} border-white/[0.07] bg-transparent text-white/70 hover:border-white/12 hover:bg-white/4`
+  }
+
+  const todayClasses = isToday
+    ? 'ring-2 ring-[#007AFF] ring-offset-1 ring-offset-[#1a1a2e]'
+    : ''
+
+  const multipleIndicators = config.indicators.length > 1
+
+  return (
+    <button
+      onClick={config.onClick}
+      className={`${getDayClasses()} ${todayClasses} ${
+        multipleIndicators ? 'ring-1 ring-yellow-500/40' : ''
+      }`}
+      style={{
+        ...(config.highlighted && config.highlightColor
+          ? { backgroundColor: config.highlightColor }
+          : {}),
+        ...config.style,
+      }}
+      title={
+        config.indicators.length > 0
+          ? `${config.indicators.length} item(s)`
+          : undefined
+      }
+    >
+      <span>{config.dayOfMonth}</span>
+
+      {/* Indicators below the number */}
+      {config.indicators.length > 0 && (
+        <div className="flex gap-0.5 items-center">
+          {config.indicators.slice(0, 3).map((indicator, idx) => (
+            <span
+              key={idx}
+              className="h-1 w-1 rounded-full ring-1 ring-black/20"
+              style={{
+                backgroundColor: getIndicatorColor(indicator.color),
+              }}
+            />
+          ))}
+          {config.indicators.length > 3 && (
+            <span className="text-[7px] font-bold text-white/80 leading-none ml-0.5">
+              +{config.indicators.length - 3}
+            </span>
+          )}
+        </div>
+      )}
+    </button>
+  )
+}

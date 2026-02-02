@@ -1,0 +1,9 @@
+{
+  "name": "@goal-chaser/plugin-travel",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/plugin.ts",
+  "types": "./src/plugin.ts",
+  "exports": { ".": "./src/plugin.ts" },
+  "peerDependencies": { "@goal-chaser/sdk": "*", "react": "^18.0.0 || ^19.0.0" }
+}
