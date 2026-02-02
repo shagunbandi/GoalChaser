@@ -99,3 +99,11 @@ export type {
 } from './insights.types'
 
 export { DEFAULT_TIME_RANGES } from './insights.types'
+
+// Chat integration types
+export type {
+  ChatMessage,
+  ChatResponse,
+  PluginChatConfig,
+  ChatInterfaceProps,
+} from './chat.types'

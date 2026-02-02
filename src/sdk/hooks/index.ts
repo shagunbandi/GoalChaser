@@ -9,3 +9,8 @@ export {
   type UseMonthCalendarOptions,
   type UseMonthCalendarReturn,
 } from './useMonthCalendar'
+export {
+  useChat,
+  type UseChatOptions,
+  type UseChatReturn,
+} from './useChat'

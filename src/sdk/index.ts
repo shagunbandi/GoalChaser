@@ -74,14 +74,14 @@ export { createPluginLogger, createPluginFirestore } from './services'
 export { createPluginContext } from './services/plugin-context.service'
 
 // Hooks
-export { usePluginPage, useMonthCalendar } from './hooks'
-export type { UseMonthCalendarOptions, UseMonthCalendarReturn } from './hooks'
+export { usePluginPage, useMonthCalendar, useChat } from './hooks'
+export type { UseMonthCalendarOptions, UseMonthCalendarReturn, UseChatOptions, UseChatReturn } from './hooks'
 
 // Utilities
 export * from './utils'
 
 // Components
-export { LoadingState, NotFoundState, ContentLoader, PluginMonthView, Drawer } from './components'
+export { LoadingState, NotFoundState, ContentLoader, PluginMonthView, Drawer, ChatInterface } from './components'
 export type { PluginMonthViewProps } from './components'
 
 // UI components
@@ -102,6 +102,14 @@ export {
 
 // UI component types
 export type { NotesFieldProps } from './ui'
+
+// Chat types
+export type {
+  ChatMessage,
+  ChatResponse,
+  PluginChatConfig,
+  ChatInterfaceProps,
+} from './types'
 
 // UI types
 export type {

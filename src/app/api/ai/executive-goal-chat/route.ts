@@ -8,12 +8,20 @@ interface ChatMessage {
 
 interface ExecutiveGoalChatRequest {
   messages: ChatMessage[]
+  systemPrompt: string
   todayISO: string
+  context?: Record<string, unknown>
 }
 
 interface ExecutiveGoalChatResponse {
   message: string
   done?: boolean
+  result?: {
+    title: string
+    plan: string
+    endDate: string
+  }
+  // Deprecated: kept for backwards compatibility
   goal?: {
     title: string
     plan: string
@@ -84,7 +92,7 @@ export async function POST(
     }
 
     const body = (await request.json()) as ExecutiveGoalChatRequest
-    const { messages, todayISO } = body
+    const { messages, systemPrompt: clientSystemPrompt, todayISO } = body
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
@@ -101,7 +109,8 @@ export async function POST(
     }
 
     const openai = getOpenAI()
-    const systemPrompt = buildSystemPrompt(todayISO)
+    // Use system prompt from client if provided, otherwise build one (for backwards compatibility)
+    const systemPrompt = clientSystemPrompt || buildSystemPrompt(todayISO)
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -122,7 +131,8 @@ export async function POST(
     }
     if (goal) {
       response.done = true
-      response.goal = goal
+      response.result = goal // For SDK
+      response.goal = goal // For backwards compatibility
     }
 
     return NextResponse.json(response)
