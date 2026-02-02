@@ -13,7 +13,7 @@ export type ButtonConfig = {
 
 // Day appearance configuration
 export type DayIndicator = {
-  type: 'travel' | 'expense' | 'income' | 'investment'
+  type: string
   color?: string // optional custom color
   count?: number // for multiple items
 }
@@ -32,7 +32,7 @@ export type DayConfig = {
 // Month footer configuration
 export type MonthFooterItem = {
   id: string
-  type: 'travel' | 'investment' | 'custom'
+  type: string
   title: string
   subtitle?: string
   icon?: string

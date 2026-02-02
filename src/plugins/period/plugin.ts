@@ -49,6 +49,10 @@ export const PeriodPlugin: Plugin<PeriodDayData, PeriodConfig> = {
 
   // Calendar integration - shows on home calendar
   calendar: {
+    getCalendarBackground: (data) => {
+      if (!data?.isPeriod) return null
+      return { backgroundColor: 'bg-rose-500/30' }
+    },
     getDaySummary: (date, data, context) => {
       const allMonthData = context?.allMonthData || {}
       

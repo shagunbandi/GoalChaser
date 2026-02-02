@@ -14,7 +14,8 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
     icon: '💰', 
     description: 'Track expenses, income, and investments', 
     version: '1.0.0', 
-    isPrimary: false 
+    isPrimary: false,
+    enabledByDefault: true,
   },
   
   routes: [
@@ -31,6 +32,18 @@ export const FinancePlugin: Plugin<FinanceTransactionData> = {
 
   // Calendar integration
   calendar: {
+    getCalendarBackground: (data) => {
+      if (!data) return null
+      const hasExpenses = data.expenses && data.expenses.length > 0
+      const hasIncome = data.income && data.income.length > 0
+      if (!hasExpenses && !hasIncome) return null
+      const totalExpenses = data.expenses?.reduce((sum: number, e) => sum + (e.amount || 0), 0) || 0
+      const totalIncome = data.income?.reduce((sum: number, i) => sum + (i.amount || 0), 0) || 0
+      const netAmount = totalIncome - totalExpenses
+      if (netAmount > 0) return { backgroundColor: 'bg-green-500/20' }
+      if (netAmount < 0) return { backgroundColor: 'bg-red-500/20' }
+      return { backgroundColor: 'bg-orange-500/20' }
+    },
     getDaySummary: (date, data, context) => {
       // Calculate day totals
       const totalExpenses = data?.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0

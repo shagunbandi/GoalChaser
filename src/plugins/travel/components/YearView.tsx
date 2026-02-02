@@ -301,7 +301,8 @@ export function YearView({
             subtitle: `${travel.destination ? `${travel.destination} • ` : ''}${formatShortDate(
               travel.startDate,
             )} → ${formatShortDate(travel.endDate)}`,
-            color: travel.color,
+            icon: '✈️',
+            color: travel.color || 'rgba(14,165,233,0.9)',
             actionButton: {
               icon: '✏️',
               onClick: () => handleEditTravel(travel),

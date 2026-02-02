@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { getFirestore, collection, getDocs } from 'firebase/firestore'
 import { getFirebaseApp } from '@/lib/firebase-service'
+import { usePluginRegistry } from '@/core/plugin-registry/hooks'
 
 interface BackupStats {
   collections: number
@@ -16,6 +17,7 @@ interface BackupStats {
 export default function BackupPage() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
+  const { registry } = usePluginRegistry()
   const [isRunning, setIsRunning] = useState(false)
   const [progress, setProgress] = useState<string[]>([])
   const [stats, setStats] = useState<BackupStats>({
@@ -50,30 +52,12 @@ export default function BackupPage() {
     // Goal's addons collection (path: users/{userId}/goals/{goalId}/addons)
     // Contains plugin IDs as documents
     if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons$/)) {
-      return [
-        'productivity',
-        'study',
-        'finance',
-        'travel',
-        'agenda'
-      ]
+      return registry.getAllPlugins().map(p => p.id)
     }
 
     // Plugin-specific subcollections (path: users/{userId}/goals/{goalId}/addons/{pluginId})
     // Each plugin has 'days' for day data and 'settings' for config
-    if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons\/productivity$/)) {
-      return ['days', 'settings']
-    }
-    if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons\/study$/)) {
-      return ['days', 'settings']
-    }
-    if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons\/finance$/)) {
-      return ['days', 'settings']
-    }
-    if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons\/travel$/)) {
-      return ['days', 'settings']
-    }
-    if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons\/agenda$/)) {
+    if (pathStr.match(/^users\/[^/]+\/goals\/[^/]+\/addons\/[^/]+$/)) {
       return ['days', 'settings']
     }
 
@@ -319,7 +303,7 @@ export default function BackupPage() {
           </p>
           <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
             <p className="text-blue-300 text-sm">
-              💡 This will export all your goals and plugin data (productivity, study, finance, travel, agenda) to a JSON file.
+              💡 This will export all your goals and plugin data (all enabled plugins) to a JSON file.
               Store it safely for backup or migration purposes.
             </p>
           </div>
@@ -437,7 +421,7 @@ export default function BackupPage() {
         <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-xl text-sm text-white/60">
           <h3 className="text-white font-semibold mb-2">📚 About Backups</h3>
           <ul className="space-y-1 list-disc list-inside">
-            <li>Backups include all your goals and plugin data (productivity, study, finance, travel, agenda)</li>
+            <li>Backups include all your goals and plugin data (all enabled plugins)</li>
             <li>Each plugin stores day-level data and configuration separately</li>
             <li>The file format is standard JSON and can be inspected with any text editor</li>
             <li>Recommended: Back up before running migrations or major updates</li>

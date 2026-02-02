@@ -3,12 +3,7 @@ import { loadGoalAddonsConfig, saveGoalAddonsConfig } from '@/lib/api/addon-conf
 import type { AddonId } from '@/types/addon-config'
 
 export function useAddonsConfig(userId: string | undefined, goalId: string) {
-  const [enabledAddons, setEnabledAddons] = useState<AddonId[]>([
-    'calendar',
-    'finance',
-    'travel',
-    'analytics',
-  ])
+  const [enabledAddons, setEnabledAddons] = useState<AddonId[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {

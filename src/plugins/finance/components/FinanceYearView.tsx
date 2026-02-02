@@ -79,9 +79,9 @@ export function FinanceYearView({
           days: month.days.map((day) => {
             const info = getDayInfo(day.iso)
             const indicators = []
-            if (info.hasIncome) indicators.push({ type: 'income' as const })
-            if (info.hasInvestment) indicators.push({ type: 'investment' as const })
-            if (info.hasExpense) indicators.push({ type: 'expense' as const })
+            if (info.hasIncome) indicators.push({ type: 'income', color: 'rgb(34,197,94)' })
+            if (info.hasInvestment) indicators.push({ type: 'investment', color: 'rgb(59,130,246)' })
+            if (info.hasExpense) indicators.push({ type: 'expense', color: 'rgb(239,68,68)' })
 
             return {
               iso: day.iso,

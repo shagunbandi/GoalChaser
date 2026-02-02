@@ -28,7 +28,8 @@ export const TravelPlugin: Plugin<TravelDayData, TravelConfig> = {
     icon: '✈️', 
     description: 'Travel plans and itineraries', 
     version: '1.0.0', 
-    isPrimary: false 
+    isPrimary: false,
+    enabledByDefault: true,
   },
   
   routes: [
@@ -45,6 +46,10 @@ export const TravelPlugin: Plugin<TravelDayData, TravelConfig> = {
 
   // Calendar integration
   calendar: {
+    getCalendarBackground: (data) => {
+      if (!data || !data.travelPlans || data.travelPlans.length === 0) return null
+      return { backgroundColor: 'bg-blue-500/20' }
+    },
     getDaySummary: (date, data, context) => {
       // Data is now day-based with travelPlans array
       const plans: TravelPlan[] = data?.travelPlans || []

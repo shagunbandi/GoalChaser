@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File
     const userId = formData.get('userId') as string
     const goalId = formData.get('goalId') as string
-    const travelId = formData.get('travelId') as string
+    const pluginId = (formData.get('pluginId') as string) || ''
+    const itemId = (formData.get('itemId') as string) || ''
 
     if (!file) {
       return NextResponse.json(
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!userId || !goalId || !travelId) {
+    if (!userId || !goalId || !pluginId || !itemId) {
       return NextResponse.json(
         { error: 'Missing required parameters' },
         { status: 400 }
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
     // Generate unique file path
     const timestamp = Date.now()
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-    const storagePath = `travel/${userId}/${goalId}/${travelId}/${timestamp}_${sanitizedFileName}`
+    const storagePath = `plugins/${pluginId}/${userId}/${goalId}/${itemId}/${timestamp}_${sanitizedFileName}`
 
     // Convert File to Buffer
     const bytes = await file.arrayBuffer()
@@ -118,7 +119,8 @@ export async function POST(request: NextRequest) {
         metadata: {
           uploadedBy: userId,
           goalId,
-          travelId,
+          pluginId,
+          itemId,
           originalName: file.name,
         },
       },

@@ -38,6 +38,17 @@ export interface Plugin<TDayData = any, TConfig = any> {
       data: TDayData | null,
       context?: { goalId?: string; allMonthData?: Record<string, TDayData> }
     ) => CalendarDaySummary | null
+
+    /**
+     * Get background color/style for a calendar day
+     * Used by CalendarPage to color day cells based on plugin data
+     * @param data Day data for this plugin (or null if no data)
+     * @returns Background color and optional style, or null if no background
+     */
+    getCalendarBackground?: (data: TDayData | null) => {
+      backgroundColor?: string
+      style?: React.CSSProperties
+    } | null
   }
 
   /** Optional: Analytics integration for charts and metrics */
@@ -123,6 +134,9 @@ export interface PluginMetadata {
 
   /** Whether this is a primary plugin (always enabled, cannot be disabled) */
   isPrimary: boolean
+
+  /** Whether this plugin should be enabled by default for new goals */
+  enabledByDefault?: boolean
 }
 
 /**

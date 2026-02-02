@@ -12,8 +12,6 @@ import { usePluginRegistry } from '@/core/plugin-registry/hooks'
 // import { TopStatsBar } from './TopStatsBar'
 // import { ViewNavigation } from './ViewNavigation'
 import { computeMonthInfo } from '@/utils'
-import { getScoreColorClass } from '@/utils'
-import type { DayStatus } from '@/types'
 
 interface UnifiedViewProps {
   plugin: Plugin
@@ -167,10 +165,10 @@ export function UnifiedView({
       const indicators = pluginIndicators[date] || []
       const activeIndicators = indicators.filter((ind) => ind.hasData)
 
-      // For productivity, use the status score for background color
       let bgColor = 'bg-white/5'
-      if (plugin.id === 'productivity' && data?.status !== null && data?.status !== undefined) {
-        bgColor = getScoreColorClass(data.status)
+      if (plugin.calendar?.getCalendarBackground) {
+        const bg = plugin.calendar.getCalendarBackground(data ?? null)
+        if (bg?.backgroundColor) bgColor = bg.backgroundColor
       }
 
       customizations[date] = {

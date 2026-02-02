@@ -41,7 +41,8 @@ export function FileUpload({
       formData.append('file', file)
       formData.append('userId', userId)
       formData.append('goalId', goalId)
-      formData.append('travelId', travelId)
+      formData.append('pluginId', 'travel')
+      formData.append('itemId', travelId)
 
       const response = await fetch('/api/storage/upload', {
         method: 'POST',

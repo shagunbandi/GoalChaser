@@ -5,6 +5,7 @@
  */
 
 import type { Plugin, PluginQuickStats, PluginPeriodInsights } from '@/sdk'
+import { getVibgyorColors } from '@/utils/score-utils'
 import { generateDateRange } from '@/sdk'
 import { StudyDataProvider } from './data-provider'
 import { StudyDetailProviderImpl } from './detail-provider'
@@ -40,6 +41,7 @@ export const StudyPlugin: Plugin<StudyDayData, StudyConfig> = {
     description: 'Track study hours per day',
     version: '1.0.0',
     isPrimary: false,
+    enabledByDefault: true,
   },
 
   routes: [
@@ -56,6 +58,19 @@ export const StudyPlugin: Plugin<StudyDayData, StudyConfig> = {
 
   // Calendar integration
   calendar: {
+    getCalendarBackground: (data) => {
+      if (!data) return null
+      const totalHours = getDayHours(data)
+      if (totalHours === 0) return null
+      const maxHours = 14
+      const vibgyorColors = getVibgyorColors()
+      const ratio = Math.min(totalHours / maxHours, 1)
+      const colorIndex = Math.min(
+        Math.floor(ratio * vibgyorColors.length),
+        vibgyorColors.length - 1
+      )
+      return { backgroundColor: `${vibgyorColors[colorIndex].color}CC` }
+    },
     getDaySummary: (date, data, context) => {
       if (!data || (!data.subjects?.length && !data.directHours)) {
         return null

@@ -8,21 +8,8 @@ interface DayRendererProps {
 }
 
 export function DayRenderer({ config, isToday }: DayRendererProps) {
-  const getIndicatorColor = (type: string, customColor?: string) => {
-    if (customColor) return customColor
-
-    switch (type) {
-      case 'travel':
-        return 'rgba(14,165,233,0.9)'
-      case 'expense':
-        return 'rgb(239,68,68)'
-      case 'income':
-        return 'rgb(34,197,94)'
-      case 'sip':
-        return 'rgb(59,130,246)'
-      default:
-        return 'rgba(255,255,255,0.6)'
-    }
+  const getIndicatorColor = (color?: string) => {
+    return color || 'rgba(255,255,255,0.6)'
   }
 
   const getDayClasses = () => {
@@ -70,10 +57,7 @@ export function DayRenderer({ config, isToday }: DayRendererProps) {
               key={idx}
               className="h-1 w-1 rounded-full ring-1 ring-black/20"
               style={{
-                backgroundColor: getIndicatorColor(
-                  indicator.type,
-                  indicator.color,
-                ),
+                backgroundColor: getIndicatorColor(indicator.color),
               }}
             />
           ))}

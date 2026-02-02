@@ -11,28 +11,12 @@ export function FooterRenderer({ items }: FooterRendererProps) {
     return <div className="text-[11px] text-white/40">No data</div>
   }
 
-  const getIconForType = (type: string) => {
-    switch (type) {
-      case 'investment':
-        return '📈'
-      case 'travel':
-        return '✈️'
-      default:
-        return null
-    }
+  const getIconForType = (item: MonthFooterItem) => {
+    return item.icon || null
   }
 
-  const getColorForType = (type: string, customColor?: string) => {
-    if (customColor) return customColor
-
-    switch (type) {
-      case 'investment':
-        return 'rgb(99, 102, 241)' // Indigo for investments
-      case 'travel':
-        return 'rgba(14,165,233,0.9)'
-      default:
-        return 'rgba(255,255,255,0.5)'
-    }
+  const getColorForType = (item: MonthFooterItem) => {
+    return item.color || 'rgba(255,255,255,0.5)'
   }
 
   const groupedItems = items.reduce((acc, item) => {
@@ -49,7 +33,7 @@ export function FooterRenderer({ items }: FooterRendererProps) {
         <div key={type}>
           {type !== 'custom' && (
             <div className="text-[10px] text-white/50 mb-1.5 font-medium uppercase tracking-wide">
-              {getIconForType(type)} {type}s
+              {typeItems[0] && getIconForType(typeItems[0])} {type}s
             </div>
           )}
           <div className="space-y-1.5">
@@ -61,7 +45,7 @@ export function FooterRenderer({ items }: FooterRendererProps) {
                 <div
                   className="w-1.5 h-1.5 rounded-full shrink-0"
                   style={{
-                    backgroundColor: getColorForType(item.type, item.color),
+                    backgroundColor: getColorForType(item),
                   }}
                 />
                 <div className="flex-1 min-w-0">

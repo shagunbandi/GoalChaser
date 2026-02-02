@@ -15,14 +15,6 @@ import { useGoalData } from '@/hooks/useGoalData'
 import { usePluginRegistry } from '@/core/plugin-registry/hooks'
 import { useAddonsConfig } from '@/hooks/useAddonsConfig'
 import { useAuth } from '@/hooks/useAuth'
-import { getScoreColorClass } from '@/utils'
-import {
-  getStudyBackgroundColor,
-  getFinanceBackgroundColor,
-  getTravelBackgroundColor,
-  getPeriodBackgroundColor,
-  getExecutiveGoalCustomization,
-} from '@/utils/plugin-colors'
 import {
   loadCalendarFilters,
   saveCalendarFilters,
@@ -70,7 +62,7 @@ export default function CalendarPage({
     () => new Set(plugins.map((p) => p.id)),
   )
   const [backgroundSource, setBackgroundSource] = useState<string | null>(
-    'productivity',
+    null,
   )
   const [filtersLoaded, setFiltersLoaded] = useState(false)
 
@@ -191,27 +183,13 @@ export default function CalendarPage({
       let bgColor: string | undefined = undefined
       let borderStyle: React.CSSProperties | undefined = undefined
 
-      if (backgroundSource === 'productivity') {
-        const status = pluginData?.['productivity']?.[day.iso]?.status || null
-        bgColor = getScoreColorClass(status)
-      } else if (backgroundSource === 'study') {
-        const studyData = pluginData?.['study']?.[day.iso] as any
-        bgColor = getStudyBackgroundColor(studyData)
-      } else if (backgroundSource === 'finance') {
-        const financeData = pluginData?.['finance']?.[day.iso] as any
-        bgColor = getFinanceBackgroundColor(financeData)
-      } else if (backgroundSource === 'travel') {
-        const travelData = pluginData?.['travel']?.[day.iso] as any
-        bgColor = getTravelBackgroundColor(travelData)
-      } else if (backgroundSource === 'period') {
-        const periodData = pluginData?.['period']?.[day.iso] as any
-        bgColor = getPeriodBackgroundColor(periodData)
-      } else if (backgroundSource === 'executiveGoal') {
-        const executiveGoalData = pluginData?.['executiveGoal']?.[day.iso] as any
-        const customization = getExecutiveGoalCustomization(executiveGoalData)
-        if (customization) {
-          bgColor = customization.backgroundColor
-          borderStyle = customization.style
+      if (backgroundSource) {
+        const plugin = registry.getPlugin(backgroundSource)
+        const dayData = pluginData?.[backgroundSource]?.[day.iso] ?? null
+        const bg = plugin?.calendar?.getCalendarBackground?.(dayData)
+        if (bg) {
+          bgColor = bg.backgroundColor
+          borderStyle = bg.style
         }
       }
       // else: backgroundSource is null, no background

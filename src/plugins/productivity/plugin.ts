@@ -4,6 +4,7 @@
 
 import React from 'react'
 import type { Plugin, PluginAISchema, AIWizardFlowProps, PluginQuickStats, PluginPeriodInsights } from '@/sdk'
+import { getScoreColorClass } from '@/utils/score-utils'
 import { generateDateRange } from '@/sdk'
 import { ProductivityDataProvider } from './data-provider'
 import { ProductivityDetailProviderImpl } from './detail-provider'
@@ -30,6 +31,7 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
     description: 'Track daily productivity (1-10 scale)',
     version: '1.0.0',
     isPrimary: false,
+    enabledByDefault: true,
   },
 
   routes: [
@@ -46,6 +48,10 @@ export const ProductivityPlugin: Plugin<ProductivityDayData, ProductivityConfig>
 
   // Calendar integration
   calendar: {
+    getCalendarBackground: (data) => {
+      if (!data || data.status === null || data.status === undefined) return null
+      return { backgroundColor: getScoreColorClass(data.status) }
+    },
     getDaySummary: (date, data, context) => {
       if (!data || (data.status === null && !data.areas?.length)) {
         return null

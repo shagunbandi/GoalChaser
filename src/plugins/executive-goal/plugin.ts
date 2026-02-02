@@ -1,6 +1,7 @@
 import React from 'react'
 import type { Plugin, PluginQuickStats, PluginPeriodInsights, PluginAISchema, AIWizardFlowProps } from '@/sdk'
 import { generateDateRange } from '@/sdk'
+import { getCompletionBackgroundColor, createMultiGoalBorderStyle } from './calendar-utils'
 import { ExecutiveGoalDataProvider } from './data-provider'
 import { ExecutiveGoalDetailProviderImpl } from './detail-provider'
 import ExecutiveGoalPage from './pages/ExecutiveGoalPage'
@@ -45,6 +46,18 @@ export const ExecutiveGoalPlugin: Plugin = {
 
   // Calendar integration
   calendar: {
+    getCalendarBackground: (data) => {
+      if (!data?.tasks || data.tasks.length === 0) return null
+      const tasks = data.tasks as ExecutiveGoalTask[]
+      const completedTasks = tasks.filter((t) => t.completed).length
+      const totalTasks = tasks.length
+      const completionPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+      const goalColors = [...new Set(tasks.map((t) => t.color || '#8B5CF6'))]
+      return {
+        backgroundColor: totalTasks > 0 ? getCompletionBackgroundColor(completionPercent) : undefined,
+        style: createMultiGoalBorderStyle(goalColors),
+      }
+    },
     getDaySummary: (date, data, context) => {
       const tasks: ExecutiveGoalTask[] = data?.tasks || []
       if (!Array.isArray(tasks) || tasks.length === 0) return null

@@ -1,8 +1,15 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { getDb } from '@/lib/firebase'
-import type { GoalAddonsConfig, AddonId } from '@/types/addon-config'
+import type { GoalAddonsConfig } from '@/types/addon-config'
+import { pluginRegistry } from '@/core/plugin-registry'
 
-const DEFAULT_ADDONS: AddonId[] = ['calendar', 'productivity', 'hours', 'finance', 'travel', 'analytics']
+function getDefaultAddons(): string[] {
+  const coreAddons = ['calendar', 'analytics']
+  const pluginDefaults = pluginRegistry.getAllPlugins()
+    .filter(p => p.metadata.enabledByDefault)
+    .map(p => p.id)
+  return [...coreAddons, ...pluginDefaults]
+}
 
 /**
  * Load goal add-ons configuration from Firebase
@@ -21,10 +28,10 @@ export async function loadGoalAddonsConfig(
     }
 
     // Return default config if not found
-    return { enabled: DEFAULT_ADDONS }
+    return { enabled: getDefaultAddons() }
   } catch (error) {
     console.error('Error loading goal addons config:', error)
-    return { enabled: DEFAULT_ADDONS }
+    return { enabled: getDefaultAddons() }
   }
 }
 

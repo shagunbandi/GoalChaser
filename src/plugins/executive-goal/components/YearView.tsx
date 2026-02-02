@@ -218,12 +218,13 @@ export function YearView({
           }),
           footer: monthExecutiveGoals.map((executiveGoal) => ({
             id: executiveGoal.id,
-            type: 'travel' as const,
+            type: 'executive-goal',
             title: executiveGoal.title,
             subtitle: `${executiveGoal.plan ? `${executiveGoal.plan} • ` : ''}${formatShortDate(
               executiveGoal.startDate,
             )} → ${formatShortDate(executiveGoal.endDate)}`,
-            color: executiveGoal.color,
+            icon: '🎯',
+            color: executiveGoal.color || '#8B5CF6',
             actionButton: {
               icon: '✏️',
               onClick: () => handleEditExecutiveGoal(executiveGoal),

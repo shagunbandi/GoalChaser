@@ -2,11 +2,8 @@
 
 import { useState } from 'react'
 import { AIWorkflowWizard } from '@/components/features/calendar/AIWorkflowWizard'
-import { ProductivityWizardFlow } from '@/plugins/productivity/components/ProductivityWizardFlow'
-import { TravelWizardFlow } from '@/plugins/travel/components/TravelWizardFlow'
 import type { AIPreviewData } from '@/sdk'
-import type { ProductivityDayData, ProductivityConfig } from '@/plugins/productivity/types'
-import type { TravelDayData } from '@/plugins/travel/types'
+import { usePluginRegistry } from '@/core/plugin-registry/hooks'
 
 // Dummy data scenarios
 const PRODUCTIVITY_SCENARIOS = {
@@ -126,6 +123,7 @@ const TRAVEL_SCENARIOS = {
 type TestMode = 'full-wizard' | 'productivity-only' | 'travel-only'
 
 export default function WizardDebugPage() {
+  const { registry } = usePluginRegistry()
   const [testMode, setTestMode] = useState<TestMode>('full-wizard')
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [productivityScenario, setProductivityScenario] = useState<keyof typeof PRODUCTIVITY_SCENARIOS>('newAreaAndTopic')
@@ -167,7 +165,7 @@ export default function WizardDebugPage() {
     return data
   }
 
-  // Render plugin wizard for full wizard mode
+  // Render plugin wizard for full wizard mode using registry
   const renderPluginWizard = (
     pluginId: string,
     extractedData: Record<string, unknown>,
@@ -177,52 +175,38 @@ export default function WizardDebugPage() {
     onSkip: () => void,
     onUpdateConfig: (config: Record<string, unknown>) => Promise<void>
   ) => {
+    const plugin = registry.getPlugin(pluginId)
+    if (!plugin?.aiIntegration?.renderWizard) return null
+
+    // Get scenario-specific config/existingData
+    let scenarioConfig = config
+    let scenarioExistingData = existingData
     if (pluginId === 'productivity') {
       const scenario = PRODUCTIVITY_SCENARIOS[productivityScenario]
-      return (
-        <ProductivityWizardFlow
-          extractedData={extractedData as Partial<ProductivityDayData>}
-          config={scenario.config as ProductivityConfig}
-          existingDayData={scenario.existingDayData}
-          onComplete={(data) => {
-            addLog(`Productivity completed: ${JSON.stringify(data)}`)
-            onComplete(data as Record<string, unknown>)
-          }}
-          onSkip={() => {
-            addLog('Productivity skipped')
-            onSkip()
-          }}
-          onUpdateConfig={async (cfg) => {
-            addLog(`Productivity config update: ${JSON.stringify(cfg)}`)
-            await onUpdateConfig(cfg as Record<string, unknown>)
-          }}
-        />
-      )
-    }
-
-    if (pluginId === 'travel') {
+      scenarioConfig = scenario.config
+      scenarioExistingData = scenario.existingDayData
+    } else if (pluginId === 'travel') {
       const scenario = TRAVEL_SCENARIOS[travelScenario]
-      return (
-        <TravelWizardFlow
-          extractedData={extractedData as Partial<TravelDayData>}
-          config={null}
-          existingDayData={scenario.existingDayData}
-          onComplete={(data) => {
-            addLog(`Travel completed: ${JSON.stringify(data)}`)
-            onComplete(data as Record<string, unknown>)
-          }}
-          onSkip={() => {
-            addLog('Travel skipped')
-            onSkip()
-          }}
-          onUpdateConfig={async (cfg) => {
-            addLog(`Travel config update: ${JSON.stringify(cfg)}`)
-          }}
-        />
-      )
+      scenarioExistingData = scenario.existingDayData
     }
 
-    return null
+    return plugin.aiIntegration.renderWizard({
+      extractedData,
+      config: scenarioConfig,
+      existingDayData: scenarioExistingData,
+      onComplete: (data) => {
+        addLog(`${pluginId} completed: ${JSON.stringify(data)}`)
+        onComplete(data as Record<string, unknown>)
+      },
+      onSkip: () => {
+        addLog(`${pluginId} skipped`)
+        onSkip()
+      },
+      onUpdateConfig: async (cfg) => {
+        addLog(`${pluginId} config update: ${JSON.stringify(cfg)}`)
+        await onUpdateConfig(cfg as Record<string, unknown>)
+      },
+    })
   }
 
   // Direct standalone wizard testing
@@ -396,101 +380,64 @@ export default function WizardDebugPage() {
         }}
       />
 
-      {/* Standalone Productivity Wizard */}
-      {standaloneWizardOpen === 'productivity' && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/85 backdrop-blur-xl"
-            onClick={() => setStandaloneWizardOpen(null)}
-          />
-          <div className="relative w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col bg-gradient-to-br from-[#1a1a24] to-[#15151f] border border-white/10 rounded-2xl shadow-2xl">
-            <div className="p-6 border-b border-white/5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center text-2xl border border-cyan-500/30">
-                    📊
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-white">Productivity (Standalone)</h2>
-                    <p className="text-sm text-white/50">{PRODUCTIVITY_SCENARIOS[productivityScenario].name}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setStandaloneWizardOpen(null)}
-                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              <ProductivityWizardFlow
-                extractedData={PRODUCTIVITY_SCENARIOS[productivityScenario].extractedData as Partial<ProductivityDayData>}
-                config={PRODUCTIVITY_SCENARIOS[productivityScenario].config as ProductivityConfig}
-                existingDayData={null}
-                onComplete={(data) => {
-                  addLog(`Standalone Productivity completed: ${JSON.stringify(data)}`)
-                  setStandaloneWizardOpen(null)
-                }}
-                onSkip={() => {
-                  addLog('Standalone Productivity skipped')
-                  setStandaloneWizardOpen(null)
-                }}
-                onUpdateConfig={async (cfg) => {
-                  addLog(`Standalone Productivity config update: ${JSON.stringify(cfg)}`)
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Standalone Plugin Wizard */}
+      {standaloneWizardOpen && (() => {
+        const plugin = registry.getPlugin(standaloneWizardOpen)
+        if (!plugin?.aiIntegration?.renderWizard) return null
+        const scenario = standaloneWizardOpen === 'productivity'
+          ? PRODUCTIVITY_SCENARIOS[productivityScenario]
+          : TRAVEL_SCENARIOS[travelScenario]
+        const config = standaloneWizardOpen === 'productivity' ? (scenario as any).config : null
+        const scenarioName = scenario.name
 
-      {/* Standalone Travel Wizard */}
-      {standaloneWizardOpen === 'travel' && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/85 backdrop-blur-xl"
-            onClick={() => setStandaloneWizardOpen(null)}
-          />
-          <div className="relative w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col bg-gradient-to-br from-[#1a1a24] to-[#15151f] border border-white/10 rounded-2xl shadow-2xl">
-            <div className="p-6 border-b border-white/5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/20 flex items-center justify-center text-2xl border border-orange-500/30">
-                    ✈️
+        return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/85 backdrop-blur-xl"
+              onClick={() => setStandaloneWizardOpen(null)}
+            />
+            <div className="relative w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col bg-gradient-to-br from-[#1a1a24] to-[#15151f] border border-white/10 rounded-2xl shadow-2xl">
+              <div className="p-6 border-b border-white/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center text-2xl border border-cyan-500/30">
+                      {plugin.metadata.icon}
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold text-white">{plugin.metadata.name} (Standalone)</h2>
+                      <p className="text-sm text-white/50">{scenarioName}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-white">Travel (Standalone)</h2>
-                    <p className="text-sm text-white/50">{TRAVEL_SCENARIOS[travelScenario].name}</p>
-                  </div>
+                  <button
+                    onClick={() => setStandaloneWizardOpen(null)}
+                    className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-colors"
+                  >
+                    ✕
+                  </button>
                 </div>
-                <button
-                  onClick={() => setStandaloneWizardOpen(null)}
-                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-colors"
-                >
-                  ✕
-                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6">
+                {plugin.aiIntegration.renderWizard({
+                  extractedData: scenario.extractedData as any,
+                  config,
+                  existingDayData: scenario.existingDayData,
+                  onComplete: (data) => {
+                    addLog(`Standalone ${plugin.metadata.name} completed: ${JSON.stringify(data)}`)
+                    setStandaloneWizardOpen(null)
+                  },
+                  onSkip: () => {
+                    addLog(`Standalone ${plugin.metadata.name} skipped`)
+                    setStandaloneWizardOpen(null)
+                  },
+                  onUpdateConfig: async (cfg) => {
+                    addLog(`Standalone ${plugin.metadata.name} config update: ${JSON.stringify(cfg)}`)
+                  },
+                })}
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              <TravelWizardFlow
-                extractedData={TRAVEL_SCENARIOS[travelScenario].extractedData as Partial<TravelDayData>}
-                config={null}
-                existingDayData={null}
-                onComplete={(data) => {
-                  addLog(`Standalone Travel completed: ${JSON.stringify(data)}`)
-                  setStandaloneWizardOpen(null)
-                }}
-                onSkip={() => {
-                  addLog('Standalone Travel skipped')
-                  setStandaloneWizardOpen(null)
-                }}
-                onUpdateConfig={async () => {}}
-              />
-            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
