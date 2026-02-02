@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { ChatInterface } from '@/sdk'
+import { AIChatInterface } from '@/sdk'
 import type { PluginChatConfig } from '@/sdk'
 import type { ExecutiveGoalInput } from '../types'
 
@@ -127,7 +127,7 @@ export function AddExecutiveGoalChat({
   prefilledStartDate,
 }: AddExecutiveGoalChatProps) {
   return (
-    <ChatInterface
+    <AIChatInterface
       config={chatConfig}
       onSubmit={onSubmit}
       onCancel={onCancel}

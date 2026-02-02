@@ -81,7 +81,7 @@ export type { UseMonthCalendarOptions, UseMonthCalendarReturn, UseChatOptions, U
 export * from './utils'
 
 // Components
-export { LoadingState, NotFoundState, ContentLoader, PluginMonthView, Drawer, ChatInterface } from './components'
+export { LoadingState, NotFoundState, ContentLoader, PluginMonthView, Drawer, ChatInterface, AIChatInterface } from './components'
 export type { PluginMonthViewProps } from './components'
 
 // UI components
@@ -109,6 +109,7 @@ export type {
   ChatResponse,
   PluginChatConfig,
   ChatInterfaceProps,
+  AIChatInterfaceProps,
 } from './types'
 
 // UI types

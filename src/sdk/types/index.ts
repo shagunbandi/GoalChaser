@@ -106,4 +106,5 @@ export type {
   ChatResponse,
   PluginChatConfig,
   ChatInterfaceProps,
+  AIChatInterfaceProps,
 } from './chat.types'

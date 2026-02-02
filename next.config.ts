@@ -16,6 +16,20 @@ const nextConfig: NextConfig = {
   output: "standalone",
   turbopack: {},
   serverExternalPackages: ['firebase', 'firebase-admin'],
+  async redirects() {
+    return [
+      {
+        source: '/developer/documentation/storybook',
+        destination: '/developer/documentation/storybook/index.html',
+        permanent: false,
+      },
+      {
+        source: '/developer/documentation/storybook/',
+        destination: '/developer/documentation/storybook/index.html',
+        permanent: false,
+      },
+    ]
+  },
   images: {
     remotePatterns: [
       {
