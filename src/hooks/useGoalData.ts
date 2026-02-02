@@ -41,6 +41,7 @@ export function useGoalData(goalId: string, year?: number) {
     loading: dataLoading,
     error: dataError,
     updatePluginData,
+    updatePluginDataBatch,
     updatePluginConfig,
     reload,
   } = useGoalDataQuery({
@@ -94,6 +95,22 @@ export function useGoalData(goalId: string, year?: number) {
     [updatePluginData]
   )
 
+  // Batch update (one mutation for many days – use for travel/plugins that touch many dates)
+  const handleUpdateDataBatch = useCallback(
+    async (
+      pluginId: string,
+      updates: Array<{ date: string; updates: Partial<PluginDayData> }>,
+    ) => {
+      if (updates.length === 0) return
+      if (updates.length === 1) {
+        await updatePluginData(pluginId, updates[0].date, updates[0].updates)
+        return
+      }
+      await updatePluginDataBatch(pluginId, updates)
+    },
+    [updatePluginData, updatePluginDataBatch],
+  )
+
   // Redirect to home if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
@@ -123,6 +140,7 @@ export function useGoalData(goalId: string, year?: number) {
 
     // Generic handlers
     handleUpdateData,
+    handleUpdateDataBatch,
     updateConfig,
 
     // Status

@@ -22,6 +22,10 @@ interface StudyHeaderProps {
   isTopicInUse?: (subjectId: string, topic: string) => boolean
   onUpdateSubjectGoal?: (subjectId: string, streakType: StreakType, targetFrequency?: number) => void
   onToggleTrackStreaks?: (subjectId: string) => void
+  selectedSubjects?: Set<string>
+  onToggleSubject?: (subjectId: string) => void
+  onSelectAllSubjects?: () => void
+  onClearAllSubjects?: () => void
 }
 
 export function StudyHeader({
@@ -41,6 +45,10 @@ export function StudyHeader({
   isTopicInUse,
   onUpdateSubjectGoal,
   onToggleTrackStreaks,
+  selectedSubjects: _selectedSubjects,
+  onToggleSubject: _onToggleSubject,
+  onSelectAllSubjects: _onSelectAllSubjects,
+  onClearAllSubjects: _onClearAllSubjects,
 }: StudyHeaderProps) {
   const [showSubjectManager, setShowSubjectManager] = useState(false)
 

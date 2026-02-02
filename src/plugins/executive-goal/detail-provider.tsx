@@ -4,18 +4,29 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { PluginDetailProvider } from '@/sdk'
 import { NotesField } from '@/sdk'
-import type { ExecutiveGoalDayData, ExecutiveGoalPlan, ExecutiveGoalPlanInput } from './types'
+import type {
+  ExecutiveGoalDayData,
+  ExecutiveGoal,
+  ExecutiveGoalInput,
+  ExecutiveGoalTask,
+  ExecutiveGoalTaskInput,
+} from './types'
 import { ExecutiveGoalForm } from './components/ExecutiveGoalForm'
+import { ExecutiveGoalTaskForm } from './components/ExecutiveGoalTaskForm'
+import { AddExecutiveGoalChat } from './components/AddExecutiveGoalChat'
+import { GenerateTasksModal } from './components/GenerateTasksModal'
+import type { SuggestedTask } from './components/GenerateTasksModal'
 import { FileUpload } from './components/FileUpload'
 
 interface ExecutiveGoalDetailContext {
-  onEditExecutiveGoal?: (executiveGoal: ExecutiveGoalPlan) => void | Promise<void>
+  onEditExecutiveGoal?: (executiveGoal: ExecutiveGoal) => void | Promise<void>
   onDeleteExecutiveGoal?: (executiveGoalId: string) => void | Promise<void>
-  onAddExecutiveGoal?: (executiveGoal: ExecutiveGoalPlanInput) => void | Promise<void>
+  onAddExecutiveGoal?: (executiveGoal: ExecutiveGoalInput) => void | Promise<void>
   selectedDate?: string
-  allExecutiveGoals?: ExecutiveGoalPlan[]
+  allExecutiveGoals?: ExecutiveGoal[]
   userId?: string
   goalId?: string
+  loadAllPlansForGoal?: () => Promise<ExecutiveGoal[]>
 }
 
 // Component for empty state with add executiveGoal option
@@ -28,18 +39,11 @@ function EmptyExecutiveGoalState({
 }: {
   date: string
   notes: string
-  onAddExecutiveGoal?: (executiveGoal: ExecutiveGoalPlanInput) => void | Promise<void>
+  onAddExecutiveGoal?: (executiveGoal: ExecutiveGoalInput) => void | Promise<void>
   onSaveNotes: (notes: string) => void | Promise<void>
-  allExecutiveGoals?: ExecutiveGoalPlan[]
+  allExecutiveGoals?: ExecutiveGoal[]
 }) {
   const [isAdding, setIsAdding] = useState(false)
-
-  const handleSubmit = async (data: ExecutiveGoalPlanInput) => {
-    if (onAddExecutiveGoal) {
-      await onAddExecutiveGoal(data)
-    }
-    setIsAdding(false)
-  }
 
   if (isAdding) {
     return (
@@ -55,15 +59,14 @@ function EmptyExecutiveGoalState({
           resetKey={date}
         />
         <div className="py-4">
-          <h4 className="text-sm font-medium text-white/70 mb-3">Add ExecutiveGoal</h4>
-          <ExecutiveGoalForm
-            initialData={{
-              startDate: date,
-              endDate: date,
+          <h4 className="text-sm font-medium text-white/70 mb-3">Add Executive Goal</h4>
+          <AddExecutiveGoalChat
+            onSubmit={async (goal) => {
+              if (onAddExecutiveGoal) await onAddExecutiveGoal(goal)
+              setIsAdding(false)
             }}
-            onSubmit={handleSubmit}
             onCancel={() => setIsAdding(false)}
-            availableExecutiveGoals={allExecutiveGoals}
+            prefilledStartDate={date}
           />
         </div>
       </div>
@@ -104,8 +107,8 @@ function EmptyExecutiveGoalState({
   )
 }
 
-// Helper to calculate trip stats
-function getTripStats(plan: ExecutiveGoalPlan, currentDate: string) {
+// Helper to calculate trip stats (goal-level plan with start/end date)
+function getTripStats(plan: ExecutiveGoal, currentDate: string) {
   const start = new Date(plan.startDate + 'T00:00:00')
   const end = new Date(plan.endDate + 'T00:00:00')
   const current = new Date(currentDate + 'T00:00:00')
@@ -132,7 +135,7 @@ function formatExecutiveGoalDate(dateStr: string): string {
   })
 }
 
-// Component for rendering a single task as checklist item
+// Component for rendering a single task (day-level)
 function TaskCard({
   task,
   currentDate,
@@ -142,17 +145,16 @@ function TaskCard({
   userId,
   goalId,
 }: {
-  task: ExecutiveGoalPlan
+  task: ExecutiveGoalTask
   currentDate: string
   planColor: string
-  onEdit: (executiveGoal: ExecutiveGoalPlan) => void
-  onDelete: (executiveGoalId: string) => void
+  onEdit: (task: ExecutiveGoalTask) => void
+  onDelete: (taskId: string) => void
   userId?: string
   goalId?: string
 }) {
   const [isAddingNote, setIsAddingNote] = useState(false)
   const [completionNote, setCompletionNote] = useState(task.completionNote || '')
-  
   const taskColor = task.color || planColor
 
   const handleToggleComplete = async () => {
@@ -209,12 +211,12 @@ function TaskCard({
               {task.title}
             </h4>
           </div>
-          {task.description && (
-            <p className="text-xs text-white/50 mb-2">
-              {task.description}
+          {task.howToAchieve && (
+            <p className="text-xs text-white/55 mt-0.5 leading-relaxed">
+              → {task.howToAchieve}
             </p>
           )}
-          
+
           {/* Completion Note Display */}
           {task.completionNote && !isAddingNote && (
             <div 
@@ -248,7 +250,7 @@ function TaskCard({
           )}
 
           <div className="flex items-center gap-3 text-xs text-white/40 mt-2">
-            <span>📅 {formatExecutiveGoalDate(task.startDate)}</span>
+            <span>📅 {formatExecutiveGoalDate(task.endDate)}</span>
             {!isAddingNote && !task.completionNote && (
               <button onClick={() => setIsAddingNote(true)} className="text-[#8B5CF6]/60 hover:text-[#8B5CF6] transition-colors">
                 + Add note
@@ -283,55 +285,155 @@ function ExecutiveGoalPlanCard({
   onEdit,
   onDelete,
   onAddTask,
+  onAddTasks,
+  onEditTask,
+  onDeleteTask,
   allExecutiveGoals,
   tasks = [],
   userId,
   goalId,
   showDayProgress = true,
   hideTaskSection = false,
+  loadAllPlansForGoal,
 }: {
-  plan: ExecutiveGoalPlan
+  plan: ExecutiveGoal
   currentDate: string
-  onEdit?: (executiveGoal: ExecutiveGoalPlan) => void
+  onEdit?: (executiveGoal: ExecutiveGoal) => void
   onDelete?: (executiveGoalId: string) => void
-  onAddTask?: (task: ExecutiveGoalPlan) => void
-  allExecutiveGoals?: ExecutiveGoalPlan[]
-  tasks?: ExecutiveGoalPlan[]
+  onAddTask?: (task: ExecutiveGoalTask) => void
+  /** Add multiple tasks in one update (avoids stale closure when adding suggested tasks). */
+  onAddTasks?: (tasks: ExecutiveGoalTask[]) => void
+  onEditTask?: (task: ExecutiveGoalTask) => void
+  onDeleteTask?: (taskId: string) => void
+  allExecutiveGoals?: ExecutiveGoal[]
+  tasks?: ExecutiveGoalTask[]
   userId?: string
   goalId?: string
   showDayProgress?: boolean
   hideTaskSection?: boolean
+  loadAllPlansForGoal?: () => Promise<ExecutiveGoal[]>
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isAddingTask, setIsAddingTask] = useState(false)
+  const [generateModalOpen, setGenerateModalOpen] = useState(false)
+  const [suggestedTasks, setSuggestedTasks] = useState<SuggestedTask[]>([])
+  const [generateLoading, setGenerateLoading] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
+  const [lastGenerateUsage, setLastGenerateUsage] = useState<{
+    totalTokens: number
+    estimatedCostUsd: number
+  } | null>(null)
+  const [lastPromptsUsed, setLastPromptsUsed] = useState<{ system: string; user: string } | null>(null)
 
   const { totalDays, currentDay, status } = getTripStats(plan, currentDate)
   const progress = (currentDay / totalDays) * 100
   const planColor = plan.color || '#8B5CF6'
 
-  const handleEdit = async (data: {
-    title: string
-    description: string
-    startDate: string
-    endDate: string
-    color: string
-    note: string
-    parentExecutiveGoalId?: string
-  }) => {
+  const handleEdit = async (data: ExecutiveGoalInput) => {
     if (onEdit) {
-      await onEdit({
-        ...plan,
-        title: data.title,
-        description: data.description,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        color: data.color,
-        note: data.note,
-        parentExecutiveGoalId: data.parentExecutiveGoalId,
-      })
+      await onEdit({ ...plan, ...data })
     }
     setIsEditing(false)
+  }
+
+  const runGenerateTasks = async () => {
+    if (!loadAllPlansForGoal || !onAddTask || !userId || !goalId) return
+    setGenerateModalOpen(true)
+    setGenerateLoading(true)
+    setGenerateError(null)
+    try {
+      const goals = await loadAllPlansForGoal()
+      const goal = goals.find((g) => g.id === plan.id) || plan
+      const completedForGoal = tasks.filter(
+        (t) => t.parentExecutiveGoalId === plan.id && t.completed === true && t.endDate <= currentDate,
+      )
+      const completedTasks = completedForGoal.map((t) => ({
+        title: t.title,
+        endDate: t.endDate,
+        completionNote: t.completionNote,
+      }))
+      const existingTasksForDay = tasks
+        .filter((t) => t.endDate === currentDate)
+        .map((t) => t.title)
+
+      const res = await fetch('/api/ai/generate-executive-tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planText: goal.plan || '',
+          progressSoFar: goal.progressSoFar || [],
+          completedTasks,
+          date: currentDate,
+          existingTasksForDay,
+          goalStartDate: goal.startDate,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setGenerateError(data.error || `Request failed: ${res.status}`)
+        setSuggestedTasks([])
+        return
+      }
+      if ((data.newSummary || data.totalUsage) && onEdit) {
+        const updates: Partial<ExecutiveGoal> = { ...goal }
+        if (data.newSummary) {
+          updates.progressSoFar = [...(goal.progressSoFar || []), data.newSummary]
+        }
+        if (data.totalUsage) {
+          const prev = goal.aiUsage
+          const totalUsage = data.totalUsage as {
+            promptTokens: number
+            completionTokens: number
+            totalTokens: number
+            estimatedCostUsd: number
+          }
+          updates.aiUsage = {
+            totalPromptTokens: (prev?.totalPromptTokens ?? 0) + totalUsage.promptTokens,
+            totalCompletionTokens: (prev?.totalCompletionTokens ?? 0) + totalUsage.completionTokens,
+            totalTokens: (prev?.totalTokens ?? 0) + totalUsage.totalTokens,
+            estimatedCostUsd: (prev?.estimatedCostUsd ?? 0) + totalUsage.estimatedCostUsd,
+            lastUpdated: new Date().toISOString(),
+          }
+        }
+        await onEdit(updates as ExecutiveGoal)
+      }
+      setSuggestedTasks(data.tasks || [])
+      setLastGenerateUsage(
+        data.totalUsage
+          ? {
+              totalTokens: data.totalUsage.totalTokens,
+              estimatedCostUsd: data.totalUsage.estimatedCostUsd,
+            }
+          : null
+      )
+      setLastPromptsUsed(data.promptsUsed ?? null)
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Something went wrong')
+      setSuggestedTasks([])
+    } finally {
+      setGenerateLoading(false)
+    }
+  }
+
+  const handleAddSuggestedTasks = async (toAdd: SuggestedTask[]) => {
+    if (toAdd.length === 0) return
+    const newTasks: ExecutiveGoalTask[] = toAdd.map((t, i) => ({
+      id: `task_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 9)}`,
+      title: t.title,
+      parentExecutiveGoalId: plan.id,
+      endDate: currentDate,
+      color: plan.color,
+      completed: false,
+      ...(t.howToAchieve && { howToAchieve: t.howToAchieve }),
+    }))
+    if (onAddTasks) {
+      await onAddTasks(newTasks)
+    } else if (onAddTask) {
+      for (const task of newTasks) {
+        await onAddTask(task)
+      }
+    }
   }
 
   if (isEditing) {
@@ -344,13 +446,12 @@ function ExecutiveGoalPlanCard({
       >
         <div className="p-4">
           <h4 className="text-sm font-medium text-white/70 mb-3 flex items-center gap-2">
-            <span>✏️</span> Edit ExecutiveGoal
+            <span>✏️</span> Edit goal
           </h4>
           <ExecutiveGoalForm
             initialData={plan}
             onSubmit={handleEdit}
             onCancel={() => setIsEditing(false)}
-            availableExecutiveGoals={allExecutiveGoals}
           />
         </div>
       </div>
@@ -397,9 +498,15 @@ function ExecutiveGoalPlanCard({
                 }
               </span>
             </div>
-            {plan.description && (
+            {plan.plan && (
               <p className="text-sm text-white/50 mt-0.5 truncate">
-                {plan.description}
+                {plan.plan}
+              </p>
+            )}
+            {plan.aiUsage && (
+              <p className="text-[10px] text-white/40 mt-1">
+                AI: {plan.aiUsage.totalTokens.toLocaleString()} tokens, ~$
+                {plan.aiUsage.estimatedCostUsd.toFixed(4)} USD
               </p>
             )}
           </div>
@@ -522,8 +629,12 @@ function ExecutiveGoalPlanCard({
                     task={task}
                     currentDate={currentDate}
                     planColor={planColor}
-                    onEdit={onEdit || (() => {})}
-                    onDelete={onDelete || (() => {})}
+                    onEdit={(updated) => {
+                      if (onEditTask) onEditTask(updated)
+                    }}
+                    onDelete={(id) => {
+                      if (onDeleteTask) onDeleteTask(id)
+                    }}
                     userId={userId}
                     goalId={goalId}
                   />
@@ -531,6 +642,25 @@ function ExecutiveGoalPlanCard({
               </div>
             </>
           )}
+
+          {/* Generate tasks for today */}
+          {!isAddingTask &&
+            userId &&
+            goalId &&
+            loadAllPlansForGoal &&
+            onAddTask && (
+              <button
+                onClick={runGenerateTasks}
+                className="
+                  w-full px-4 py-2.5 rounded-xl
+                  bg-white/10 hover:bg-white/15 border border-white/10
+                  text-white/80 hover:text-white font-medium text-sm
+                  transition-all duration-200 flex items-center justify-center gap-2 mb-2
+                "
+              >
+                Generate tasks for {currentDate === new Date().toISOString().split('T')[0] ? 'today' : 'this day'}
+              </button>
+            )}
 
           {/* Add task button - always visible, below tasks */}
           {!isAddingTask && userId && goalId && (
@@ -552,40 +682,28 @@ function ExecutiveGoalPlanCard({
           )}
 
           {/* Add task form */}
-          {isAddingTask && (
+          {isAddingTask && onAddTask && (
             <div className="mt-3">
               <h4 className="text-sm font-medium text-white/70 mb-3">
                 Add Task
               </h4>
-              <ExecutiveGoalForm
-                initialData={{
-                  color: plan.color,
-                  parentExecutiveGoalId: plan.id,
-                }}
-                onSubmit={async (data) => {
-                  if (onAddTask) {
-                    // Create a new task
-                    const newTask: ExecutiveGoalPlan = {
-                      id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                      title: data.title,
-                      description: data.description,
-                      startDate: data.startDate,
-                      endDate: data.endDate,
-                      color: data.color,
-                      parentExecutiveGoalId: plan.id,
-                      completed: false,
-                    }
-                    await onAddTask(newTask)
+              <ExecutiveGoalTaskForm
+                availableGoals={allExecutiveGoals || [plan]}
+                date={currentDate}
+                defaultColor={plan.color}
+                onSubmit={async (data: ExecutiveGoalTaskInput) => {
+                  const newTask: ExecutiveGoalTask = {
+                    id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+                    title: data.title,
+                    parentExecutiveGoalId: data.parentExecutiveGoalId,
+                    endDate: data.endDate,
+                    color: data.color,
+                    completed: false,
                   }
+                  await onAddTask(newTask)
                   setIsAddingTask(false)
                 }}
                 onCancel={() => setIsAddingTask(false)}
-                availableExecutiveGoals={allExecutiveGoals}
-                hideParentGoalSelector={true}
-                hideNotesField={true}
-                hideDateFields={true}
-                singleDayDate={currentDate}
-                isTask={true}
               />
             </div>
           )}
@@ -614,60 +732,92 @@ function ExecutiveGoalPlanCard({
           </div>
         </div>
       )}
+
+      {/* Generate tasks modal */}
+      <GenerateTasksModal
+        open={generateModalOpen}
+        onClose={() => {
+          setGenerateModalOpen(false)
+          setGenerateError(null)
+        }}
+        goal={plan}
+        date={currentDate}
+        suggestedTasks={suggestedTasks}
+        isLoading={generateLoading}
+        error={generateError}
+        onAddSelected={handleAddSuggestedTasks}
+        onRegenerate={runGenerateTasks}
+        lastUsage={lastGenerateUsage}
+        promptsUsed={lastPromptsUsed}
+      />
     </div>
   )
 }
 
-// Component for executiveGoal plans list with add option
+// Component for goals that span this day + tasks on this day
 function ExecutiveGoalPlansView({
-  plans,
+  goalsForDay,
+  tasksForDay,
   date,
   notes,
   onEditExecutiveGoal,
   onDeleteExecutiveGoal,
   onAddExecutiveGoal,
   onSaveNotes,
+  onUpdateDay,
   allExecutiveGoals,
   userId,
   goalId,
+  loadAllPlansForGoal,
 }: {
-  plans: ExecutiveGoalPlan[]
+  goalsForDay: ExecutiveGoal[]
+  tasksForDay: ExecutiveGoalTask[]
   date: string
   notes: string
-  onEditExecutiveGoal?: (executiveGoal: ExecutiveGoalPlan) => void | Promise<void>
+  onEditExecutiveGoal?: (executiveGoal: ExecutiveGoal) => void | Promise<void>
   onDeleteExecutiveGoal?: (executiveGoalId: string) => void | Promise<void>
-  onAddExecutiveGoal?: (executiveGoal: ExecutiveGoalPlanInput) => void | Promise<void>
+  onAddExecutiveGoal?: (executiveGoal: ExecutiveGoalInput) => void | Promise<void>
   onSaveNotes: (notes: string) => void | Promise<void>
-  allExecutiveGoals?: ExecutiveGoalPlan[]
+  onUpdateDay: (updates: Partial<ExecutiveGoalDayData>) => void | Promise<void>
+  allExecutiveGoals?: ExecutiveGoal[]
   userId?: string
   goalId?: string
+  loadAllPlansForGoal?: () => Promise<ExecutiveGoal[]>
 }) {
   const [isAdding, setIsAdding] = useState(false)
 
-  const handleSubmit = async (data: ExecutiveGoalPlanInput) => {
-    if (onAddExecutiveGoal) {
-      await onAddExecutiveGoal(data)
-    }
-    setIsAdding(false)
+  const handleEditTask = async (task: ExecutiveGoalTask) => {
+    await onUpdateDay({
+      tasks: tasksForDay.map((t) => (t.id === task.id ? task : t)),
+    })
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
+    await onUpdateDay({ tasks: tasksForDay.filter((t) => t.id !== taskId) })
+  }
+
+  const handleAddTask = async (task: ExecutiveGoalTask) => {
+    await onUpdateDay({ tasks: [...tasksForDay, task] })
+  }
+
+  const handleAddTasks = async (tasks: ExecutiveGoalTask[]) => {
+    await onUpdateDay({ tasks: [...tasksForDay, ...tasks] })
   }
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/30 to-amber-500/30 flex items-center justify-center text-xl">
             🎯
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white/90">ExecutiveGoal Plans</h3>
+            <h3 className="text-lg font-semibold text-white/90">Executive Goals</h3>
             <p className="text-xs text-white/50">
-              {plans.length} trip{plans.length !== 1 ? 's' : ''} on this day
+              {goalsForDay.length} goal{goalsForDay.length !== 1 ? 's' : ''}, {tasksForDay.length} task{tasksForDay.length !== 1 ? 's' : ''} on this day
             </p>
           </div>
         </div>
-
-        {/* Add button */}
         {onAddExecutiveGoal && !isAdding && (
           <button
             onClick={() => setIsAdding(true)}
@@ -677,69 +827,55 @@ function ExecutiveGoalPlansView({
               transition-all duration-150 flex items-center gap-1
             "
           >
-            <span>+</span> Add
+            <span>+</span> Add goal
           </button>
         )}
       </div>
 
-      {/* Day Notes - First */}
       <NotesField
         value={notes}
         onSave={onSaveNotes}
-        label="ExecutiveGoal Notes"
-        placeholder="Notes about your executiveGoal day..."
+        label="Executive Goal Notes"
+        placeholder="Notes about your executive goal day..."
         icon="📝"
         accentColor="#8B5CF6"
         resetKey={date}
       />
 
-      {/* Add ExecutiveGoal Form */}
       {isAdding && (
-        <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/5 p-4">
+        <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/5 p-4 min-h-[320px]">
           <h4 className="text-sm font-medium text-white/70 mb-3 flex items-center gap-2">
-            <span>🎯</span> Add New ExecutiveGoal
+            <span>🎯</span> Add New Executive Goal
           </h4>
-          <ExecutiveGoalForm
-            initialData={{
-              startDate: date,
-              endDate: date,
+          <AddExecutiveGoalChat
+            onSubmit={async (goal) => {
+              if (onAddExecutiveGoal) await onAddExecutiveGoal(goal)
+              setIsAdding(false)
             }}
-            onSubmit={handleSubmit}
             onCancel={() => setIsAdding(false)}
-            availableExecutiveGoals={allExecutiveGoals}
+            prefilledStartDate={date}
           />
         </div>
       )}
 
-      {/* ExecutiveGoal Cards */}
-      {(() => {
-        // Separate parent trips and orphan trips (no parent or parent doesn't exist on this day)
-        const parentGoals = plans.filter(p => !p.parentExecutiveGoalId)
-        const tasks = plans.filter(p => p.parentExecutiveGoalId)
-        
-        // Group tasks by their parent
-        const tasksByParent = tasks.reduce((acc, trip) => {
-          const parentId = trip.parentExecutiveGoalId!
-          if (!acc[parentId]) acc[parentId] = []
-          acc[parentId].push(trip)
-          return acc
-        }, {} as Record<string, typeof plans>)
-        
-        return parentGoals.map((plan) => (
-          <ExecutiveGoalPlanCard
-            key={plan.id}
-            plan={plan}
-            currentDate={date}
-            onEdit={onEditExecutiveGoal}
-            onDelete={onDeleteExecutiveGoal}
-            onAddTask={onAddExecutiveGoal}
-            allExecutiveGoals={allExecutiveGoals}
-            tasks={tasksByParent[plan.id] || []}
-            userId={userId}
-            goalId={goalId}
-          />
-        ))
-      })()}
+      {goalsForDay.map((plan) => (
+        <ExecutiveGoalPlanCard
+          key={plan.id}
+          plan={plan}
+          currentDate={date}
+          onEdit={onEditExecutiveGoal}
+          onDelete={onDeleteExecutiveGoal}
+          onAddTask={handleAddTask}
+          onAddTasks={handleAddTasks}
+          onEditTask={handleEditTask}
+          onDeleteTask={handleDeleteTask}
+          allExecutiveGoals={allExecutiveGoals}
+          tasks={tasksForDay.filter((t) => t.parentExecutiveGoalId === plan.id)}
+          userId={userId}
+          goalId={goalId}
+          loadAllPlansForGoal={loadAllPlansForGoal}
+        />
+      ))}
     </div>
   )
 }
@@ -753,14 +889,18 @@ export class ExecutiveGoalDetailProviderImpl
     onUpdate: (updates: Partial<ExecutiveGoalDayData>) => Promise<void>,
     context?: ExecutiveGoalDetailContext,
   ): ReactNode {
-    const plans = data?.executiveGoalPlans || []
     const notes = data?.notes || ''
+    const tasksForDay = data?.tasks || []
+    const goalsForDay =
+      context?.allExecutiveGoals?.filter(
+        (g) => date >= g.startDate && date <= g.endDate,
+      ) || []
 
     const handleSaveNotes = async (newNotes: string) => {
       await onUpdate({ notes: newNotes })
     }
 
-    if (plans.length === 0) {
+    if (goalsForDay.length === 0 && tasksForDay.length === 0) {
       return (
         <EmptyExecutiveGoalState
           date={date}
@@ -774,16 +914,19 @@ export class ExecutiveGoalDetailProviderImpl
 
     return (
       <ExecutiveGoalPlansView
-        plans={plans}
+        goalsForDay={goalsForDay}
+        tasksForDay={tasksForDay}
         date={date}
         notes={notes}
         onEditExecutiveGoal={context?.onEditExecutiveGoal}
         onDeleteExecutiveGoal={context?.onDeleteExecutiveGoal}
         onAddExecutiveGoal={context?.onAddExecutiveGoal}
         onSaveNotes={handleSaveNotes}
+        onUpdateDay={onUpdate}
         allExecutiveGoals={context?.allExecutiveGoals}
         userId={context?.userId}
         goalId={context?.goalId}
+        loadAllPlansForGoal={context?.loadAllPlansForGoal}
       />
     )
   }

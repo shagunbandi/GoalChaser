@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { HeaderRenderer } from '@/components/features/year-view/renderers/HeaderRenderer'
 import { ExecutiveGoalManager } from './ExecutiveGoalManager'
-import type { ExecutiveGoalDayData, ExecutiveGoalPlan, ExecutiveGoalPlanInput } from '../types'
+import type { ExecutiveGoalDayData, ExecutiveGoal, ExecutiveGoalInput } from '../types'
 import { isWeekend } from '@/utils'
 
 interface ExecutiveGoalHeaderProps {
@@ -11,10 +11,10 @@ interface ExecutiveGoalHeaderProps {
   dayData: Record<string, ExecutiveGoalDayData>
   onPrevYear: () => void
   onNextYear: () => void
-  onAddExecutiveGoal?: (goal: ExecutiveGoalPlanInput) => void | Promise<void>
-  onUpdateExecutiveGoal?: (goal: ExecutiveGoalPlan) => void | Promise<void>
+  onAddExecutiveGoal?: (goal: ExecutiveGoalInput) => void | Promise<void>
+  onUpdateExecutiveGoal?: (goal: ExecutiveGoal) => void | Promise<void>
   onDeleteExecutiveGoal?: (goalId: string) => void | Promise<void>
-  allExecutiveGoals?: ExecutiveGoalPlan[]
+  allExecutiveGoals?: ExecutiveGoal[]
   userId?: string
   goalId?: string
 }
@@ -37,7 +37,7 @@ export function ExecutiveGoalHeader({
     const yearPrefix = `${year}-`
     const executiveGoalEntries = Object.entries(dayData).filter(
       ([iso, details]) =>
-        iso.startsWith(yearPrefix) && (details.executiveGoalPlans?.length || 0) > 0,
+        iso.startsWith(yearPrefix) && (details.tasks?.length || 0) > 0,
     )
     const executiveGoalDays = executiveGoalEntries.length
     const weekdayCount = executiveGoalEntries.filter(([iso]) => !isWeekend(iso)).length
@@ -76,7 +76,6 @@ export function ExecutiveGoalHeader({
         onNextYear={onNextYear}
       />
 
-      {/* Executive Goal Manager Drawer */}
       {showExecutiveGoalManager && onAddExecutiveGoal && onUpdateExecutiveGoal && onDeleteExecutiveGoal && (
         <ExecutiveGoalManager
           isOpen={showExecutiveGoalManager}

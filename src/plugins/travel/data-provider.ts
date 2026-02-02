@@ -1,6 +1,6 @@
 import type { PluginDataProvider, PluginContext, PluginDayData } from '@/sdk'
 import { removeUndefinedFields } from '@/sdk'
-import type { TravelDayData, TravelPlan } from './types'
+import type { TravelDayData, TravelPlan, TravelConfig } from './types'
 import { saveTravelPlan, deleteTravelPlan } from './api'
 
 /**
@@ -8,7 +8,7 @@ import { saveTravelPlan, deleteTravelPlan } from './api'
  * Uses day-based storage for compatibility with YearView
  * Each day stores references to travel plans that include that date
  */
-export class TravelDataProvider implements PluginDataProvider<TravelDayData> {
+export class TravelDataProvider implements PluginDataProvider<TravelDayData, TravelConfig> {
   async loadDayData(
     context: PluginContext,
     date: string
@@ -85,6 +85,37 @@ export class TravelDataProvider implements PluginDataProvider<TravelDayData> {
     }
   }
 
+  /** Save many days in one Firestore batch (one round-trip instead of N). */
+  async saveDayDataBatch(
+    context: PluginContext,
+    updates: Array<{ date: string; data: Partial<TravelDayData> }>
+  ): Promise<void> {
+    if (updates.length === 0) return
+    if (!context.firestore.writeBatch) {
+      // Fallback: sequential saveDayData
+      for (const { date, data } of updates) {
+        await this.saveDayData(context, date, data as PluginDayData)
+      }
+      return
+    }
+    try {
+      const batch = context.firestore.writeBatch()
+      const updatedAt = new Date().toISOString()
+      for (const { date, data } of updates) {
+        const docRef = context.firestore.doc(`days/${date}`)
+        const cleanedData = removeUndefinedFields({
+          ...data,
+          updatedAt,
+        })
+        batch.set(docRef, cleanedData, { merge: true })
+      }
+      await batch.commit()
+    } catch (error) {
+      context.logger.error('Failed to save travel day data batch', error)
+      throw error
+    }
+  }
+
   /**
    * Save a travel plan (custom method, not from interface)
    */
@@ -105,6 +136,34 @@ export class TravelDataProvider implements PluginDataProvider<TravelDayData> {
       return await deleteTravelPlan(context.userId, context.goalId, planId)
     } catch (error) {
       context.logger.error('Failed to delete travel plan', error)
+      return false
+    }
+  }
+
+  async loadConfig(context: PluginContext): Promise<TravelConfig | null> {
+    try {
+      const configRef = context.firestore.doc('settings/config')
+      const configSnap = await context.firestore.getDoc(configRef)
+      if (configSnap.exists()) {
+        return configSnap.data() as TravelConfig
+      }
+      return null
+    } catch (error) {
+      context.logger.error('Failed to load travel config', error)
+      return null
+    }
+  }
+
+  async saveConfig(context: PluginContext, config: TravelConfig): Promise<boolean> {
+    try {
+      const configRef = context.firestore.doc('settings/config')
+      await context.firestore.setDoc(configRef, {
+        ...config,
+        updatedAt: new Date().toISOString(),
+      })
+      return true
+    } catch (error) {
+      context.logger.error('Failed to save travel config', error)
       return false
     }
   }

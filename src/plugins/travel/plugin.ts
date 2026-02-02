@@ -4,8 +4,8 @@ import { generateDateRange } from '@/sdk'
 import { TravelDataProvider } from './data-provider'
 import { TravelDetailProviderImpl } from './detail-provider'
 import TravelPage from './pages/TravelPage'
-import { TravelWizardFlow } from './components'
-import type { TravelPlan, TravelDayData } from './types'
+import { TravelWizardFlow, TravelInsightsCustomView } from './components'
+import type { TravelPlan, TravelDayData, TravelConfig } from './types'
 import { buildPluginUrl } from '@/lib/plugin-url-utils'
 import {
   countTotalTrips,
@@ -20,7 +20,7 @@ import {
   calculateTripsPerMonth,
 } from './insights-utils'
 
-export const TravelPlugin: Plugin = {
+export const TravelPlugin: Plugin<TravelDayData, TravelConfig> = {
   id: 'travel',
   
   metadata: { 
@@ -296,6 +296,7 @@ export const TravelPlugin: Plugin = {
       { label: 'Last 6 months', days: 180, id: 'last-180' },
       { label: 'Last year', days: 365, id: 'last-365' },
     ],
+    customView: TravelInsightsCustomView,
   },
 
   // AI integration for natural language data extraction

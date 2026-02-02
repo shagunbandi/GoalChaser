@@ -151,3 +151,12 @@ export const DEFAULT_TIME_RANGES: TimeRangeOption[] = [
   { label: 'Last 6 months', days: 180, id: 'last-180' },
   { label: 'Last year', days: 365, id: 'last-365' },
 ]
+
+/**
+ * Props for plugin custom insights view (e.g. map + dates table)
+ */
+export interface InsightsCustomViewProps<TDayData = unknown, TConfig = unknown> {
+  goalId: string
+  pluginData: Record<string, TDayData>
+  pluginConfig: TConfig | null
+}

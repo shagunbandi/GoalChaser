@@ -62,6 +62,7 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
     pluginConfig,
     initialSelectedDay,
     updateDayData,
+    updateDayDataBatch,
     updateConfig,
     navigateToPrevYear,
     navigateToNextYear,
@@ -103,19 +104,15 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
       const existingExpenses = dayData.expenses || []
 
       if (formData.isRecurring && formData.frequency && formData.endDate) {
-        // Create recurring expenses
+        // Create recurring expenses (batch update)
         const seriesId = generateSeriesId()
         const dates = generateOccurrenceDates(date, formData.endDate, formData.frequency)
-
-        // Create all occurrences
-        for (let i = 0; i < dates.length; i++) {
-          const occurrenceDate = dates[i]
+        const batch = dates.map((occurrenceDate, i) => {
           const existingDayData = pluginDayData[occurrenceDate] || {
             expenses: [],
             income: [],
             investments: [],
           }
-
           const expense: Expense = {
             id: generateTransactionId('expense'),
             categoryId: formData.categoryId,
@@ -131,11 +128,14 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
             isSeriesParent: i === 0,
             occurrenceIndex: i,
           }
-
-          await updateDayData(occurrenceDate, {
-            expenses: [...(existingDayData.expenses || []), expense],
-          })
-        }
+          return {
+            date: occurrenceDate,
+            updates: {
+              expenses: [...(existingDayData.expenses || []), expense],
+            } as Partial<FinanceTransactionData>,
+          }
+        })
+        await updateDayDataBatch(batch)
       } else {
         // Single expense
         const newExpense: Expense = {
@@ -152,7 +152,7 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
         })
       }
     },
-    [pluginDayData, updateDayData]
+    [pluginDayData, updateDayData, updateDayDataBatch]
   )
 
   // Add income handler
@@ -162,19 +162,15 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
       const existingIncome = dayData.income || []
 
       if (formData.isRecurring && formData.frequency && formData.endDate) {
-        // Create recurring income
+        // Create recurring income (batch update)
         const seriesId = generateSeriesId()
         const dates = generateOccurrenceDates(date, formData.endDate, formData.frequency)
-
-        // Create all occurrences
-        for (let i = 0; i < dates.length; i++) {
-          const occurrenceDate = dates[i]
+        const batch = dates.map((occurrenceDate, i) => {
           const existingDayData = pluginDayData[occurrenceDate] || {
             expenses: [],
             income: [],
             investments: [],
           }
-
           const income: Income = {
             id: generateTransactionId('income'),
             categoryId: formData.categoryId,
@@ -190,11 +186,14 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
             isSeriesParent: i === 0,
             occurrenceIndex: i,
           }
-
-          await updateDayData(occurrenceDate, {
-            income: [...(existingDayData.income || []), income],
-          })
-        }
+          return {
+            date: occurrenceDate,
+            updates: {
+              income: [...(existingDayData.income || []), income],
+            } as Partial<FinanceTransactionData>,
+          }
+        })
+        await updateDayDataBatch(batch)
       } else {
         // Single income
         const newIncome: Income = {
@@ -211,7 +210,7 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
         })
       }
     },
-    [pluginDayData, updateDayData]
+    [pluginDayData, updateDayData, updateDayDataBatch]
   )
 
   // Add investment handler
@@ -221,19 +220,15 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
       const existingInvestments = dayData.investments || []
 
       if (formData.isRecurring && formData.frequency && formData.endDate) {
-        // Create recurring investments
+        // Create recurring investments (batch update)
         const seriesId = generateSeriesId()
         const dates = generateOccurrenceDates(date, formData.endDate, formData.frequency)
-
-        // Create all occurrences
-        for (let i = 0; i < dates.length; i++) {
-          const occurrenceDate = dates[i]
+        const batch = dates.map((occurrenceDate, i) => {
           const existingDayData = pluginDayData[occurrenceDate] || {
             expenses: [],
             income: [],
             investments: [],
           }
-
           const investment: Investment = {
             id: generateTransactionId('investment'),
             investmentGroupId: formData.investmentGroupId,
@@ -249,11 +244,14 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
             isSeriesParent: i === 0,
             occurrenceIndex: i,
           }
-
-          await updateDayData(occurrenceDate, {
-            investments: [...(existingDayData.investments || []), investment],
-          })
-        }
+          return {
+            date: occurrenceDate,
+            updates: {
+              investments: [...(existingDayData.investments || []), investment],
+            } as Partial<FinanceTransactionData>,
+          }
+        })
+        await updateDayDataBatch(batch)
       } else {
         // Single investment
         const newInvestment: Investment = {
@@ -270,7 +268,7 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
         })
       }
     },
-    [pluginDayData, updateDayData]
+    [pluginDayData, updateDayData, updateDayDataBatch]
   )
 
   // Edit transaction handler
@@ -308,7 +306,7 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
         )
         await updateDayData(date, { [transactionKey]: updatedTransactions })
       } else if (action === 'edit_upcoming' && transaction.seriesId) {
-        // Update this and all future occurrences with new data
+        // Update this and all future occurrences with new data (batch)
         const newSeriesId = generateSeriesId()
         const futureOccurrences = getFutureOccurrences<Expense | Income | Investment>(
           transaction.seriesId,
@@ -316,13 +314,9 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
           pluginDayData,
           type
         )
-
-        // Update each future occurrence with new seriesId and edited data
-        for (let i = 0; i < futureOccurrences.length; i++) {
-          const occ = futureOccurrences[i]
+        const batch = futureOccurrences.map((occ, i) => {
           const occDayData = pluginDayData[occ.date] || { expenses: [], income: [], investments: [] }
           const occTransactions = (occDayData[transactionKey] || []) as (Expense | Income | Investment)[]
-
           const updatedOcc = {
             ...occ,
             ...(editedData && {
@@ -338,15 +332,18 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
             isSeriesParent: i === 0,
             occurrenceIndex: i,
           }
-
           const updatedTransactions = occTransactions.map((t) =>
             t.id === occ.id ? updatedOcc : t
           )
-          await updateDayData(occ.date, { [transactionKey]: updatedTransactions })
-        }
+          return {
+            date: occ.date,
+            updates: { [transactionKey]: updatedTransactions } as Partial<FinanceTransactionData>,
+          }
+        })
+        await updateDayDataBatch(batch)
       }
     },
-    [pluginDayData, updateDayData]
+    [pluginDayData, updateDayData, updateDayDataBatch]
   )
 
   // Delete transaction handler
@@ -366,25 +363,26 @@ export default function FinancePage({ params, year, month }: PluginPageProps) {
         const filtered = transactions.filter((t) => t.id !== transaction.id)
         await updateDayData(date, { [transactionKey]: filtered })
       } else if (action === 'delete_upcoming') {
-        // Delete this and all future occurrences
+        // Delete this and all future occurrences (batch)
         const { transactionsToDelete, datesToUpdate } = deleteThisAndUpcoming(
           transaction,
           pluginDayData,
           type
         )
-
-        // Group by date and delete
         const idsToDelete = new Set(transactionsToDelete.map((t) => t.id))
-
-        for (const updateDate of datesToUpdate) {
+        const batch = datesToUpdate.map((updateDate) => {
           const dayData = pluginDayData[updateDate] || { expenses: [], income: [], investments: [] }
           const transactions = dayData[transactionKey] || []
           const filtered = transactions.filter((t) => !idsToDelete.has(t.id))
-          await updateDayData(updateDate, { [transactionKey]: filtered })
-        }
+          return {
+            date: updateDate,
+            updates: { [transactionKey]: filtered } as Partial<FinanceTransactionData>,
+          }
+        })
+        await updateDayDataBatch(batch)
       }
     },
-    [pluginDayData, updateDayData]
+    [pluginDayData, updateDayData, updateDayDataBatch]
   )
 
   // Only show full-page loading on TRUE initial load (no goal AND no cached data)

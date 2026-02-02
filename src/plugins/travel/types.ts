@@ -51,3 +51,14 @@ export interface TravelDayData extends PluginDayData {
   travelPlans?: TravelPlan[]
   notes?: string
 }
+
+/** Base location (e.g. home) used between travels when there is a gap of 1+ days */
+export interface TravelBaseLocation {
+  placeId?: string
+  placeCoordinates?: { lat: number; lng: number }
+  placeAddress?: string
+}
+
+export interface TravelConfig {
+  baseLocation?: TravelBaseLocation
+}

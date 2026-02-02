@@ -1,5 +1,7 @@
 version: '3.8'
 
+# GCS service account: place key file at ./gcs-key.json (or set GCS_KEY_FILE_HOST).
+# Mounted read-only at /app/gcs-key.json. Ensure the file exists and is readable (e.g. chmod 644).
 services:
   nitya:
     build:
@@ -22,6 +24,12 @@ services:
       - .env
     environment:
       - NODE_ENV=production
+      # Path inside container where GCS key is mounted (see volumes)
+      - GCS_KEY_FILE=/app/gcs-key.json
+      - GCS_BUCKET_NAME=${GCS_BUCKET_NAME}
+    volumes:
+      # Mount GCS service account key so upload API can read it (path relative to compose file)
+      - ${GCS_KEY_FILE_HOST:-./gcs-key.json}:/app/gcs-key.json:ro
     networks:
       - nitya_network
     labels:

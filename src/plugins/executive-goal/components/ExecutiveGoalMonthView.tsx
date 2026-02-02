@@ -3,7 +3,7 @@
 import { PluginMonthView } from '@/sdk'
 import type { DayCustomization } from '@/sdk'
 import { ExecutiveGoalPlugin } from '../plugin'
-import type { ExecutiveGoalDayData, ExecutiveGoalPlan, ExecutiveGoalPlanInput } from '../types'
+import type { ExecutiveGoalDayData, ExecutiveGoal, ExecutiveGoalInput } from '../types'
 import { getExecutiveGoalDayCustomization } from '../calendar-utils'
 
 interface ExecutiveGoalMonthViewProps {
@@ -16,11 +16,12 @@ interface ExecutiveGoalMonthViewProps {
   initialSelectedDate: string | null
   onUpdateDay: (iso: string, updates: Partial<ExecutiveGoalDayData>) => Promise<void>
   onBackToYear: () => void
-  onEditExecutiveGoal?: (goal: ExecutiveGoalPlan) => void | Promise<void>
+  onEditExecutiveGoal?: (goal: ExecutiveGoal) => void | Promise<void>
   onDeleteExecutiveGoal?: (goalId: string) => void | Promise<void>
-  onAddExecutiveGoal?: (goal: ExecutiveGoalPlanInput) => void | Promise<void>
-  allExecutiveGoals?: ExecutiveGoalPlan[]
+  onAddExecutiveGoal?: (goal: ExecutiveGoalInput) => void | Promise<void>
+  allExecutiveGoals?: ExecutiveGoal[]
   userId?: string
+  loadAllPlansForGoal?: () => Promise<ExecutiveGoal[]>
 }
 
 export function ExecutiveGoalMonthView({
@@ -38,6 +39,7 @@ export function ExecutiveGoalMonthView({
   onAddExecutiveGoal,
   allExecutiveGoals,
   userId,
+  loadAllPlansForGoal,
 }: ExecutiveGoalMonthViewProps) {
   // Build day customizations based on executive goal plans
   // Show borders for goals, background for task completion, and dots for tasks
@@ -67,6 +69,7 @@ export function ExecutiveGoalMonthView({
         allExecutiveGoals,
         userId,
         goalId,
+        loadAllPlansForGoal,
       }}
     />
   )

@@ -1,34 +1,19 @@
 import { useState, useEffect } from 'react'
-import type { ExecutiveGoalPlan } from '@/plugins/executive-goal/types'
+import type { ExecutiveGoal, ExecutiveGoalInput } from '@/plugins/executive-goal/types'
 
 interface ExecutiveGoalFormProps {
-  initialData?: Partial<ExecutiveGoalPlan>
-  onSubmit: (data: {
-    title: string
-    description: string
-    startDate: string
-    endDate: string
-    color: string
-    note: string
-    parentExecutiveGoalId?: string
-  }) => void | Promise<void>
+  initialData?: Partial<ExecutiveGoal>
+  onSubmit: (data: ExecutiveGoalInput) => void | Promise<void>
   onCancel: () => void
   isSubmitting?: boolean
-  availableExecutiveGoals?: ExecutiveGoalPlan[]
-  hideParentGoalSelector?: boolean
   hideNotesField?: boolean
   hideDateFields?: boolean
-  singleDayDate?: string
-  isTask?: boolean
 }
 
-// Helper function to get today's date in YYYY-MM-DD format
 function getTodayDate(): string {
-  const today = new Date()
-  return today.toISOString().split('T')[0]
+  return new Date().toISOString().split('T')[0]
 }
 
-// Helper function to get date 1 week from today in YYYY-MM-DD format
 function getOneWeekLater(): string {
   const today = new Date()
   const oneWeekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
@@ -40,15 +25,11 @@ export function ExecutiveGoalForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
-  availableExecutiveGoals = [],
-  hideParentGoalSelector = false,
   hideNotesField = false,
   hideDateFields = false,
-  singleDayDate,
-  isTask = false,
 }: ExecutiveGoalFormProps) {
   const [title, setTitle] = useState(initialData?.title || '')
-  const [description, setDescription] = useState(initialData?.description || '')
+  const [plan, setPlan] = useState(initialData?.plan || '')
   const [startDate, setStartDate] = useState(
     initialData?.startDate || getTodayDate(),
   )
@@ -57,59 +38,37 @@ export function ExecutiveGoalForm({
   )
   const [color, setColor] = useState(initialData?.color || '#8B5CF6')
   const [note, setNote] = useState(initialData?.note || '')
-  const [parentExecutiveGoalId, setParentExecutiveGoalId] = useState(initialData?.parentExecutiveGoalId || '')
   const [error, setError] = useState<string | null>(null)
 
-  // Update form when initialData changes
   useEffect(() => {
     if (initialData) {
       setTitle(initialData.title || '')
-      setDescription(initialData.description || '')
+      setPlan(initialData.plan || '')
       setStartDate(initialData.startDate || getTodayDate())
       setEndDate(initialData.endDate || getOneWeekLater())
       setColor(initialData.color || '#8B5CF6')
       setNote(initialData.note || '')
-      setParentExecutiveGoalId(initialData.parentExecutiveGoalId || '')
     }
   }, [initialData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!title.trim() || !startDate || !endDate) {
       setError('Title and dates are required')
       return
     }
-
-    // For single-day tasks, use the provided date for both start and end
-    const finalStartDate = hideDateFields && singleDayDate ? singleDayDate : startDate
-    const finalEndDate = hideDateFields && singleDayDate ? singleDayDate : endDate
-
     if (!hideDateFields && startDate > endDate) {
       setError('End date must be after start date')
       return
     }
-
-    // Validate parent executive goal dates if a parent is selected (skip for hidden date fields)
-    if (parentExecutiveGoalId && !hideDateFields) {
-      const parentGoal = availableExecutiveGoals.find(t => t.id === parentExecutiveGoalId)
-      if (parentGoal) {
-        if (finalStartDate < parentGoal.startDate || finalEndDate > parentGoal.endDate) {
-          setError('Task dates must be within parent goal dates')
-          return
-        }
-      }
-    }
-
     setError(null)
     await onSubmit({
       title: title.trim(),
-      description: description.trim(),
-      startDate: finalStartDate,
-      endDate: finalEndDate,
+      plan: plan.trim(),
+      startDate,
+      endDate,
       color,
       note: note.trim(),
-      parentExecutiveGoalId: parentExecutiveGoalId || undefined,
     })
   }
 
@@ -137,12 +96,12 @@ export function ExecutiveGoalForm({
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs text-white/60">Description</label>
+        <label className="text-xs text-white/60">Plan</label>
         <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          value={plan}
+          onChange={(e) => setPlan(e.target.value)}
           rows={3}
-          placeholder="Brief description of the goal and its objectives..."
+          placeholder="Phase plan or key objectives for the goal..."
           className="
             w-full rounded-xl border border-white/10 bg-white/5
             px-3 py-2 text-sm text-white placeholder-white/40
@@ -152,49 +111,6 @@ export function ExecutiveGoalForm({
           disabled={isSubmitting}
         />
       </div>
-
-      {/* Parent Goal Selector */}
-      {!hideParentGoalSelector && availableExecutiveGoals.length > 0 && (
-        <div className="space-y-1">
-          <label className="text-xs text-white/60">Parent Goal (optional)</label>
-          <select
-            value={parentExecutiveGoalId}
-            onChange={(e) => setParentExecutiveGoalId(e.target.value)}
-            className="
-              w-full rounded-xl border border-white/10 bg-white/5
-              px-3 py-2 text-sm text-white
-              focus:border-[#8B5CF6]/60 focus:outline-none
-              appearance-none cursor-pointer
-            "
-            disabled={isSubmitting}
-          >
-            <option value="" className="bg-[#1a1a1a] text-white">None (Standalone goal)</option>
-            {availableExecutiveGoals
-              .filter(t => {
-                // Don't show self
-                if (t.id === initialData?.id) return false
-                // Don't show goals that already have parents (keep nesting to 1 level)
-                if (t.parentExecutiveGoalId) return false
-                // Only show goals that overlap with current date range
-                if (startDate && endDate) {
-                  return !(t.endDate < startDate || t.startDate > endDate)
-                }
-                return true
-              })
-              .map(goal => (
-                <option key={goal.id} value={goal.id} className="bg-[#1a1a1a] text-white">
-                  {goal.title} ({goal.startDate} → {goal.endDate})
-                </option>
-              ))
-            }
-          </select>
-          {parentExecutiveGoalId && (
-            <p className="text-xs text-white/40 mt-1">
-              This goal will be grouped under the selected main goal
-            </p>
-          )}
-        </div>
-      )}
 
       {!hideDateFields && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -291,8 +207,6 @@ export function ExecutiveGoalForm({
         >
           {isSubmitting
             ? 'Saving…'
-            : isTask
-            ? 'Add task'
             : initialData?.id
             ? 'Update goal'
             : 'Save goal'}

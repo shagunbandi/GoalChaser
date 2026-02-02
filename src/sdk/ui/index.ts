@@ -60,3 +60,7 @@ export type {
 
 // Notes field component
 export { NotesField, type NotesFieldProps } from './NotesField'
+
+// Map component for insights (Leaflet, data-driven)
+export { InsightsMap, type InsightsMapMarker, type InsightsMapPolyline } from './InsightsMap'
+export type { InsightsMapProps } from './InsightsMap'

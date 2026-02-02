@@ -5,7 +5,7 @@ import { ExecutiveGoalDataProvider } from './data-provider'
 import { ExecutiveGoalDetailProviderImpl } from './detail-provider'
 import ExecutiveGoalPage from './pages/ExecutiveGoalPage'
 import { ExecutiveGoalWizardFlow } from './components'
-import type { ExecutiveGoalPlan, ExecutiveGoalDayData } from './types'
+import type { ExecutiveGoal, ExecutiveGoalDayData, ExecutiveGoalTask } from './types'
 import { buildPluginUrl } from '@/lib/plugin-url-utils'
 import {
   countTotalPlans,
@@ -46,26 +46,12 @@ export const ExecutiveGoalPlugin: Plugin = {
   // Calendar integration
   calendar: {
     getDaySummary: (date, data, context) => {
-      // Data is now day-based with executiveGoalPlans array
-      const plans: ExecutiveGoalPlan[] = data?.executiveGoalPlans || []
-      
-      if (!Array.isArray(plans) || plans.length === 0) {
-        return null
-      }
+      const tasks: ExecutiveGoalTask[] = data?.tasks || []
+      if (!Array.isArray(tasks) || tasks.length === 0) return null
 
-      // Find plans that include this date
-      const activePlans = plans.filter(plan => 
-        date >= plan.startDate && date <= plan.endDate
-      )
-
-      if (activePlans.length === 0) {
-        return null
-      }
-
-      // Build navigation URL
       const dateObj = new Date(date)
       const year = dateObj.getFullYear()
-      const month = dateObj.getMonth() + 1 // 1-indexed
+      const month = dateObj.getMonth() + 1
       const url = context?.goalId
         ? buildPluginUrl({
             goalId: context.goalId,
@@ -76,99 +62,49 @@ export const ExecutiveGoalPlugin: Plugin = {
           })
         : undefined
 
-      // If multiple plans, show as list
-      if (activePlans.length > 1) {
+      const completed = tasks.filter((t) => t.completed).length
+      const total = tasks.length
+
+      if (tasks.length > 1) {
         return {
           color: '#8B5CF6',
           hasData: true,
           summary: {
             type: 'list',
-            title: 'Executive Goals',
-            subtitle: `${activePlans.length} active goal${activePlans.length !== 1 ? 's' : ''}`,
+            title: 'Executive Tasks',
+            subtitle: `${completed}/${total} completed`,
             icon: '🎯',
-            badge: `${activePlans.length}`,
+            badge: `${total}`,
             gradient: { from: '#8B5CF6', to: '#7C3AED' },
-            items: activePlans.slice(0, 5).map(plan => {
-              const startDate = new Date(plan.startDate)
-              const endDate = new Date(plan.endDate)
-              const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
-              
-              return {
-                id: plan.id,
-                label: plan.title || 'Goal',
-                value: `${days} day${days !== 1 ? 's' : ''}`,
-                icon: '🎯',
-                color: plan.color || '#8B5CF6',
-                subtitle: `${plan.startDate} to ${plan.endDate}`
-              }
-            }),
-            actions: [
-              {
-                label: 'View Details',
-                url,
-                variant: 'primary',
-              },
-            ],
+            items: tasks.slice(0, 5).map((t) => ({
+              id: t.id,
+              label: t.title || 'Task',
+              value: t.completed ? 'Done' : 'Pending',
+              icon: '🎯',
+              color: t.color || '#8B5CF6',
+              subtitle: t.endDate,
+            })),
+            actions: [{ label: 'View Details', url, variant: 'primary' as const }],
           },
         }
       }
 
-      // Single plan, use card
-      const plan = activePlans[0]
-      const startDate = new Date(plan.startDate)
-      const endDate = new Date(plan.endDate)
-      const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
-      const currentDay = Math.ceil((new Date(date).getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
-
-      // Build stats for expanded view
-      const stats = []
-      if (plan.title) {
-        stats.push({
-          label: 'Goal',
-          value: plan.title,
-          icon: '🏷️',
-          color: '#8B5CF6',
-        })
-      }
-      if (plan.description) {
-        stats.push({
-          label: 'Description',
-          value: plan.description,
-          icon: '📋',
-          color: '#7C3AED',
-        })
-      }
-      stats.push({
-        label: 'Duration',
-        value: `${days} day${days !== 1 ? 's' : ''}`,
-        icon: '⏱️',
-        color: '#6D28D9',
-      })
-      stats.push({
-        label: 'Status',
-        value: currentDay === 1 ? 'Starting' : currentDay === days ? 'Ending' : 'Ongoing',
-        icon: currentDay === 1 ? '🚀' : currentDay === days ? '🏁' : '🎯',
-        color: '#A78BFA',
-      })
-
+      const task = tasks[0]
       return {
-        color: plan.color || '#8B5CF6',
+        color: task.color || '#8B5CF6',
         hasData: true,
         summary: {
           type: 'stats',
-          title: 'Executive Goal',
-          subtitle: plan.title || 'Goal',
+          title: 'Executive Task',
+          subtitle: task.title || 'Task',
           icon: '🎯',
-          badge: `Day ${currentDay}/${days}`,
-          gradient: { from: plan.color || '#8B5CF6', to: '#7C3AED' },
-          stats,
-          actions: [
-            {
-              label: 'View Progress',
-              url,
-              variant: 'primary',
-            },
+          badge: task.completed ? 'Done' : 'Pending',
+          gradient: { from: task.color || '#8B5CF6', to: '#7C3AED' },
+          stats: [
+            { label: 'Task', value: task.title || 'Task', icon: '🏷️', color: '#8B5CF6' },
+            { label: 'Status', value: task.completed ? 'Completed' : 'Pending', icon: '📋', color: '#7C3AED' },
           ],
+          actions: [{ label: 'View Details', url, variant: 'primary' as const }],
         },
       }
     },
@@ -299,10 +235,10 @@ export const ExecutiveGoalPlugin: Plugin = {
                   aiHint: 'A name or title for the goal (e.g., "Q1 Strategic Planning", "Product Launch")',
                 },
                 {
-                  key: 'description',
+                  key: 'plan',
                   type: 'string',
-                  label: 'Description',
-                  aiHint: 'Brief description of what the goal entails, its objectives, or key activities',
+                  label: 'Plan',
+                  aiHint: 'Phase plan or key objectives for the goal',
                 },
                 {
                   key: 'startDate',
@@ -332,7 +268,7 @@ export const ExecutiveGoalPlugin: Plugin = {
             output: {
               executiveGoalPlans: [{
                 title: 'Q1 Strategic Planning',
-                description: 'Review financial targets and set OKRs',
+                plan: 'Review financial targets and set OKRs',
               }],
             },
           },
@@ -341,7 +277,7 @@ export const ExecutiveGoalPlugin: Plugin = {
             output: {
               executiveGoalPlans: [{
                 title: 'Product Launch',
-                description: 'Launching new mobile app version 2.0',
+                plan: 'Launching new mobile app version 2.0',
               }],
             },
           },
@@ -351,52 +287,30 @@ export const ExecutiveGoalPlugin: Plugin = {
 
     parseAIData: (
       extracted: Record<string, unknown>,
-      existingData: ExecutiveGoalDayData | null,
+      _existingData: ExecutiveGoalDayData | null,
     ): Partial<ExecutiveGoalDayData> => {
-      const result: Partial<ExecutiveGoalDayData> = {}
-
-      // Parse executive goal plans
       if (Array.isArray(extracted.executiveGoalPlans) && extracted.executiveGoalPlans.length > 0) {
-        const newPlans: ExecutiveGoalPlan[] = extracted.executiveGoalPlans
+        const goals: ExecutiveGoal[] = extracted.executiveGoalPlans
           .filter((item): item is Record<string, unknown> =>
             typeof item === 'object' && item !== null
           )
           .map((item, index) => {
-            // Generate a unique ID for new plans
             const id = `ai-${Date.now()}-${index}`
-            
+            const startDate = item.startDate ? String(item.startDate) : new Date().toISOString().split('T')[0]
+            const endDate = item.endDate ? String(item.endDate) : startDate
             return {
               id,
               title: String(item.title || 'Goal'),
-              description: item.description ? String(item.description) : undefined,
-              startDate: item.startDate ? String(item.startDate) : new Date().toISOString().split('T')[0],
-              endDate: item.endDate ? String(item.endDate) : (item.startDate ? String(item.startDate) : new Date().toISOString().split('T')[0]),
+              startDate,
+              endDate,
+              plan: item.plan ? String(item.plan) : undefined,
               note: item.note ? String(item.note) : undefined,
             }
           })
-          .filter(plan => plan.title.trim() !== '')
-
-        // Merge with existing plans (avoid duplicates by checking title/destination)
-        const existingPlans = existingData?.executiveGoalPlans || []
-        const mergedPlans = [...existingPlans]
-
-        for (const newPlan of newPlans) {
-          const isDuplicate = existingPlans.some(
-            existing =>
-              (existing.title === newPlan.title && existing.startDate === newPlan.startDate && existing.endDate === newPlan.endDate)
-          )
-          if (!isDuplicate) {
-            mergedPlans.push(newPlan)
-          }
-        }
-
-        result.executiveGoalPlans = mergedPlans
-      } else if (existingData?.executiveGoalPlans) {
-        // Preserve existing executive goal plans if no new ones extracted
-        result.executiveGoalPlans = existingData.executiveGoalPlans
+          .filter((g) => g.title.trim() !== '')
+        return { _extractedGoals: goals }
       }
-
-      return result
+      return {}
     },
 
     renderWizard: (props: AIWizardFlowProps<ExecutiveGoalDayData, unknown>) => {

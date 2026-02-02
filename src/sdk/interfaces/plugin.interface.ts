@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { PluginAIIntegration } from '../types/ai.types'
-import type { PluginQuickStats, PluginPeriodInsights, TimeRangeOption } from '../types/insights.types'
+import type { PluginQuickStats, PluginPeriodInsights, TimeRangeOption, InsightsCustomViewProps } from '../types/insights.types'
 
 /**
  * Core plugin interface that all plugins must implement
@@ -93,6 +93,12 @@ export interface Plugin<TDayData = any, TConfig = any> {
      * If not provided, uses global defaults
      */
     defaultTimeRanges?: TimeRangeOption[]
+
+    /**
+     * Optional custom view component (e.g. map + dates table for travel)
+     * Rendered in Insights tab when this plugin is active
+     */
+    customView?: React.ComponentType<InsightsCustomViewProps<TDayData, TConfig>>
   }
 
   /** Optional: AI integration for natural language data extraction */
@@ -189,6 +195,9 @@ export interface PluginFirestore {
   /** Get a scoped document reference */
   doc: (path: string) => any // Firestore DocumentReference
 
+  /** Create a write batch (commit many writes in one round-trip) */
+  writeBatch?: () => any // Firestore WriteBatch
+
   /** Query helper */
   query: (collectionRef: any, ...queryConstraints: any[]) => any
 
@@ -243,6 +252,15 @@ export interface PluginDataProvider<TDayData = any, TConfig = any> {
    * @param data Data to save
    */
   saveDayData(context: PluginContext, date: string, data: Partial<TDayData>): Promise<boolean>
+
+  /**
+   * Save many days in one batch (optional). Use for multi-day updates to avoid N round-trips.
+   * If not implemented, core will fall back to calling saveDayData in a loop.
+   */
+  saveDayDataBatch?(
+    context: PluginContext,
+    updates: Array<{ date: string; data: Partial<TDayData> }>,
+  ): Promise<void>
 
   /**
    * Load plugin configuration (optional)

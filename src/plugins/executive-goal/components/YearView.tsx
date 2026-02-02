@@ -1,12 +1,13 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { ExecutiveGoalPlan, ExecutiveGoalPlanInput } from '../types'
+import type { ExecutiveGoal, ExecutiveGoalInput, ExecutiveGoalTask } from '../types'
 import type { ButtonConfig } from '@/types'
 import type { YearViewConfig } from '@/types/year-view-config'
 import { Modal } from '@/components/ui'
 import { GenericYearView } from '@/components/features/year-view/GenericYearView'
 import { ExecutiveGoalForm } from './ExecutiveGoalForm'
+import { AddExecutiveGoalChat } from './AddExecutiveGoalChat'
 import {
   computeMonthInfo,
   enumerateDateRange,
@@ -24,13 +25,14 @@ interface YearViewProps {
   dayDetails: Record<string, any>
   onPrevYear: () => void
   onNextYear: () => void
-  onAddExecutiveGoal: (executiveGoal: ExecutiveGoalPlanInput) => void | Promise<void>
+  onAddExecutiveGoal: (executiveGoal: ExecutiveGoalInput) => void | Promise<void>
+  onUpdateExecutiveGoal?: (executiveGoal: ExecutiveGoal) => void | Promise<void>
   onUpdateDay: (iso: string, updates: any) => Promise<void>
   onDeleteExecutiveGoal?: (executiveGoalId: string) => void | Promise<void>
   onJumpToDay?: (iso: string) => void
   onMonthClick?: (year: number, month: number) => void
   initialSelectedDay?: string | null
-  allExecutiveGoals?: ExecutiveGoalPlan[]
+  allExecutiveGoals?: ExecutiveGoal[]
 }
 
 export function YearView({
@@ -40,6 +42,7 @@ export function YearView({
   onPrevYear,
   onNextYear,
   onAddExecutiveGoal,
+  onUpdateExecutiveGoal,
   onUpdateDay,
   onDeleteExecutiveGoal,
   onJumpToDay,
@@ -50,7 +53,7 @@ export function YearView({
   const [showExecutiveGoalModal, setShowExecutiveGoalModal] = useState(false)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
-  const [editingExecutiveGoal, setEditingExecutiveGoal] = useState<ExecutiveGoalPlan | null>(null)
+  const [editingExecutiveGoal, setEditingExecutiveGoal] = useState<ExecutiveGoal | null>(null)
   const [isSavingExecutiveGoal, setIsSavingExecutiveGoal] = useState(false)
   const [prefilledDates, setPrefilledDates] = useState<{
     startDate: string
@@ -70,9 +73,8 @@ export function YearView({
   const executiveGoalEntries = useMemo(() => {
     const entries = Object.entries(dayDetails).filter(
       ([iso, details]) =>
-        iso.startsWith(yearPrefix) && (details.executiveGoalPlans?.length || 0) > 0,
+        iso.startsWith(yearPrefix) && (details.tasks?.length || 0) > 0,
     )
-
     return entries
   }, [dayDetails, yearPrefix])
 
@@ -83,101 +85,27 @@ export function YearView({
 
   const weekendExecutiveGoalCount = executiveGoalEntries.length - weekdayExecutiveGoalCount
 
-  // Get executiveGoal plans for a specific month (goals only, no tasks)
-  const getMonthExecutiveGoals = (year: number, month: number) => {
+  // Goals that overlap this month (from goal-level list)
+  const getMonthExecutiveGoals = (year: number, month: number): ExecutiveGoal[] => {
     const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
     const daysInMonth = new Date(year, month, 0).getDate()
-    const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(
-      daysInMonth,
-    ).padStart(2, '0')}`
-
-    // Get unique executiveGoal plans that have at least one day in this month
-    // Filter out tasks (those with parentExecutiveGoalId)
-    const monthExecutiveGoalMap = new Map<string, ExecutiveGoalPlan>()
-
-    Object.entries(dayDetails).forEach(([iso, details]) => {
-      if (iso >= monthStart && iso <= monthEnd) {
-        const executiveGoals = details.executiveGoalPlans || []
-        // Only include goals (not tasks)
-        executiveGoals.forEach((executiveGoal: any) => {
-          if (!executiveGoal.parentExecutiveGoalId && !monthExecutiveGoalMap.has(executiveGoal.id)) {
-            monthExecutiveGoalMap.set(executiveGoal.id, executiveGoal)
-          }
-        })
-      }
-    })
-
-    return Array.from(monthExecutiveGoalMap.values())
+    const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
+    return (allExecutiveGoals || []).filter(
+      (g) => g.endDate >= monthStart && g.startDate <= monthEnd
+    )
   }
 
-  const handleSaveExecutiveGoal = async (formData: {
-    title: string
-    description: string
-    startDate: string
-    endDate: string
-    color: string
-    note: string
-    parentExecutiveGoalId?: string
-  }) => {
+  const handleSaveExecutiveGoal = async (formData: ExecutiveGoalInput) => {
     setIsSavingExecutiveGoal(true)
     try {
-      const dates = enumerateDateRange(formData.startDate, formData.endDate)
-      const normalizedStart = dates[0]
-      const normalizedEnd = dates[dates.length - 1]
-
       if (editingExecutiveGoal) {
-        // Update existing executiveGoal
-        const updatedExecutiveGoal: ExecutiveGoalPlan = {
+        await onUpdateExecutiveGoal?.({
           ...editingExecutiveGoal,
-          title: formData.title,
-          description: formData.description || undefined,
-          startDate: normalizedStart,
-          endDate: normalizedEnd,
-          note: formData.note || undefined,
-          color: formData.color || undefined,
-          parentExecutiveGoalId: formData.parentExecutiveGoalId || undefined,
-        }
-
-        const oldDates = enumerateDateRange(
-          editingExecutiveGoal.startDate,
-          editingExecutiveGoal.endDate,
-        )
-        const newDates = dates
-
-        const updates: Promise<void>[] = []
-
-        // Remove from old dates
-        oldDates.forEach((iso) => {
-          const existing = dayDetails[iso]?.executiveGoalPlans || []
-          const filtered = existing.filter((t: any) => t.id !== editingExecutiveGoal.id)
-          updates.push(onUpdateDay(iso, { executiveGoalPlans: filtered }))
+          ...formData,
         })
-
-        // Add to new dates
-        newDates.forEach((iso) => {
-          const existing = dayDetails[iso]?.executiveGoalPlans || []
-          const filtered = existing.filter((t: any) => t.id !== updatedExecutiveGoal.id)
-          updates.push(
-            onUpdateDay(iso, { executiveGoalPlans: [...filtered, updatedExecutiveGoal] }),
-          )
-        })
-
-        await Promise.all(updates)
-
-        setSelectedDay(updatedExecutiveGoal.startDate)
       } else {
-        // Create new executiveGoal
-        await onAddExecutiveGoal({
-          title: formData.title,
-          description: formData.description || undefined,
-          startDate: normalizedStart,
-          endDate: normalizedEnd,
-          note: formData.note || undefined,
-          color: formData.color || undefined,
-          parentExecutiveGoalId: formData.parentExecutiveGoalId || undefined,
-        })
+        await onAddExecutiveGoal(formData)
       }
-
       setShowExecutiveGoalModal(false)
       setEditingExecutiveGoal(null)
     } finally {
@@ -194,7 +122,7 @@ export function YearView({
     return counts
   }, [executiveGoalEntries])
 
-  const handleEditExecutiveGoal = (executiveGoal: ExecutiveGoalPlan) => {
+  const handleEditExecutiveGoal = (executiveGoal: ExecutiveGoal) => {
     setEditingExecutiveGoal(executiveGoal)
     setPrefilledDates(null)
     setShowExecutiveGoalModal(true)
@@ -263,36 +191,26 @@ export function YearView({
             </div>
           ),
           days: month.days.map((day) => {
-            const executiveGoals = dayDetails[day.iso]?.executiveGoalPlans || []
-            
-            // Separate goals (no parent) and tasks (have parent)
-            const goals = executiveGoals.filter((eg: any) => !eg.parentExecutiveGoalId)
-            const tasks = executiveGoals.filter((eg: any) => eg.parentExecutiveGoalId)
-            
-            // Calculate task completion
-            const completedTasks = tasks.filter((t: any) => t.completed === true).length
-            const totalTasks = tasks.length
+            const tasksForDay: ExecutiveGoalTask[] = dayDetails[day.iso]?.tasks || []
+            const goalsForDay = (allExecutiveGoals || []).filter(
+              (g) => day.iso >= g.startDate && day.iso <= g.endDate
+            )
+            const completedTasks = tasksForDay.filter((t) => t.completed).length
+            const totalTasks = tasksForDay.length
             const completionPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+            const goalColors = goalsForDay.map((g) => g.color || '#8B5CF6')
             
-            // Get goal colors for border
-            const goalColors = goals.map((g: any) => g.color || '#8B5CF6')
-            
-            // Build day config
             const dayConfig: any = {
               iso: day.iso,
               dayOfMonth: day.dayOfMonth,
               weekdayIndex: day.weekdayIndex,
               indicators: [],
             }
-            
-            // Set background color based on task completion
-            if (goals.length > 0 && totalTasks > 0) {
+            if (goalsForDay.length > 0 && totalTasks > 0) {
               dayConfig.highlighted = true
               dayConfig.highlightColor = getCompletionBackgroundColor(completionPercent)
             }
-            
-            // Set border style for goals
-            if (goals.length > 0) {
+            if (goalsForDay.length > 0) {
               dayConfig.style = createMultiGoalBorderStyle(goalColors)
             }
             
@@ -302,7 +220,7 @@ export function YearView({
             id: executiveGoal.id,
             type: 'travel' as const,
             title: executiveGoal.title,
-            subtitle: `${executiveGoal.description ? `${executiveGoal.description} • ` : ''}${formatShortDate(
+            subtitle: `${executiveGoal.plan ? `${executiveGoal.plan} • ` : ''}${formatShortDate(
               executiveGoal.startDate,
             )} → ${formatShortDate(executiveGoal.endDate)}`,
             color: executiveGoal.color,
@@ -315,18 +233,17 @@ export function YearView({
       }),
       modal: {
         getSections: (date: string) => {
-          const executiveGoals = dayDetails[date]?.executiveGoalPlans || []
-
-          const sections = []
-
-          // ExecutiveGoal plans section
-          if (executiveGoals.length > 0) {
+          const goalsForDay = (allExecutiveGoals || []).filter(
+            (g) => date >= g.startDate && date <= g.endDate
+          )
+          const sections: any[] = []
+          if (goalsForDay.length > 0) {
             sections.push({
-              id: 'executiveGoal-plans',
+              id: 'executiveGoal-goals',
               type: 'custom' as const,
               content: (
                 <div className="space-y-3">
-                  {executiveGoals.map((executiveGoal: any) => (
+                  {goalsForDay.map((executiveGoal) => (
                     <div
                       key={executiveGoal.id}
                       className="rounded-xl border border-white/10 bg-white/5 p-3"
@@ -338,47 +255,33 @@ export function YearView({
                         <span
                           className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/15 text-sm"
                           style={{
-                            backgroundColor:
-                              executiveGoal.color || 'rgba(14,165,233,0.25)',
+                            backgroundColor: executiveGoal.color || 'rgba(14,165,233,0.25)',
                           }}
                         >
                           🎯
                         </span>
                       </div>
                       <div className="mt-1 text-xs text-white/60">
-                        {executiveGoal.description && (
-                          <span>{executiveGoal.description} • </span>
-                        )}
+                        {executiveGoal.plan && <span>{executiveGoal.plan} • </span>}
                         {formatShortDate(executiveGoal.startDate)} →{' '}
                         {formatShortDate(executiveGoal.endDate)}
                       </div>
                       {executiveGoal.note && (
-                        <div className="mt-2 text-xs text-white/60">
-                          {executiveGoal.note}
-                        </div>
+                        <div className="mt-2 text-xs text-white/60">{executiveGoal.note}</div>
                       )}
                       <div className="mt-3 flex flex-wrap gap-2 text-xs">
                         <button
-                          onClick={() => {
-                            handleEditExecutiveGoal(executiveGoal)
-                          }}
+                          onClick={() => handleEditExecutiveGoal(executiveGoal)}
                           className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
                         >
-                          Edit executiveGoal
-                        </button>
-                        <button
-                          onClick={() => removeExecutiveGoalForDay(date, executiveGoal.id)}
-                          disabled={isUpdating}
-                          className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Remove this day
+                          Edit goal
                         </button>
                         <button
                           onClick={() => removeExecutiveGoalForTrip(executiveGoal.id)}
                           disabled={isUpdating}
                           className="px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Remove entire trip
+                          Delete goal
                         </button>
                       </div>
                     </div>
@@ -388,8 +291,6 @@ export function YearView({
               ),
             })
           }
-
-
           return sections
         },
         getActions: (date: string) => {
@@ -450,25 +351,23 @@ export function YearView({
 
       <Modal
         open={showExecutiveGoalModal}
-        title={editingExecutiveGoal ? 'Edit executiveGoal' : 'Add executiveGoal'}
+        title={editingExecutiveGoal ? 'Edit executive goal' : 'Add executive goal'}
         onClose={handleCloseExecutiveGoalModal}
       >
-        <ExecutiveGoalForm
-          initialData={
-            editingExecutiveGoal
-              ? editingExecutiveGoal
-              : prefilledDates
-              ? {
-                  startDate: prefilledDates.startDate,
-                  endDate: prefilledDates.endDate,
-                }
-              : undefined
-          }
-          onSubmit={handleSaveExecutiveGoal}
-          onCancel={handleCloseExecutiveGoalModal}
-          isSubmitting={isSavingExecutiveGoal}
-          availableExecutiveGoals={allExecutiveGoals}
-        />
+        {editingExecutiveGoal ? (
+          <ExecutiveGoalForm
+            initialData={editingExecutiveGoal}
+            onSubmit={handleSaveExecutiveGoal}
+            onCancel={handleCloseExecutiveGoalModal}
+            isSubmitting={isSavingExecutiveGoal}
+          />
+        ) : (
+          <AddExecutiveGoalChat
+            onSubmit={handleSaveExecutiveGoal}
+            onCancel={handleCloseExecutiveGoalModal}
+            prefilledStartDate={prefilledDates?.startDate}
+          />
+        )}
       </Modal>
     </>
   )
