@@ -35,8 +35,10 @@ services:
       - .env
     environment:
       NODE_ENV: production
+      OPENAI_API_KEY: ${OPENAI_API_KEY?OPENAI_API_KEY is required for Language Tutor}
       GCS_KEY_FILE: /app/gcs-key.json
       GCS_BUCKET_NAME: ${GCS_BUCKET_NAME:-}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
     volumes:
       - ${GCS_KEY_FILE_HOST:-./gcs-key.json}:/app/gcs-key.json:ro
     networks:

@@ -98,6 +98,9 @@ export function LanguageTutorForm({
 
     const metadata: LearningMetadata = initialData?.metadata || {
       proficiencyLevel,
+      currentTopic: 'Greetings & Basics',
+      completedTopics: [],
+      topicProgress: {},
       problematicWords: [],
       problematicSentences: [],
       masteredConcepts: [],
