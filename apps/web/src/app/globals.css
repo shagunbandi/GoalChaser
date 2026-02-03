@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* Tell Tailwind to scan all source files including packages and plugins */
-@source "../../../../apps/web/src/**/*.{js,jsx,ts,tsx}";
+@source "../**/*.{js,jsx,ts,tsx}";
 @source "../../../../packages/sdk/src/**/*.{js,jsx,ts,tsx}";
 @source "../../../../plugins/**/src/**/*.{js,jsx,ts,tsx}";
 
@@ -31,6 +31,11 @@
   --accent-purple: #AF52DE;
   --accent-cyan: #32D4DE;
   --accent-pink: #FF2D92;
+
+  /* Plugin status colors */
+  --status-green: #30D158;
+  --status-orange: #FF9500;
+  --status-red: #FF453A;
   
   /* Glow effects */
   --glow-blue: rgba(0, 122, 255, 0.4);
@@ -41,6 +46,9 @@
 @theme inline {
   --color-background: var(--bg-primary);
   --color-foreground: var(--text-primary);
+  --color-status-green: var(--status-green);
+  --color-status-orange: var(--status-orange);
+  --color-status-red: var(--status-red);
   --font-sans: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "SF Mono", ui-monospace, monospace;
 }

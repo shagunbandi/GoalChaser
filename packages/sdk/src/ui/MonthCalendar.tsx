@@ -106,7 +106,10 @@ export function MonthCalendar({
     isInRange: boolean,
     customization?: DayCustomization,
   ): string => {
-    const bg = customization?.backgroundColor || 'bg-white/[0.15]'
+    // Don't apply default bg class if backgroundColor is explicitly empty string (inline style will be used)
+    const bg = customization?.backgroundColor === ''
+      ? ''
+      : customization?.backgroundColor || 'bg-white/[0.15]'
     const border = customization?.borderColor
       ? `border border-[${customization.borderColor}]`
       : 'border border-white/[0.08]'
