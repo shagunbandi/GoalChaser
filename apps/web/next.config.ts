@@ -30,6 +30,7 @@ const nextConfig: NextConfig = {
       '@goal-chaser/plugin-travel',
       '@goal-chaser/plugin-period',
       '@goal-chaser/plugin-executive-goal',
+      '@goal-chaser/plugin-language-tutor',
     ],
   serverExternalPackages: ['firebase', 'firebase-admin'],
   images: {
