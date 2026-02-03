@@ -105,10 +105,18 @@ export {
   Section,
   MonthCalendar,
   NotesField,
+  QnAComponent,
 } from './ui'
 
 // UI component types
-export type { NotesFieldProps } from './ui'
+export type {
+  NotesFieldProps,
+  QnAOption,
+  QnAQuestion,
+  QnAScore,
+  QnAData,
+  QnAComponentProps,
+} from './ui'
 
 // Chat types
 export type {

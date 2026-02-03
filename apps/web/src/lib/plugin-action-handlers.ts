@@ -8,6 +8,11 @@ import {
   generateTasks,
   summarizeProgress,
 } from '@goal-chaser/plugin-executive-goal/actions'
+import {
+  languageTutorChat,
+  generateLearning,
+  saveProgress,
+} from '@goal-chaser/plugin-language-tutor/actions'
 
 type ActionHandler = (payload: unknown) => Promise<unknown>
 
@@ -17,6 +22,11 @@ const pluginHandlers: Record<string, Record<string, ActionHandler>> = {
     chat: (p) => executiveGoalChat(p),
     generateTasks: (p) => generateTasks(p),
     summarizeProgress: (p) => summarizeProgress(p),
+  },
+  languageTutor: {
+    chat: (p) => languageTutorChat(p),
+    generateLearning: (p) => generateLearning(p),
+    saveProgress: (p) => saveProgress(p),
   },
 }
 

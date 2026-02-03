@@ -17,6 +17,7 @@ export function AIChatInterface<TInput = unknown, TResult = unknown>({
 }: AIChatInterfaceProps<TInput, TResult>) {
   const {
     apiEndpoint,
+    pluginAction,
     welcomeMessage,
     buildSystemPrompt,
     parseResponse,
@@ -39,6 +40,7 @@ export function AIChatInterface<TInput = unknown, TResult = unknown>({
     messagesEndRef,
   } = useChat<TResult>({
     apiEndpoint,
+    pluginAction,
     welcomeMessage,
     buildSystemPrompt,
     parseResponse,

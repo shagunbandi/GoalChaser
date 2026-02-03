@@ -52,3 +52,12 @@ export type {
 export { NotesField, type NotesFieldProps } from './NotesField'
 export { InsightsMap, type InsightsMapMarker, type InsightsMapPolyline } from './InsightsMap'
 export type { InsightsMapProps } from './InsightsMap'
+
+export {
+  QnAComponent,
+  type QnAOption,
+  type QnAQuestion,
+  type QnAScore,
+  type QnAData,
+  type QnAComponentProps,
+} from './QnAComponent'
