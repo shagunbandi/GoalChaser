@@ -73,6 +73,9 @@ export default function LanguageTutorPage({
       endDate: input.endDate,
       metadata: input.metadata || {
         proficiencyLevel: 'beginner',
+        currentTopic: 'Greetings & Basics',
+        completedTopics: [],
+        topicProgress: {},
         problematicWords: [],
         problematicSentences: [],
         masteredConcepts: [],

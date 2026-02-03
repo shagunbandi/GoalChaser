@@ -144,24 +144,27 @@ export function getScoreDistribution(
  */
 export function buildScoreBreakdown(
   data: Record<string, LanguageTutorDayData>
-): Array<{ label: string; value: number; color: string }> {
+): Array<{ label: string; value: string; count: number; color: string }> {
   const dist = getScoreDistribution(data)
   
   return [
     {
       label: 'Excellent (80%+)',
-      value: dist.excellent,
+      value: `${dist.excellent} quiz${dist.excellent !== 1 ? 'zes' : ''}`,
+      count: dist.excellent,
       color: '#22C55E',
     },
     {
       label: 'Good (60-79%)',
-      value: dist.good,
+      value: `${dist.good} quiz${dist.good !== 1 ? 'zes' : ''}`,
+      count: dist.good,
       color: '#FBBF24',
     },
     {
       label: 'Needs Review (<60%)',
-      value: dist.needsReview,
+      value: `${dist.needsReview} quiz${dist.needsReview !== 1 ? 'zes' : ''}`,
+      count: dist.needsReview,
       color: '#EF4444',
     },
-  ].filter((item) => item.value > 0)
+  ].filter((item) => item.count > 0)
 }

@@ -96,18 +96,21 @@ export function LanguageTutorForm({
       .map((lang) => lang.trim())
       .filter((lang) => lang !== '')
 
-    const metadata: LearningMetadata = initialData?.metadata || {
-      proficiencyLevel,
-      currentTopic: 'Greetings & Basics',
-      completedTopics: [],
-      topicProgress: {},
-      problematicWords: [],
-      problematicSentences: [],
-      masteredConcepts: [],
-      topicsNeedReview: [],
-    }
-
-    metadata.proficiencyLevel = proficiencyLevel
+    const metadata: LearningMetadata = initialData?.metadata
+      ? {
+          ...initialData.metadata,
+          proficiencyLevel,
+        }
+      : {
+          proficiencyLevel,
+          currentTopic: 'Greetings & Basics',
+          completedTopics: [],
+          topicProgress: {},
+          problematicWords: [],
+          problematicSentences: [],
+          masteredConcepts: [],
+          topicsNeedReview: [],
+        }
 
     await onSubmit({
       targetLanguage: targetLanguage.trim(),
@@ -273,7 +276,7 @@ export function LanguageTutorForm({
           onClick={onCancel}
           className="
             px-4 py-2 rounded-xl text-sm font-medium
-            bg-white/[0.05] text-white/70 hover:bg-white/[0.1]
+            bg-white/5 text-white/70 hover:bg-white/10
             transition-all duration-150
           "
           disabled={isSubmitting}
@@ -285,7 +288,7 @@ export function LanguageTutorForm({
           disabled={isSubmitting}
           className="
             px-4 py-2 rounded-xl text-sm font-medium
-            bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED]
+            bg-linear-to-r from-[#8B5CF6] to-[#7C3AED]
             text-white hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]
             transition-all duration-150
             disabled:opacity-50 disabled:cursor-not-allowed

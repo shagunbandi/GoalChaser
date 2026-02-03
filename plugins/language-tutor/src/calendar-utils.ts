@@ -87,7 +87,7 @@ export function getLanguageTutorDayCustomization(
       borderTop: `1px solid ${borderColor}40`,
     },
     ...(showDots && {
-      dots: [{ color: dotColor }],
+      dots: [{ type: 'learning', color: dotColor }],
     }),
   }
 }
