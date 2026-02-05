@@ -16,8 +16,7 @@ out/
 .turbo/
 *.tsbuildinfo
 
-# Storybook & docs (any public folder, e.g. apps/web/public)
-.storybook-static/
+# Generated docs (any public folder, e.g. apps/web/public)
 **/public/developer/documentation/
 
 # Testing
@@ -82,8 +81,10 @@ next-env.d.ts
 # Secrets (NEVER commit)
 *-key.json
 service-account*.json
-secrets/
 gcs-key.json
+# Secrets directory - all files except examples
+secrets/*
+!secrets/.env.example
 
 # Generated / backup data
 dummy-user-data.json

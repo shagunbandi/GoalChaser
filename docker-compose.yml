@@ -1,48 +1,37 @@
-# Docker Compose for Nitya (Goal Chaser)
+# Docker Compose - Nitya (Goal Chaser)
 #
 # Prerequisites:
-# - Create network once: docker network create nitya_network
-# - .env with NEXT_PUBLIC_FIREBASE_* and optional GCS_* (see .env.local.example)
-# - GCS key: place at ./gcs-key.json (or set GCS_KEY_FILE_HOST) for upload API
+#   1. Create network: docker network create nitya_network
+#   2. Add secrets/.env (Firebase, OpenAI, etc.)
+#   3. Add secrets/gcs-key.json
 #
-# Storybook: The nitya image includes built Storybook + TypeDoc (from npm run build:docs).
-# They are served at https://<host>/developer/documentation/storybook and .../api.
-# For local Storybook dev server (hot reload), use the storybook service or run
-# "npm run storybook" on the host.
-
-version: '3.8'
+# Usage: just prod-up
 
 services:
   nitya:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY?NEXT_PUBLIC_FIREBASE_API_KEY is required}
-        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN is required}
-        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID?NEXT_PUBLIC_FIREBASE_PROJECT_ID is required}
-        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is required}
-        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID?NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID is required}
-        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID?NEXT_PUBLIC_FIREBASE_APP_ID is required}
     image: nitya:latest
     container_name: nitya
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
+    
     expose:
       - "3000"
+    
     env_file:
-      - .env
+      - ./secrets/.env
     environment:
       NODE_ENV: production
-      OPENAI_API_KEY: ${OPENAI_API_KEY?OPENAI_API_KEY is required for Language Tutor}
-      GCS_KEY_FILE: /app/gcs-key.json
-      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME:-}
-      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+      GCS_KEY_FILE: /app/secrets/gcs-key.json
+    
     volumes:
-      - ${GCS_KEY_FILE_HOST:-./gcs-key.json}:/app/gcs-key.json:ro
+      - ./secrets/gcs-key.json:/app/secrets/gcs-key.json:ro
+    
     networks:
       - nitya_network
+    
+    # Traefik labels
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.nitya.entrypoints=websecure"
@@ -52,25 +41,6 @@ services:
       - "traefik.http.services.nitya.loadbalancer.server.port=3000"
       - "traefik.docker.network=nitya_network"
 
-  # Optional: Storybook dev server (hot reload). Use when developing components in Docker.
-  # Access at http://localhost:6006. Omit this service if you run "npm run storybook" on the host.
-  storybook:
-    image: node:20-alpine
-    working_dir: /app
-    volumes:
-      - .:/app
-      - storybook_node_modules:/app/node_modules
-    ports:
-      - "6006:6006"
-    command: sh -c "npm ci && npm run storybook"
-    environment:
-      NODE_ENV: development
-    profiles:
-      - storybook
-
 networks:
   nitya_network:
     external: true
-
-volumes:
-  storybook_node_modules:

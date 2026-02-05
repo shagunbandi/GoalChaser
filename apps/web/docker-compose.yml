@@ -4,11 +4,6 @@
 # - Create network once: docker network create nitya_network
 # - .env with NEXT_PUBLIC_FIREBASE_* and optional GCS_* (see .env.local.example)
 # - GCS key: place at ./gcs-key.json (or set GCS_KEY_FILE_HOST) for upload API
-#
-# Storybook: The nitya image includes built Storybook + TypeDoc (from npm run build:docs).
-# They are served at https://<host>/developer/documentation/storybook and .../api.
-# For local Storybook dev server (hot reload), use the storybook service or run
-# "npm run storybook" on the host.
 
 version: '3.8'
 
@@ -50,26 +45,7 @@ services:
       - "traefik.http.services.nitya.loadbalancer.server.port=3000"
       - "traefik.docker.network=nitya_network"
 
-  # Optional: Storybook dev server (hot reload). Use when developing components in Docker.
-  # Access at http://localhost:6006. Omit this service if you run "npm run storybook" on the host.
-  storybook:
-    image: node:20-alpine
-    working_dir: /app
-    volumes:
-      - .:/app
-      - storybook_node_modules:/app/node_modules
-    ports:
-      - "6006:6006"
-    command: sh -c "npm ci && npm run storybook"
-    environment:
-      NODE_ENV: development
-    profiles:
-      - storybook
-
 networks:
   nitya_network:
     external: true
-
-volumes:
-  storybook_node_modules:
 
