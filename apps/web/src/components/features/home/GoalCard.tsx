@@ -6,11 +6,10 @@ import { GOAL_COLORS } from './constants'
 interface GoalCardProps {
   goal: Goal
   onClick: () => void
-  onDelete: () => void
   index: number
 }
 
-export function GoalCard({ goal, onClick, onDelete, index }: GoalCardProps) {
+export function GoalCard({ goal, onClick, index }: GoalCardProps) {
   const colorConfig =
     GOAL_COLORS.find((c) => c.value === goal.color) || GOAL_COLORS[0]
   const createdDate = new Date(goal.createdAt).toLocaleDateString('en-US', {
@@ -62,36 +61,7 @@ export function GoalCard({ goal, onClick, onDelete, index }: GoalCardProps) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              if (confirm(`Delete "${goal.name}"?`)) {
-                onDelete()
-              }
-            }}
-            className="
-              p-1.5 rounded-lg
-              text-white/20 hover:text-red-400 
-              opacity-0 group-hover:opacity-100 
-              hover:bg-white/10
-              transition-all duration-200
-            "
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </button>
+        <div className="flex items-center shrink-0">
           <div className="p-1.5 text-white/30 group-hover:text-white/60 transition-colors">
             <svg
               className="w-4 h-4"

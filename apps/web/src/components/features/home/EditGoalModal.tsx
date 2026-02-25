@@ -15,15 +15,17 @@ interface EditGoalModalProps {
     startDate?: string
     endDate?: string
   }) => Promise<void>
+  onDelete?: () => Promise<void>
 }
 
-export function EditGoalModal({ goal, open, onClose, onSave }: EditGoalModalProps) {
+export function EditGoalModal({ goal, open, onClose, onSave, onDelete }: EditGoalModalProps) {
   const [name, setName] = useState(goal.name)
   const [description, setDescription] = useState(goal.description || '')
   const [color, setColor] = useState(goal.color || '#007AFF')
   const [startDate, setStartDate] = useState(goal.startDate || '')
   const [endDate, setEndDate] = useState(goal.endDate || '')
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Reset form when goal changes
@@ -190,36 +192,68 @@ export function EditGoalModal({ goal, open, onClose, onSave }: EditGoalModalProp
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSaving}
-            className="
-              flex-1 px-4 py-2 rounded-lg
-              bg-white/5 hover:bg-white/10
-              border border-white/10
-              text-white/70 hover:text-white
-              transition-all duration-200
-              disabled:opacity-50 disabled:cursor-not-allowed
-            "
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSaving || !name.trim()}
-            className="
-              flex-1 px-4 py-2 rounded-lg
-              bg-gradient-to-r from-[#007AFF] to-[#0051D5]
-              hover:shadow-[0_0_20px_rgba(0,122,255,0.4)]
-              text-white font-medium
-              transition-all duration-200
-              disabled:opacity-50 disabled:cursor-not-allowed
-            "
-          >
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
+        <div className="flex flex-col gap-3 pt-4">
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSaving || isDeleting}
+              className="
+                flex-1 px-4 py-2 rounded-lg
+                bg-white/5 hover:bg-white/10
+                border border-white/10
+                text-white/70 hover:text-white
+                transition-all duration-200
+                disabled:opacity-50 disabled:cursor-not-allowed
+              "
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving || isDeleting || !name.trim()}
+              className="
+                flex-1 px-4 py-2 rounded-lg
+                bg-gradient-to-r from-[#007AFF] to-[#0051D5]
+                hover:shadow-[0_0_20px_rgba(0,122,255,0.4)]
+                text-white font-medium
+                transition-all duration-200
+                disabled:opacity-50 disabled:cursor-not-allowed
+              "
+            >
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (!confirm(`Delete "${goal.name}"? This cannot be undone.`)) return
+                setIsDeleting(true)
+                setError(null)
+                try {
+                  await onDelete()
+                  onClose()
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Failed to delete goal')
+                } finally {
+                  setIsDeleting(false)
+                }
+              }}
+              disabled={isSaving || isDeleting}
+              className="
+                w-full px-4 py-2 rounded-lg
+                bg-red-500/10 hover:bg-red-500/20
+                border border-red-500/20
+                text-red-400 hover:text-red-300
+                text-sm font-medium
+                transition-all duration-200
+                disabled:opacity-50 disabled:cursor-not-allowed
+              "
+            >
+              {isDeleting ? 'Deleting...' : 'Delete goal'}
+            </button>
+          )}
         </div>
       </form>
     </Modal>

@@ -7,7 +7,7 @@ import { LandingPage } from '@/components/features/landing'
 
 export default function Home() {
   const { user, isLoading: authLoading } = useAuth()
-  const { goals, isLoading, createGoal, deleteGoal } = useGoals()
+  const { goals, isLoading, createGoal } = useGoals()
 
   // Loading state
   if (authLoading || isLoading) {
@@ -37,7 +37,6 @@ export default function Home() {
       user={user}
       goals={goals}
       createGoal={createGoal}
-      deleteGoal={deleteGoal}
     />
   )
 }

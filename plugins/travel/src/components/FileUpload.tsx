@@ -19,7 +19,22 @@ export function FileUpload({
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [openingFileId, setOpeningFileId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleOpenFile = async (file: TravelFile) => {
+    setOpeningFileId(file.id)
+    try {
+      const res = await fetch(`/api/storage/sign?path=${encodeURIComponent(file.storagePath)}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to get file URL')
+      window.open(data.url, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to open file')
+    } finally {
+      setOpeningFileId(null)
+    }
+  }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files
@@ -56,8 +71,9 @@ export function FileUpload({
       }
 
       if (data.success && data.file) {
-        // Add new file to the list
-        const updatedFiles = [...files, data.file]
+        // Strip the signed URL — we generate fresh ones on demand via /api/storage/sign
+        const { url: _url, ...fileWithoutUrl } = data.file
+        const updatedFiles = [...files, fileWithoutUrl]
         await onFilesChange(updatedFiles)
       }
     } catch (err) {
@@ -142,14 +158,14 @@ export function FileUpload({
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <span className="text-base shrink-0">{getFileIcon(file.type)}</span>
                 <div className="flex-1 min-w-0">
-                  <a
-                    href={file.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-white/80 hover:text-white hover:underline truncate block"
+                  <button
+                    type="button"
+                    onClick={() => handleOpenFile(file)}
+                    disabled={openingFileId === file.id}
+                    className="text-sm text-white/80 hover:text-white hover:underline truncate block text-left disabled:opacity-50"
                   >
-                    {file.name}
-                  </a>
+                    {openingFileId === file.id ? 'Opening...' : file.name}
+                  </button>
                   <p className="text-xs text-white/40">
                     {formatFileSize(file.size)}
                   </p>

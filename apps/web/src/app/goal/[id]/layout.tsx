@@ -30,7 +30,7 @@ export default function GoalLayout({ children }: GoalLayoutProps) {
   const pluginSegments = (params.plugin as string[]) || []
 
   const { user, isLoading: authLoading } = useAuth()
-  const { getGoal, updateGoal, isLoading: goalsLoading } = useGoals()
+  const { getGoal, updateGoal, deleteGoal, isLoading: goalsLoading } = useGoals()
   const goal = getGoal(goalId)
 
   const { enabledAddons, saveAddons } = useAddonsConfig(user?.uid, goalId)
@@ -146,6 +146,11 @@ export default function GoalLayout({ children }: GoalLayoutProps) {
         onClose={() => setShowEditGoal(false)}
         onSave={async (updates) => {
           await updateGoal(goalId, updates)
+        }}
+        onDelete={async () => {
+          await deleteGoal(goalId)
+          setShowEditGoal(false)
+          router.push('/')
         }}
       />
     </div>

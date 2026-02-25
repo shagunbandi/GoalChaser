@@ -15,6 +15,8 @@ export interface Goal {
   color?: string
   startDate?: string
   endDate?: string
+  /** Set when goal is soft-deleted; excluded from list */
+  deletedAt?: string | null
 }
 
 // ============ LocalStorage Keys ============
@@ -61,6 +63,7 @@ async function loadGoalsFromFirebase(userId: string): Promise<Goal[]> {
     const goals: Goal[] = []
     querySnapshot.forEach((doc) => {
       const data = doc.data()
+      if (data.deletedAt) return // soft-deleted: exclude from list
       goals.push({
         id: doc.id,
         name: data.name,
@@ -69,6 +72,7 @@ async function loadGoalsFromFirebase(userId: string): Promise<Goal[]> {
         color: data.color,
         startDate: data.startDate,
         endDate: data.endDate,
+        deletedAt: data.deletedAt || null,
       })
     })
 
@@ -102,6 +106,7 @@ async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> 
       color: goal.color || '',
       startDate: goal.startDate || null,
       endDate: goal.endDate || null,
+      deletedAt: goal.deletedAt ?? null,
       updatedAt: new Date().toISOString(),
     })
     logger.success('Goal saved')
@@ -115,12 +120,11 @@ async function saveGoalToFirebase(userId: string, goal: Goal): Promise<boolean> 
 async function deleteGoalFromFirebase(userId: string, goalId: string): Promise<boolean> {
   try {
     logger.progress('Deleting goal...')
-    
     const db = getFirebaseDb()
-    const { doc, deleteDoc } = await import('firebase/firestore')
-    
+    const { doc, setDoc } = await import('firebase/firestore')
     const goalRef = doc(db, 'users', userId, 'goals', goalId)
-    await deleteDoc(goalRef)
+    const deletedAt = new Date().toISOString()
+    await setDoc(goalRef, { deletedAt, updatedAt: deletedAt }, { merge: true })
     logger.success('Goal deleted')
     return true
   } catch (error) {

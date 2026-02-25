@@ -25,7 +25,7 @@ export interface TravelFile {
   name: string
   size: number
   type: string
-  url: string
+  url?: string
   uploadedAt: string
   storagePath: string
 }

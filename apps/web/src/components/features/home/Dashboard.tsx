@@ -12,7 +12,6 @@ interface DashboardProps {
   user: User
   goals: Goal[]
   createGoal: (options: CreateGoalFormData) => Promise<Goal>
-  deleteGoal: (id: string) => Promise<void>
 }
 
 function getGreeting() {
@@ -26,7 +25,6 @@ export function Dashboard({
   user,
   goals,
   createGoal,
-  deleteGoal,
 }: DashboardProps) {
   const router = useRouter()
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -137,7 +135,6 @@ export function Dashboard({
                   key={goal.id}
                   goal={goal}
                   onClick={() => handleGoalClick(goal.id)}
-                  onDelete={() => deleteGoal(goal.id)}
                   index={index}
                 />
               ))}

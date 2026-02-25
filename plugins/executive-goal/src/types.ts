@@ -46,7 +46,7 @@ export interface ExecutiveGoalFile {
   name: string
   size: number
   type: string
-  url: string
+  url?: string
   uploadedAt: string
   storagePath: string
 }

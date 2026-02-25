@@ -41,6 +41,8 @@ export interface Goal {
   // Optional date range for the goal
   startDate?: string // ISO date string
   endDate?: string // ISO date string
+  /** Set when goal is soft-deleted; goals with this set are excluded from lists */
+  deletedAt?: string | null // ISO timestamp
 }
 
 // ============ Year View Config Types ============
