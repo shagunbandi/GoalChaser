@@ -84,7 +84,7 @@ export class ProductivityDataProvider implements PluginDataProvider<Productivity
       await context.firestore.setDoc(docRef, {
         ...cleanData,
         updatedAt: new Date().toISOString(),
-      })
+      }, { merge: true })
 
       context.logger.success('Productivity data saved')
       return true
