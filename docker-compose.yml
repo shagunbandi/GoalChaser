@@ -35,7 +35,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.nitya.entrypoints=websecure"
-      - "traefik.http.routers.nitya.rule=Host(`nitya.geekynavigator.com`)"
+      - "traefik.http.routers.nitya.rule=Host(`nitya.shagunbandi.com`)"
       - "traefik.http.routers.nitya.tls=true"
       - "traefik.http.routers.nitya.tls.certresolver=cloudflare"
       - "traefik.http.services.nitya.loadbalancer.server.port=3000"
